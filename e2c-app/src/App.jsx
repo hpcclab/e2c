@@ -38,9 +38,8 @@ const App = () => {
 
 const Home = () => (
   <div className="max-w-4xl mx-auto bg-white rounded-2xl shadow p-10">
-    <h2 className="text-4xl font-bold text-gray-800 mb-4">Welcome to the Converted UI</h2>
+    <h2 className="text-4xl font-bold text-gray-800 mb-4">Welcome to E2C-Revamp</h2>
     <p className="text-lg text-gray-700">
-      This React app is a frontend rewrite of the original PyQt5-based GUI. Use the navigation above to explore the components.
     </p>
   </div>
 );
