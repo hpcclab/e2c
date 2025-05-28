@@ -1,0 +1,52 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Virtual environment
+venv/
+env/
+.venv/
+
+# Environment variables and sensitive info
+.env
+*.env
+
+# OS-specific
+.DS_Store
+
+# IDE/editor folders
+.vscode/
+.idea/
+
+# Upload folders (optional - keep if dynamically created)
+static/uploads/
+uploads/
+
+# Database (if using SQLite)
+*.sqlite3
+*.db
+
+# Log files
+*.log
+
+# Python egg info
+*.egg-info/
+dist/
+build/
+
+# Coverage reports
+htmlcov/
+.coverage
+.cache
+.tox/
+
+# Unit test / pytest cache
+.pytest_cache/
+
+# Flask instance folder
+instance/
+
+# Pylint/mypy
+.mypy_cache/
+.pylint.d/

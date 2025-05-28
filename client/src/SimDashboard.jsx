@@ -1,38 +1,82 @@
 import React, { useState } from "react";
-import { motion, AnimatePresence } from "framer-motion"; // Animation library
-import { TrashIcon } from '@heroicons/react/24/outline'
+import axios from "axios";
+import { motion, AnimatePresence } from "framer-motion";
+import { TrashIcon } from '@heroicons/react/24/outline';
 
 const SimDashboard = () => {
-  // Define task slots and queues for the simulation
   const taskSlots = Array.from({ length: 6 });
 
-  // State variables for sidebar visibility and mode
   const [showSidebar, setShowSidebar] = useState(false);
-  const [sidebarMode, setSidebarMode] = useState(null); // Sidebar modes: workload, loadBalancer, machine, etc.
-  const [selectedMachine, setSelectedMachine] = useState(null); // Selected machine for machine-specific sidebar
+  const [sidebarMode, setSidebarMode] = useState(null);
+  const [selectedMachine, setSelectedMachine] = useState(null);
 
-  // State variables for scheduling and load balancer configurations
   const [scheduling, setScheduling] = useState("immediate");
   const [policy, setPolicy] = useState("Min-Expected-Execution-Time");
   const [queueSize, setQueueSize] = useState("unlimited");
 
-  // State for runtime model parameters
   const [runtimeModel, setRuntimeModel] = useState("Constant");
   const [params, setParams] = useState({ mean: "", std: "", mean1: "", std1: "", mean2: "", std2: "" });
 
-  // State for machine tab (details or performance)
   const [machineTab, setMachineTab] = useState("details");
 
-  // Function to open the sidebar with a specific mode
+  const [profilingFileName, setProfilingFileName] = useState("");
+  const [profilingFileUploaded, setProfilingFileUploaded] = useState(false);
+
+  const [workloadFileName, setWorkloadFileName] = useState("");
+  const [workloadFileUploaded, setWorkloadFileUploaded] = useState(false);
+
   const openSidebar = (mode, machine = null) => {
     setSidebarMode(mode);
     setSelectedMachine(machine);
     setShowSidebar(true);
   };
 
-  // Function to handle parameter changes
   const handleParamChange = (key, value) => {
     setParams({ ...params, [key]: value });
+  };
+
+  const handleProfilingUpload = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    setProfilingFileName(file.name); // Set the profiling file name
+    setProfilingFileUploaded(true); // Mark profiling file as uploaded
+
+    const formData = new FormData();
+    formData.append("file", file);
+
+    try {
+      const res = await axios.post("http://localhost:5001/api/workload/upload", formData, {
+        headers: { "Content-Type": "multipart/form-data" },
+      });
+      console.log("Profiling upload success:", res.data);
+      alert("Profiling file uploaded successfully!");
+    } catch (err) {
+      console.error("Profiling upload error:", err);
+      alert("Failed to upload profiling file.");
+    }
+  };
+
+  const handleWorkloadUpload = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    setWorkloadFileName(file.name); // Set the workload file name
+    setWorkloadFileUploaded(true); // Mark workload file as uploaded
+
+    const formData = new FormData();
+    formData.append("file", file);
+
+    try {
+      const res = await axios.post("http://localhost:5001/api/workload/upload", formData, {
+        headers: { "Content-Type": "multipart/form-data" },
+      });
+      console.log("Workload upload success:", res.data);
+      alert("Workload file uploaded successfully!");
+    } catch (err) {
+      console.error("Workload upload error:", err);
+      alert("Failed to upload workload file.");
+    }
   };
 
   return (
@@ -40,7 +84,7 @@ const SimDashboard = () => {
       {/* Main Simulation Area */}
       <div className="flex-grow flex flex-col justify-center items-center">
         <div className="flex justify-center items-end space-x-12">
-          {/* Left Side: Workload, Task Slots, Load Balancer, and Cancelled Tasks */}
+          {/* Left Side */}
           <div className="flex flex-col items-center space-y-8 -mt-50">
             <div className="flex items-center space-x-12 -mt-75">
               {/* Workload Button */}
@@ -80,9 +124,8 @@ const SimDashboard = () => {
             </div>
           </div>
 
-          {/* Right Side: Machines with Queues and Missed Tasks */}
+          {/* Right Side */}
           <div className="flex flex-col items-center space-y-10">
-            {/* Machines with Queues */}
             {["m1", "m2", "m3"].map((machine, index) => (
               <div
                 key={machine}
@@ -123,7 +166,7 @@ const SimDashboard = () => {
         </div>
       </div>
 
-      {/* Footer: Logos, Controls, and Progress */}
+      {/* Footer */}
       <div className="bg-[#eeeeee] border-t border-gray-400 p-4 flex flex-col items-center space-y-4">
         <div className="flex justify-center items-center space-x-10">
           <img src="/logos/hpc.png" alt="HPC Lab" className="h-8 grayscale" />
@@ -143,7 +186,7 @@ const SimDashboard = () => {
         </div>
       </div>
 
-      {/* Sidebar: Dynamic Content Based on Sidebar Mode */}
+      {/* Sidebar */}
       <AnimatePresence>
         {showSidebar && (
           <motion.div
@@ -153,7 +196,6 @@ const SimDashboard = () => {
             transition={{ type: "tween", duration: 0.3 }}
             className="fixed top-0 right-0 h-full w-80 bg-white shadow-lg z-50 p-6 border-l border-gray-300 flex flex-col overflow-y-auto"
           >
-            {/* Sidebar Header */}
             <div className="flex justify-between items-center mb-4">
               <h2 className="text-xl font-bold text-gray-800">
                 {sidebarMode === "workload"
@@ -174,29 +216,74 @@ const SimDashboard = () => {
               </button>
             </div>
 
-            {/* Sidebar Content Based on Mode */}
             {sidebarMode === "workload" && (
               <div className="space-y-6">
-                {/* Workload Sidebar Content */}
+                {/* Profiling Table Upload */}
                 <div>
                   <label className="block text-sm font-semibold text-gray-700 mb-1">
                     Profiling Table (.csv or .eet)
                   </label>
-                  <input
-                    type="file"
-                    accept=".csv,.eet"
-                    className="w-full border rounded px-3 py-2 text-sm"
-                  />
+                  {!profilingFileUploaded && (
+                    <button className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 transition">
+                      <label className="cursor-pointer">
+                        Choose File
+                        <input
+                          type="file"
+                          accept=".csv,.eet"
+                          className="hidden"
+                          onChange={handleProfilingUpload}
+                        />
+                      </label>
+                    </button>
+                  )}
+                  {profilingFileName && (
+                    <div className="flex items-center space-x-2 mt-2">
+                      <p className="text-sm text-gray-600">Uploaded File: {profilingFileName}</p>
+                      <button
+                        className="text-red-600 hover:text-red-800 transition"
+                        onClick={() => {
+                          setProfilingFileName("");
+                          setProfilingFileUploaded(false);
+                        }}
+                      >
+                        <TrashIcon className="w-5 h-5" />
+                      </button>
+                    </div>
+                  )}
                 </div>
+
+                {/* Workload File Upload */}
                 <div>
                   <label className="block text-sm font-semibold text-gray-700 mb-1">
                     Workload File (.json or .wkl)
                   </label>
-                  <input
-                    type="file"
-                    accept=".json,.wkl"
-                    className="w-full border rounded px-3 py-2 text-sm"
-                  />
+                  {!workloadFileUploaded && (
+                    <button className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 transition">
+                      <label className="cursor-pointer">
+                        Choose File
+                        <input
+                          type="file"
+                          accept=".json,.wkl"
+                          className="hidden"
+                          onChange={handleWorkloadUpload}
+                        />
+                      </label>
+                    </button>
+                  )}
+                  {workloadFileName && (
+                    <div className="flex items-center space-x-2 mt-2">
+                      <p className="text-sm text-gray-600">Uploaded File: {workloadFileName}</p>
+                      <button
+                        className="text-red-600 hover:text-red-800 transition"
+                        onClick={() => {
+                          setWorkloadFileName("");
+                          setWorkloadFileUploaded(false);
+                        }}
+                      >
+                        <TrashIcon className="w-5 h-5" />
+                      </button>
+                    </div>
+                  )}
                 </div>
               </div>
             )}
@@ -370,7 +457,7 @@ const SimDashboard = () => {
                   </thead>
                   <tbody>
                     <tr>
-                      <td colSpan="4" className="px-4 py-2 text-sm text-gray-500 text-center">
+                      <td colSpan="6" className="px-4 py-2 text-sm text-gray-500 text-center">
                         No data available yet. The simulation has not occurred.
                       </td>
                     </tr>
