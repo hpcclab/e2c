@@ -1,0 +1,388 @@
+import React, { useState } from "react";
+import { motion, AnimatePresence } from "framer-motion"; // Animation library
+import { TrashIcon } from '@heroicons/react/24/outline'
+
+const SimDashboard = () => {
+  // Define task slots and queues for the simulation
+  const taskSlots = Array.from({ length: 6 });
+
+  // State variables for sidebar visibility and mode
+  const [showSidebar, setShowSidebar] = useState(false);
+  const [sidebarMode, setSidebarMode] = useState(null); // Sidebar modes: workload, loadBalancer, machine, etc.
+  const [selectedMachine, setSelectedMachine] = useState(null); // Selected machine for machine-specific sidebar
+
+  // State variables for scheduling and load balancer configurations
+  const [scheduling, setScheduling] = useState("immediate");
+  const [policy, setPolicy] = useState("Min-Expected-Execution-Time");
+  const [queueSize, setQueueSize] = useState("unlimited");
+
+  // State for runtime model parameters
+  const [runtimeModel, setRuntimeModel] = useState("Constant");
+  const [params, setParams] = useState({ mean: "", std: "", mean1: "", std1: "", mean2: "", std2: "" });
+
+  // State for machine tab (details or performance)
+  const [machineTab, setMachineTab] = useState("details");
+
+  // Function to open the sidebar with a specific mode
+  const openSidebar = (mode, machine = null) => {
+    setSidebarMode(mode);
+    setSelectedMachine(machine);
+    setShowSidebar(true);
+  };
+
+  // Function to handle parameter changes
+  const handleParamChange = (key, value) => {
+    setParams({ ...params, [key]: value });
+  };
+
+  return (
+    <div className="bg-[#d9d9d9] min-h-screen flex flex-col relative">
+      {/* Main Simulation Area */}
+      <div className="flex-grow flex flex-col justify-center items-center">
+        <div className="flex justify-center items-end space-x-12">
+          {/* Left Side: Workload, Task Slots, Load Balancer, and Cancelled Tasks */}
+          <div className="flex flex-col items-center space-y-8 -mt-50">
+            <div className="flex items-center space-x-12 -mt-75">
+              {/* Workload Button */}
+              <div
+                onClick={() => openSidebar("workload")}
+                className="bg-gray-800 text-white text-sm font-semibold w-20 h-20 flex items-center justify-center rounded-full cursor-pointer hover:scale-105 transition"
+              >
+                Workload
+              </div>
+
+              {/* Task Slots */}
+              <div className="flex space-x-2 px-3 py-2 border-4 border-black rounded-xl bg-white">
+                {taskSlots.map((_, i) => (
+                  <div
+                    key={i}
+                    className="w-10 h-10 bg-gray-300 rounded border border-gray-700"
+                  ></div>
+                ))}
+              </div>
+
+              {/* Load Balancer Button */}
+              <div
+                onClick={() => openSidebar("loadBalancer")}
+                className="bg-gray-800 text-white text-sm font-semibold w-20 h-20 flex items-center justify-center rounded-full cursor-pointer hover:scale-105 transition text-center px-2"
+              >
+                Load<br />Balancer
+              </div>
+            </div>
+
+            {/* Cancelled Tasks */}
+            <div
+              className="flex flex-col items-center cursor-pointer hover:scale-105 transition"
+              onClick={() => openSidebar("cancelledTasks")}
+            >
+              <TrashIcon className="w-10 h-10 text-gray-800" />
+              <span className="text-gray-800 text-sm font-semibold mt-1">Cancelled Tasks</span>
+            </div>
+          </div>
+
+          {/* Right Side: Machines with Queues and Missed Tasks */}
+          <div className="flex flex-col items-center space-y-10">
+            {/* Machines with Queues */}
+            {["m1", "m2", "m3"].map((machine, index) => (
+              <div
+                key={machine}
+                className="bg-white border-4 p-4 rounded-lg shadow-md flex items-center space-x-4"
+              >
+                <div className="flex space-x-2">
+                  {taskSlots.map((_, i) => (
+                    <div
+                      key={i}
+                      className="w-10 h-10 bg-gray-300 rounded border border-gray-700"
+                    ></div>
+                  ))}
+                </div>
+                <div
+                  onClick={() => openSidebar("machine", machine)}
+                  className={`${
+                    index === 1
+                      ? "bg-blue-500"
+                      : index === 2
+                      ? "bg-green-600"
+                      : "bg-red-500"
+                  } text-white font-semibold w-16 h-10 rounded-full flex items-center justify-center cursor-pointer hover:scale-105 transition`}
+                >
+                  {machine}
+                </div>
+              </div>
+            ))}
+
+            {/* Missed Tasks */}
+            <div
+              className="flex flex-col items-center cursor-pointer hover:scale-105 transition"
+              onClick={() => openSidebar("missedTasks")}
+            >
+              <TrashIcon className="w-10 h-10 text-gray-800" />
+              <span className="text-gray-800 text-sm font-semibold mt-1">Missed Tasks</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Footer: Logos, Controls, and Progress */}
+      <div className="bg-[#eeeeee] border-t border-gray-400 p-4 flex flex-col items-center space-y-4">
+        <div className="flex justify-center items-center space-x-10">
+          <img src="/logos/hpc.png" alt="HPC Lab" className="h-8 grayscale" />
+          <img src="/logos/ul.png" alt="UL" className="h-8 grayscale" />
+          <img src="/logos/nsf.png" alt="NSF" className="h-8 grayscale" />
+        </div>
+
+        <div className="flex space-x-6">
+          <button className="bg-gray-400 rounded-xl w-16 h-10">⟲</button>
+          <button className="bg-gray-400 rounded-xl w-16 h-10">▶</button>
+          <button className="bg-gray-400 rounded-xl w-16 h-10">⏸</button>
+        </div>
+
+        <div className="w-full max-w-md flex justify-between items-center px-4">
+          <span className="text-sm text-gray-700">progress</span>
+          <span className="text-sm text-gray-700">speed</span>
+        </div>
+      </div>
+
+      {/* Sidebar: Dynamic Content Based on Sidebar Mode */}
+      <AnimatePresence>
+        {showSidebar && (
+          <motion.div
+            initial={{ x: "100%" }}
+            animate={{ x: 0 }}
+            exit={{ x: "100%" }}
+            transition={{ type: "tween", duration: 0.3 }}
+            className="fixed top-0 right-0 h-full w-80 bg-white shadow-lg z-50 p-6 border-l border-gray-300 flex flex-col overflow-y-auto"
+          >
+            {/* Sidebar Header */}
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="text-xl font-bold text-gray-800">
+                {sidebarMode === "workload"
+                  ? "Workload & Profiling Table"
+                  : sidebarMode === "loadBalancer"
+                  ? "Load Balancer"
+                  : sidebarMode === "cancelledTasks"
+                  ? "Cancelled Tasks"
+                  : sidebarMode === "missedTasks"
+                  ? "Missed Tasks"
+                  : `Machine: ${selectedMachine?.toUpperCase()}`}
+              </h2>
+              <button
+                onClick={() => setShowSidebar(false)}
+                className="text-xl text-gray-500 hover:text-black"
+              >
+                &times;
+              </button>
+            </div>
+
+            {/* Sidebar Content Based on Mode */}
+            {sidebarMode === "workload" && (
+              <div className="space-y-6">
+                {/* Workload Sidebar Content */}
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-1">
+                    Profiling Table (.csv or .eet)
+                  </label>
+                  <input
+                    type="file"
+                    accept=".csv,.eet"
+                    className="w-full border rounded px-3 py-2 text-sm"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-1">
+                    Workload File (.json or .wkl)
+                  </label>
+                  <input
+                    type="file"
+                    accept=".json,.wkl"
+                    className="w-full border rounded px-3 py-2 text-sm"
+                  />
+                </div>
+              </div>
+            )}
+
+            {sidebarMode === "loadBalancer" && (
+              <form className="space-y-6">
+                {/* Load Balancer Sidebar Content */}
+                <div className="space-y-2">
+                  <label className="text-sm font-medium text-gray-700">Scheduling</label>
+                  <div className="space-y-1">
+                    <label className="flex items-center space-x-2">
+                      <input
+                        type="radio"
+                        name="scheduling"
+                        checked={scheduling === "immediate"}
+                        onChange={() => setScheduling("immediate")}
+                      />
+                      <span className="text-sm">Immediate Scheduling</span>
+                    </label>
+
+                    <select
+                      value={policy}
+                      onChange={(e) => setPolicy(e.target.value)}
+                      className="w-full border px-3 py-2 text-sm rounded"
+                    >
+                      <option>FirstCome-FirstServe</option>
+                      <option>Min-Expected-Completion-Time</option>
+                      <option>Min-Expected-Execution-Time</option>
+                      <option>Weighted-Round-Robin</option>
+                    </select>
+
+                    <label className="flex items-center space-x-2 mt-2">
+                      <input
+                        type="radio"
+                        name="scheduling"
+                        checked={scheduling === "batch"}
+                        onChange={() => setScheduling("batch")}
+                      />
+                      <span className="text-sm">Batch Scheduling</span>
+                    </label>
+
+                    <select
+                      disabled={scheduling !== "batch"}
+                      className="w-full border px-3 py-2 text-sm rounded bg-gray-100 disabled:opacity-60"
+                    >
+                      <option>MinCompletion-MinCompletion</option>
+                      <option>MinCompletion-SoonestDeadline</option>
+                      <option>MinCompletion-MaxUrgency</option>
+                      <option>FELARE</option>
+                      <option>ELARE</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-1">
+                    Machine Queue Size
+                  </label>
+                  <input
+                    type="text"
+                    value={queueSize}
+                    onChange={(e) => setQueueSize(e.target.value)}
+                    disabled={scheduling === "batch"}
+                    className="w-full border px-3 py-2 text-sm rounded bg-white disabled:bg-gray-100 disabled:opacity-60"
+                  />
+                </div>
+
+                <button
+                  type="submit"
+                  className="w-full bg-blue-600 text-white rounded px-4 py-2 hover:bg-blue-700"
+                >
+                  Submit
+                </button>
+              </form>
+            )}
+
+            {sidebarMode === "machine" && (
+              <div className="space-y-6">
+                {/* Machine Sidebar Content */}
+                <div className="flex space-x-4 border-b pb-2">
+                  <button
+                    onClick={() => setMachineTab("details")}
+                    className={`text-sm font-semibold ${
+                      machineTab === "details" ? "text-blue-600 border-b-2 border-blue-600" : "text-gray-500"
+                    }`}
+                  >
+                    Details
+                  </button>
+                  <button
+                    onClick={() => setMachineTab("performance")}
+                    className={`text-sm font-semibold ${
+                      machineTab === "performance" ? "text-blue-600 border-b-2 border-blue-600" : "text-gray-500"
+                    }`}
+                  >
+                    Performance
+                  </button>
+                </div>
+
+                {machineTab === "details" && (
+                  <div className="space-y-6">
+                    {/* Machine Details Tab */}
+                    <div className="space-y-2">
+                      {["ID", "Power", "Queue Size"].map((key) => (
+                        <div key={key}>
+                          <label className="block text-sm font-semibold text-gray-700 mb-1">
+                            {key.toUpperCase()}
+                          </label>
+                          <div className="w-full border px-3 py-2 text-sm rounded bg-gray-100">
+                            {params[key] || "N/A"}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {machineTab === "performance" && (
+                  <div className="space-y-4">
+                    {/* Machine Performance Tab */}
+                    {["Metric 1", "Metric 2", "Metric 3"].map((metric) => (
+                      <div key={metric}>
+                        <label className="block text-sm font-semibold text-gray-700 mb-1">
+                          {metric}
+                        </label>
+                        <div className="w-full border px-3 py-2 text-sm rounded bg-gray-100">
+                          {params[metric.toLowerCase().replace(" ", "")] || "N/A"}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {sidebarMode === "cancelledTasks" && (
+              <div className="space-y-6">
+                {/* Cancelled Tasks Sidebar Content */}
+                <table className="w-full text-left border-collapse">
+                  <thead>
+                    <tr className="border-b">
+                      <th className="px-4 py-2 text-sm font-semibold text-gray-700">Task ID</th>
+                      <th className="px-4 py-2 text-sm font-semibold text-gray-700">Type</th>
+                      <th className="px-4 py-2 text-sm font-semibold text-gray-700">Arrival Time</th>
+                      <th className="px-4 py-2 text-sm font-semibold text-gray-700">Cancellation Time</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr>
+                      <td colSpan="4" className="px-4 py-2 text-sm text-gray-500 text-center">
+                        No data available yet. The simulation has not occurred.
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            )}
+
+            {sidebarMode === "missedTasks" && (
+              <div className="space-y-6">
+                {/* Missed Tasks Sidebar Content */}
+                <table className="w-full text-left border-collapse">
+                  <thead>
+                    <tr className="border-b">
+                      <th className="px-4 py-2 text-sm font-semibold text-gray-700">Task ID</th>
+                      <th className="px-4 py-2 text-sm font-semibold text-gray-700">Type</th>
+                      <th className="px-4 py-2 text-sm font-semibold text-gray-700">Assigned Machine</th>
+                      <th className="px-4 py-2 text-sm font-semibold text-gray-700">Arrival Time</th>
+                      <th className="px-4 py-2 text-sm font-semibold text-gray-700">Start Time</th>
+                      <th className="px-4 py-2 text-sm font-semibold text-gray-700">Missed Time</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr>
+                      <td colSpan="4" className="px-4 py-2 text-sm text-gray-500 text-center">
+                        No data available yet. The simulation has not occurred.
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+};
+
+export default SimDashboard;

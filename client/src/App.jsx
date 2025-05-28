@@ -16,7 +16,7 @@ const App = () => {
             <h1 className="text-3xl font-bold">E2C</h1>
             <ul className="flex space-x-6 text-lg">
               <li>
-                <Link to="/" className="hover:underline">Home</Link>
+                <Link to="/e2c" className="hover:underline">Home</Link>
               </li>
               <li>
                 <Link to="/simulate" className="hover:underline">Simulation</Link>
@@ -27,7 +27,7 @@ const App = () => {
 
         <main className="p-6">
           <Routes>
-            <Route path="/" element={<Home />} />
+            <Route path="/e2c" element={<Home />} />
             <Route path="/simulate" element={<SimDashboard />} />
           </Routes>
         </main>
