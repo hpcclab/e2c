@@ -11,7 +11,7 @@ const SimDashboard = () => {
   const [selectedMachine, setSelectedMachine] = useState(null);
 
   const [scheduling, setScheduling] = useState("immediate");
-  const [policy, setPolicy] = useState("Min-Expected-Execution-Time");
+  const [policy, setPolicy] = useState("FirstCome-FirstServe");
   const [queueSize, setQueueSize] = useState("unlimited");
 
   const [runtimeModel, setRuntimeModel] = useState("Constant");
@@ -21,9 +21,28 @@ const SimDashboard = () => {
 
   const [profilingFileName, setProfilingFileName] = useState("");
   const [profilingFileUploaded, setProfilingFileUploaded] = useState(false);
+  const [profilingFileContents, setProfilingFileContents] = useState("");
+  const [profilingTableData, setProfilingTableData] = useState([]);
 
   const [workloadFileName, setWorkloadFileName] = useState("");
   const [workloadFileUploaded, setWorkloadFileUploaded] = useState(false);
+  const [workloadFileContents, setWorkloadFileContents] = useState("");
+  const [workloadTableData, setWorkloadTableData] = useState([]);
+
+  const [configFileName, setConfigFileName] = useState("");
+  const [configFileUploaded, setConfigFileUploaded] = useState(false);
+
+  const parseCSV = (csvContent) => {
+    const rows = csvContent.split("\n").map((row) => row.split(","));
+    const headers = rows[0];
+    const data = rows.slice(1).map((row) =>
+      row.reduce((acc, value, index) => {
+        acc[headers[index]] = value;
+        return acc;
+      }, {})
+    );
+    return data;
+  };
 
   const openSidebar = (mode, machine = null) => {
     setSidebarMode(mode);
@@ -35,12 +54,31 @@ const SimDashboard = () => {
     setParams({ ...params, [key]: value });
   };
 
+  const handleSchedulingChange = (type) => {
+    setScheduling(type);
+    if (type === "immediate") {
+      setQueueSize("unlimited"); // Set queue size to "unlimited" for immediate scheduling
+    } else if (type === "batch") {
+      setQueueSize(""); // Set queue size to "0" for batch scheduling
+    }
+  };
+
   const handleProfilingUpload = async (e) => {
     const file = e.target.files[0];
-    if (!file) return;
+    if (!file || !file.name.endsWith(".eet")) {
+      alert("Only .eet files are allowed for profiling.");
+      return;
+    }
 
     setProfilingFileName(file.name); // Set the profiling file name
     setProfilingFileUploaded(true); // Mark profiling file as uploaded
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const content = event.target.result;
+      setProfilingTableData(parseCSV(content)); // Parse CSV into table data
+    };
+    reader.readAsText(file);
 
     const formData = new FormData();
     formData.append("file", file);
@@ -50,7 +88,6 @@ const SimDashboard = () => {
         headers: { "Content-Type": "multipart/form-data" },
       });
       console.log("Profiling upload success:", res.data);
-      alert("Profiling file uploaded successfully!");
     } catch (err) {
       console.error("Profiling upload error:", err);
       alert("Failed to upload profiling file.");
@@ -59,10 +96,20 @@ const SimDashboard = () => {
 
   const handleWorkloadUpload = async (e) => {
     const file = e.target.files[0];
-    if (!file) return;
+    if (!file || !file.name.endsWith(".wkl")) {
+      alert("Only .wkl files are allowed for workload.");
+      return;
+    }
 
     setWorkloadFileName(file.name); // Set the workload file name
     setWorkloadFileUploaded(true); // Mark workload file as uploaded
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const content = event.target.result;
+      setWorkloadTableData(parseCSV(content)); // Parse CSV into table data
+    };
+    reader.readAsText(file);
 
     const formData = new FormData();
     formData.append("file", file);
@@ -72,11 +119,54 @@ const SimDashboard = () => {
         headers: { "Content-Type": "multipart/form-data" },
       });
       console.log("Workload upload success:", res.data);
-      alert("Workload file uploaded successfully!");
     } catch (err) {
       console.error("Workload upload error:", err);
       alert("Failed to upload workload file.");
     }
+  };
+
+  const handleConfigUpload = async (e) => {
+    const file = e.target.files[0];
+    if (!file || !file.name.endsWith(".json")) {
+      alert("Only .json files are allowed for configuration.");
+      return;
+    }
+
+    setConfigFileName(file.name);
+    setConfigFileUploaded(true);
+
+    const formData = new FormData();
+    formData.append("file", file);
+
+    try {
+      const res = await axios.post("http://localhost:5001/api/workload/upload", formData, {
+        headers: { "Content-Type": "multipart/form-data" },
+      });
+      console.log("Config upload success:", res.data);
+      alert("Configuration file uploaded successfully!");
+    } catch (err) {
+      console.error("Config upload error:", err);
+      alert("Failed to upload configuration file.");
+    }
+  };
+
+  const handleSubmitWorkloadAndProfiling = () => {
+    if (!workloadFileUploaded || !profilingFileUploaded) {
+      alert("Please upload both the workload (.wkl) and profiling table (.eet) files before submitting.");
+      return;
+    }
+
+    alert("Workload and Profiling Table submitted successfully!");
+    // Add any additional logic for submission here
+  };
+
+  const handleResetWorkload = () => {
+    setWorkloadFileName("");
+    setWorkloadFileUploaded(false);
+    setWorkloadTableData([]);
+    setProfilingFileName("");
+    setProfilingFileUploaded(false);
+    setProfilingTableData([]);
   };
 
   return (
@@ -169,9 +259,7 @@ const SimDashboard = () => {
       {/* Footer */}
       <div className="bg-[#eeeeee] border-t border-gray-400 p-4 flex flex-col items-center space-y-4">
         <div className="flex justify-center items-center space-x-10">
-          <img src="/logos/hpc.png" alt="HPC Lab" className="h-8 grayscale" />
-          <img src="/logos/ul.png" alt="UL" className="h-8 grayscale" />
-          <img src="/logos/nsf.png" alt="NSF" className="h-8 grayscale" />
+         {/* Img go here */}
         </div>
 
         <div className="flex space-x-6">
@@ -221,7 +309,7 @@ const SimDashboard = () => {
                 {/* Profiling Table Upload */}
                 <div>
                   <label className="block text-sm font-semibold text-gray-700 mb-1">
-                    Profiling Table (.csv or .eet)
+                    Profiling Table (.eet)
                   </label>
                   {!profilingFileUploaded && (
                     <button className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 transition">
@@ -229,7 +317,7 @@ const SimDashboard = () => {
                         Choose File
                         <input
                           type="file"
-                          accept=".csv,.eet"
+                          accept=".eet"
                           className="hidden"
                           onChange={handleProfilingUpload}
                         />
@@ -237,13 +325,135 @@ const SimDashboard = () => {
                     </button>
                   )}
                   {profilingFileName && (
+                    <div className="flex flex-col space-y-2 mt-2">
+                      <div className="flex items-center space-x-2">
+                        <p className="text-sm text-gray-600">Uploaded File: {profilingFileName}</p>
+                        <button
+                          className="text-red-600 hover:text-red-800 transition"
+                          onClick={() => {
+                            setProfilingFileName("");
+                            setProfilingFileUploaded(false);
+                            setProfilingTableData([]);
+                          }}
+                        >
+                          <TrashIcon className="w-5 h-5" />
+                        </button>
+                      </div>
+                      {profilingTableData.length > 0 && (
+                        <table className="table-auto border-collapse border border-gray-300 w-full text-sm">
+                          <thead>
+                            <tr>
+                              {Object.keys(profilingTableData[0]).map((header) => (
+                                <th key={header} className="border border-gray-300 px-4 py-2 bg-gray-100">
+                                  {header}
+                                </th>
+                              ))}
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {profilingTableData.map((row, index) => (
+                              <tr key={index}>
+                                {Object.values(row).map((value, idx) => (
+                                  <td key={idx} className="border border-gray-300 px-4 py-2">
+                                    {value}
+                                  </td>
+                                ))}
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      )}
+                    </div>
+                  )}
+                </div>
+
+                {/* Workload File Upload */}
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-1">
+                    Workload File (.wkl)
+                  </label>
+                  {!workloadFileUploaded && (
+                    <button className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 transition">
+                      <label className="cursor-pointer">
+                        Choose File
+                        <input
+                          type="file"
+                          accept=".wkl"
+                          className="hidden"
+                          onChange={handleWorkloadUpload}
+                        />
+                      </label>
+                    </button>
+                  )}
+                  {workloadFileName && (
+                    <div className="flex flex-col space-y-2 mt-2">
+                      <div className="flex items-center space-x-2">
+                        <p className="text-sm text-gray-600">Uploaded File: {workloadFileName}</p>
+                        <button
+                          className="text-red-600 hover:text-red-800 transition"
+                          onClick={() => {
+                            setWorkloadFileName("");
+                            setWorkloadFileUploaded(false);
+                            setWorkloadTableData([]);
+                          }}
+                        >
+                          <TrashIcon className="w-5 h-5" />
+                        </button>
+                      </div>
+                      {workloadTableData.length > 0 && (
+                        <table className="table-auto border-collapse border border-gray-300 w-full text-sm">
+                          <thead>
+                            <tr>
+                              {Object.keys(workloadTableData[0]).map((header) => (
+                                <th key={header} className="border border-gray-300 px-4 py-2 bg-gray-100">
+                                  {header}
+                                </th>
+                              ))}
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {workloadTableData.map((row, index) => (
+                              <tr key={index}>
+                                {Object.values(row).map((value, idx) => (
+                                  <td key={idx} className="border border-gray-300 px-4 py-2">
+                                    {value}
+                                  </td>
+                                ))}
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      )}
+                    </div>
+                  )}
+                </div>
+
+                {/* Config File Upload */}
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-1">
+                    Load Configuration File (.json)
+                  </label>
+                  {!configFileUploaded && (
+                    <button className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 transition">
+                      <label className="cursor-pointer">
+                        Choose File
+                        <input
+                          type="file"
+                          accept=".json"
+                          className="hidden"
+                          onChange={handleConfigUpload}
+                        />
+                      </label>
+                    </button>
+                  )}
+                  {configFileName && (
                     <div className="flex items-center space-x-2 mt-2">
-                      <p className="text-sm text-gray-600">Uploaded File: {profilingFileName}</p>
+                      <p className="text-sm text-gray-600">Uploaded File: {configFileName}</p>
                       <button
                         className="text-red-600 hover:text-red-800 transition"
                         onClick={() => {
-                          setProfilingFileName("");
-                          setProfilingFileUploaded(false);
+                          setConfigFileName("");
+                          setConfigFileUploaded(false);
                         }}
                       >
                         <TrashIcon className="w-5 h-5" />
@@ -252,38 +462,20 @@ const SimDashboard = () => {
                   )}
                 </div>
 
-                {/* Workload File Upload */}
-                <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-1">
-                    Workload File (.json or .wkl)
-                  </label>
-                  {!workloadFileUploaded && (
-                    <button className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 transition">
-                      <label className="cursor-pointer">
-                        Choose File
-                        <input
-                          type="file"
-                          accept=".json,.wkl"
-                          className="hidden"
-                          onChange={handleWorkloadUpload}
-                        />
-                      </label>
-                    </button>
-                  )}
-                  {workloadFileName && (
-                    <div className="flex items-center space-x-2 mt-2">
-                      <p className="text-sm text-gray-600">Uploaded File: {workloadFileName}</p>
-                      <button
-                        className="text-red-600 hover:text-red-800 transition"
-                        onClick={() => {
-                          setWorkloadFileName("");
-                          setWorkloadFileUploaded(false);
-                        }}
-                      >
-                        <TrashIcon className="w-5 h-5" />
-                      </button>
-                    </div>
-                  )}
+                {/* Submit and Reset Buttons */}
+                <div className="space-y-4">
+                  <button
+                    onClick={handleSubmitWorkloadAndProfiling}
+                    className="w-full bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700 transition"
+                  >
+                    Submit Workload and Profiling Table
+                  </button>
+                  <button
+                    onClick={handleResetWorkload}
+                    className="w-full bg-red-600 text-white px-4 py-2 rounded hover:bg-red-700 transition"
+                  >
+                    Generate New Workload
+                  </button>
                 </div>
               </div>
             )}
@@ -299,7 +491,7 @@ const SimDashboard = () => {
                         type="radio"
                         name="scheduling"
                         checked={scheduling === "immediate"}
-                        onChange={() => setScheduling("immediate")}
+                        onChange={() => handleSchedulingChange("immediate")}
                       />
                       <span className="text-sm">Immediate Scheduling</span>
                     </label>
@@ -320,7 +512,7 @@ const SimDashboard = () => {
                         type="radio"
                         name="scheduling"
                         checked={scheduling === "batch"}
-                        onChange={() => setScheduling("batch")}
+                        onChange={() => handleSchedulingChange("batch")}
                       />
                       <span className="text-sm">Batch Scheduling</span>
                     </label>
@@ -346,8 +538,10 @@ const SimDashboard = () => {
                     type="text"
                     value={queueSize}
                     onChange={(e) => setQueueSize(e.target.value)}
-                    disabled={scheduling === "batch"}
-                    className="w-full border px-3 py-2 text-sm rounded bg-white disabled:bg-gray-100 disabled:opacity-60"
+                    disabled={scheduling === "immediate"} // Disable editing for immediate scheduling
+                    className={`w-full border px-3 py-2 text-sm rounded ${
+                      scheduling === "immediate" ? "bg-gray-100 opacity-60" : "bg-white"
+                    }`}
                   />
                 </div>
 

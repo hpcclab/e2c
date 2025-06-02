@@ -1,6 +1,6 @@
 from flask import Blueprint, request, jsonify, current_app
 import os
-from services.workload_service import parse_csv_workload
+from services.workload_service import parse_csv_workload, simulate_fcfs
 
 workload_bp = Blueprint('workload', __name__)
 
@@ -20,5 +20,17 @@ def upload_workload():
             return jsonify({"message": "File uploaded successfully", "data": parsed}), 200
         else:
             return jsonify({"message": "File uploaded", "note": "Parsing for this filetype not implemented yet"}), 200
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+@workload_bp.route('/simulate/fcfs', methods=['POST'])
+def run_fcfs_simulation():
+    data = request.get_json()
+    if not data or "tasks" not in data:
+        return jsonify({"error": "Missing 'tasks' in request"}), 400
+
+    try:
+        results = simulate_fcfs(data["tasks"])
+        return jsonify({"results": results}), 200
     except Exception as e:
         return jsonify({"error": str(e)}), 500
