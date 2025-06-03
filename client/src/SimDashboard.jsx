@@ -32,6 +32,9 @@ const SimDashboard = () => {
   const [configFileName, setConfigFileName] = useState("");
   const [configFileUploaded, setConfigFileUploaded] = useState(false);
 
+  const [fcfsResults, setFcfsResults] = useState([]);
+
+
   const parseCSV = (csvContent) => {
     const rows = csvContent.split("\n").map((row) => row.split(","));
     const headers = rows[0];
@@ -139,7 +142,7 @@ const SimDashboard = () => {
     formData.append("file", file);
 
     try {
-      const res = await axios.post("http://localhost:5001/api/workload/upload", formData, {
+      const res = await axios.post("http://localhost:5001/api/workload/upload/config", formData, {
         headers: { "Content-Type": "multipart/form-data" },
       });
       console.log("Config upload success:", res.data);
@@ -169,10 +172,52 @@ const SimDashboard = () => {
     setProfilingTableData([]);
   };
 
+  const runFCFSSimulation = async () => {
+    try {
+      const response = await axios.post("http://localhost:5001/api/scheduling/fcfs", {
+        numTasks: 6,
+        configFilename: configFileName
+      });
+      setFcfsResults(response.data);
+      alert("Simulation complete!");
+    } catch (error) {
+      console.error("Error running simulation:", error);
+      alert("Simulation failed.");
+    }
+  };
+
   return (
     <div className="bg-[#d9d9d9] min-h-screen flex flex-col relative">
       {/* Main Simulation Area */}
       <div className="flex-grow flex flex-col justify-center items-center">
+
+      {fcfsResults.length > 0 && (
+  <div className="px-10 py-4">
+    <h2 className="text-lg font-semibold mb-2">FCFS Results</h2>
+    <table className="table-auto border-collapse border border-gray-400 w-full text-sm bg-white">
+      <thead>
+        <tr className="bg-gray-200">
+          <th className="border px-2 py-1">Task ID</th>
+          <th className="border px-2 py-1">Machine ID</th>
+          <th className="border px-2 py-1">Start</th>
+          <th className="border px-2 py-1">End</th>
+          <th className="border px-2 py-1">Status</th>
+        </tr>
+      </thead>
+      <tbody>
+        {fcfsResults.map((task) => (
+          <tr key={task.taskId}>
+            <td className="border px-2 py-1">{task.taskId}</td>
+            <td className="border px-2 py-1">{task.machineId ?? "N/A"}</td>
+            <td className="border px-2 py-1">{task.start}</td>
+            <td className="border px-2 py-1">{task.end}</td>
+            <td className="border px-2 py-1">{task.status}</td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  </div>
+)}
         <div className="flex justify-center items-end space-x-12">
           {/* Left Side */}
           <div className="flex flex-col items-center space-y-8 -mt-50">
@@ -264,7 +309,10 @@ const SimDashboard = () => {
 
         <div className="flex space-x-6">
           <button className="bg-gray-400 rounded-xl w-16 h-10">⟲</button>
-          <button className="bg-gray-400 rounded-xl w-16 h-10">▶</button>
+          <button
+  onClick={runFCFSSimulation}
+  className="bg-green-600 hover:bg-green-700 text-white rounded-xl w-16 h-10"
+> ▶</button>
           <button className="bg-gray-400 rounded-xl w-16 h-10">⏸</button>
         </div>
 
