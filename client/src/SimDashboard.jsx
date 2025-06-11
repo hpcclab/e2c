@@ -153,14 +153,23 @@ const SimDashboard = () => {
     }
   };
 
-  const handleSubmitWorkloadAndProfiling = () => {
+  const handleSubmitWorkloadAndProfiling = async () => {
     if (!workloadFileUploaded || !profilingFileUploaded) {
       alert("Please upload both the workload (.wkl) and profiling table (.eet) files before submitting.");
       return;
     }
 
-    alert("Workload and Profiling Table submitted successfully!");
-    // Add any additional logic for submission here
+    try {
+      const res = await axios.post(
+        "http://localhost:5001/api/workload/simulate/fcfs",
+        { tasks: workloadTableData }
+      );
+      setFcfsResults(res.data.results);
+      alert("Workload and Profiling Table submitted successfully!");
+    } catch (err) {
+      console.error("Simulation error:", err);
+      alert("Failed to run simulation.");
+    }
   };
 
   const handleResetWorkload = () => {
