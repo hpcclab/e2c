@@ -182,12 +182,17 @@ const SimDashboard = () => {
   };
 
   const runFCFSSimulation = async () => {
+    if (workloadTableData.length === 0) {
+      alert("Please upload a workload file before running the simulation.");
+      return;
+    }
+
     try {
-      const response = await axios.post("http://localhost:5001/api/scheduling/fcfs", {
-        numTasks: 6,
-        configFilename: configFileName
-      });
-      setFcfsResults(response.data);
+      const response = await axios.post(
+        "http://localhost:5001/api/workload/simulate/fcfs",
+        { tasks: workloadTableData }
+      );
+      setFcfsResults(response.data.results);
       alert("Simulation complete!");
     } catch (error) {
       console.error("Error running simulation:", error);
