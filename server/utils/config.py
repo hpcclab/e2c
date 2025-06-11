@@ -11,10 +11,13 @@ no_of_machines = 0
 
 
 def reset():
+    """Reset global simulator state."""
     global no_of_machines
     machines.clear()
     time.reset()
     log.clear()
     batch_queue.clear()
     for machine in machines:
-        machine.reset()  # assuming .reset() exists
+        if hasattr(machine, 'reset'):
+            machine.reset()
+
