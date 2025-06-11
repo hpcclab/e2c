@@ -1,6 +1,6 @@
 import json
 import server.utils.config as config
-from server.utils.machine import Machine  # Update path if needed
+from server.utils.machine import Machine, MachineType
 
 def load_config_file(path):
     with open(path, 'r') as f:
@@ -9,8 +9,10 @@ def load_config_file(path):
     machines = []
     for m in data.get("machines", []):
         type_name = m.get("type")
-        cores = m.get("cores", 1)
-        machines.append(Machine(type_name=type_name, cores=cores))
+        speed = m.get("speed", 1)
+        identifier = m.get("id")
+        machine_type = MachineType(type_name)
+        machines.append(Machine(machine_type, speed=speed, identifier=identifier))
 
     config.machines = machines
     config.no_of_machines = len(machines)

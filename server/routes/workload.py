@@ -60,9 +60,10 @@ def upload_config():
         # Construct machine list from config
         machine_list = []
         for m in config_data.get("machines", []):
-            machine_type = MachineType[m["type"]]
-            speed = m["speed"]
-            machine = Machine(machine_type, speed)
+            machine_type = MachineType(m["type"])
+            speed = m.get("speed", 1)
+            identifier = m.get("id")
+            machine = Machine(machine_type, speed=speed, identifier=identifier)
             machine_list.append(machine)
 
         config.machines = machine_list
