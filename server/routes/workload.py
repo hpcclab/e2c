@@ -3,7 +3,7 @@ import os
 import json
 from server.services.workload_service import parse_csv_workload, simulate_fcfs
 import server.utils.config as config
-from server.utils.machine import Machine, MachineType
+from server.utils.config_loader import load_config_file
 
 workload_bp = Blueprint('workload', __name__)
 
@@ -53,28 +53,24 @@ def upload_config():
         file_path = os.path.join(upload_dir, file.filename)
         file.save(file_path)
 
-        # Load and parse JSON
-        with open(file_path, 'r') as f:
-            config_data = json.load(f)
+        # Parse configuration using shared loader
+        try:
+            load_config_file(file_path)
+        except json.JSONDecodeError as ex:
+            return jsonify({"error": f"Invalid JSON: {ex}"}), 400
+        except Exception as ex:
+            return jsonify({"error": str(ex)}), 400
 
-        # Construct machine list from config
-        machine_list = []
-        for m in config_data.get("machines", []):
-            machine_type = MachineType(m["type"])
-            speed = m.get("speed", 1)
-            identifier = m.get("id")
-            machine = Machine(machine_type, speed=speed, identifier=identifier)
-            machine_list.append(machine)
-
-        config.machines = machine_list
-        config.no_of_machines = len(machine_list)
-        config.settings["config_path"] = file_path  # Store dynamic path for later
+        # Record dynamic path for later use
+        config.settings["config_path"] = file_path
 
         return jsonify({
             "message": "Configuration loaded",
-            "machines": [m.type.name for m in machine_list],
+            "machines": [m.type.name for m in config.machines],
             "path": file_path
         }), 200
 
     except Exception as e:
+        # Catch-all for unexpected errors
         return jsonify({"error": str(e)}), 500
+
