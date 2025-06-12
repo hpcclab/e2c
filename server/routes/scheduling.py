@@ -20,12 +20,15 @@ def run_fcfs():
 
     config_path = f"static/uploads/{config_filename}"
     
+    # Reset the global simulator state before loading the new configuration
+    # so that previously loaded machines and tasks do not interfere with the
+    # current simulation run.
+    config.reset()
+
     try:
         load_config_file(config_path)
     except FileNotFoundError:
         return jsonify({"error": f"Config file not found: {config_path}"}), 500
-
-    config.reset()
 
     tasks = generate_tasks(num_tasks)
     config.batch_queue.load(tasks)
