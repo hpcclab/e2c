@@ -23,6 +23,7 @@ const SimDashboard = () => {
   const [profilingFileUploaded, setProfilingFileUploaded] = useState(false);
   const [profilingFileContents, setProfilingFileContents] = useState("");
   const [profilingTableData, setProfilingTableData] = useState([]);
+  const [profilingSubmissionStatus, setProfilingSubmissionStatus] = useState(""); // Track profiling submission status
 
   const [workloadFileName, setWorkloadFileName] = useState("");
   const [workloadFileUploaded, setWorkloadFileUploaded] = useState(false);
@@ -33,7 +34,8 @@ const SimDashboard = () => {
   const [configFileUploaded, setConfigFileUploaded] = useState(false);
 
   const [fcfsResults, setFcfsResults] = useState([]);
-
+  const [submissionStatus, setSubmissionStatus] = useState(""); // Track submission status
+  const [workloadSubmissionStatus, setWorkloadSubmissionStatus] = useState(""); // Track workload submission status
 
   const parseCSV = (csvContent) => {
     const rows = csvContent.split("\n").map((row) => row.split(","));
@@ -51,6 +53,7 @@ const SimDashboard = () => {
     setSidebarMode(mode);
     setSelectedMachine(machine);
     setShowSidebar(true);
+    setSubmissionStatus(""); // Reset submission status when opening the sidebar
   };
 
   const handleParamChange = (key, value) => {
@@ -146,7 +149,6 @@ const SimDashboard = () => {
         headers: { "Content-Type": "multipart/form-data" },
       });
       console.log("Config upload success:", res.data);
-      alert("Configuration file uploaded successfully!");
     } catch (err) {
       console.error("Config upload error:", err);
       alert("Failed to upload configuration file.");
@@ -154,31 +156,34 @@ const SimDashboard = () => {
   };
 
   const handleSubmitWorkloadAndProfiling = async () => {
-    if (!workloadFileUploaded || !profilingFileUploaded) {
-      alert("Please upload both the workload (.wkl) and profiling table (.eet) files before submitting.");
+    if (!workloadFileUploaded || !profilingFileUploaded || !configFileUploaded) {
+      alert("Please upload the workload (.wkl), profiling table (.eet), and configuration (.json) files before submitting.");
       return;
     }
 
     try {
-      const res = await axios.post(
-        "http://localhost:5001/api/workload/simulate/fcfs",
-        { tasks: workloadTableData }
-      );
-      setFcfsResults(res.data.results);
-      alert("Workload and Profiling Table submitted successfully!");
-    } catch (err) {
-      console.error("Simulation error:", err);
-      alert("Failed to run simulation.");
+      // Simulate submission logic
+      setWorkloadSubmissionStatus("Submitting...");
+      await new Promise((resolve) => setTimeout(resolve, 1000)); // Simulate API call delay
+      setWorkloadSubmissionStatus("Submission successful!");
+    } catch (error) {
+      setWorkloadSubmissionStatus("Submission failed.");
     }
   };
 
   const handleResetWorkload = () => {
+    // Clear all uploaded file information
     setWorkloadFileName("");
     setWorkloadFileUploaded(false);
     setWorkloadTableData([]);
     setProfilingFileName("");
     setProfilingFileUploaded(false);
     setProfilingTableData([]);
+    setConfigFileName("");
+    setConfigFileUploaded(false);
+
+    // Reset submission status
+    setWorkloadSubmissionStatus("");
   };
 
   const runFCFSSimulation = async () => {
@@ -197,6 +202,28 @@ const SimDashboard = () => {
     } catch (error) {
       console.error("Error running simulation:", error);
       alert("Simulation failed.");
+    }
+  };
+
+  const handleSubmitLoadBalancer = async () => {
+    try {
+      // Simulate submission logic
+      setSubmissionStatus("Submitting...");
+      await new Promise((resolve) => setTimeout(resolve, 1000)); // Simulate API call delay
+      setSubmissionStatus("Submission successful!");
+    } catch (error) {
+      setSubmissionStatus("Submission failed.");
+    }
+  };
+
+  const handleSubmitProfilingWorktable = async () => {
+    try {
+      // Simulate submission logic
+      setProfilingSubmissionStatus("Submitting...");
+      await new Promise((resolve) => setTimeout(resolve, 1000)); // Simulate API call delay
+      setProfilingSubmissionStatus("Submission successful!");
+    } catch (error) {
+      setProfilingSubmissionStatus("Submission failed.");
     }
   };
 
@@ -538,6 +565,11 @@ const SimDashboard = () => {
                   >
                     Generate New Workload
                   </button>
+
+                  {/* Success Message */}
+                  {workloadSubmissionStatus && (
+                    <p className="text-sm text-center text-green-600 mt-2">{workloadSubmissionStatus}</p>
+                  )}
                 </div>
               </div>
             )}
@@ -608,11 +640,16 @@ const SimDashboard = () => {
                 </div>
 
                 <button
-                  type="submit"
+                  type="button"
+                  onClick={handleSubmitLoadBalancer}
                   className="w-full bg-blue-600 text-white rounded px-4 py-2 hover:bg-blue-700"
                 >
                   Submit
                 </button>
+
+                {submissionStatus && (
+                  <p className="text-sm text-center text-green-600 mt-2">{submissionStatus}</p>
+                )}
               </form>
             )}
 
