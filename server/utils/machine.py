@@ -1,4 +1,3 @@
-from queue import Queue
 
 class MachineType:
     def __init__(self, name):
@@ -24,7 +23,7 @@ class Machine:
         self.type = machine_type
         self.speed = speed
         self.id = identifier
-        self.queue = Queue(maxsize=queue_limit)
+        self.queue = []
         self.running_task = None
 
     def is_working(self):
@@ -49,6 +48,15 @@ class Machine:
             self.running_task = (next_task,)
             return next_task
         return None
+    
+    def infoAsDict(self):
+        return {
+            "id": self.id,
+            "name": self.type.name,
+            "queue": self.queue,
+            "speed": self.speed,
+            "running_task": self.running_task
+        }
 
     def __repr__(self):
         running_id = self.running_task[0].id if self.running_task else "None"

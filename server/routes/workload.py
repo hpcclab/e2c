@@ -66,7 +66,7 @@ def upload_config():
 
         return jsonify({
             "message": "Configuration loaded",
-            "machines": [m.type.name for m in config.machines],
+            "machines": [m.infoAsDict() for m in config.machines],
             "path": file_path
         }), 200
 

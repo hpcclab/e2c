@@ -1,21 +1,37 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import axios from "axios";
 import { motion, AnimatePresence } from "framer-motion";
 import { TrashIcon } from '@heroicons/react/24/outline';
+import MachineList from "./MachineList";
+import TaskList from "./TaskList";
 
 const SimDashboard = () => {
   const taskSlots = Array.from({ length: 6 });
 
   const [showSidebar, setShowSidebar] = useState(false);
   const [sidebarMode, setSidebarMode] = useState(null);
-  const [selectedMachine, setSelectedMachine] = useState(null);
+  const [selectedMachine, setSelectedMachine] = useState({"id": -1, "name": "empty", "queue":[]});
+  const [selectedTask, setSelectedTask] = useState(
+    {"id": -1, "task_type": "empty", "data_size" : "", 
+    "arrival_time" : "",
+    "deadline" : ""});
+  const [machines, setMachines] = useState([{"id": -1, "name": "empty", "queue":[]}]);
+  const [batchQ, setBatchQ] = useState({"queue":[]});
 
   const [scheduling, setScheduling] = useState("immediate");
   const [policy, setPolicy] = useState("FirstCome-FirstServe");
   const [queueSize, setQueueSize] = useState("unlimited");
 
   const [runtimeModel, setRuntimeModel] = useState("Constant");
-  const [params, setParams] = useState({ mean: "", std: "", mean1: "", std1: "", mean2: "", std2: "" });
+  const [performanceParams, setPerformanceParams] = useState({ id: "", power: "", queue: ""});
+  const [taskParams, setTaskParams] = useState( {
+    "id": "", 
+    "task_type" : "",
+    "data_size" : "", 
+    "arrival_time" : "",
+    "deadline" : "",
+  });
+  const [metricParams, setMetricParams] = useState({ mean: "", std: "", mean1: "", std1: "", mean2: "", std2: "" });
 
   const [machineTab, setMachineTab] = useState("details");
 
@@ -49,16 +65,34 @@ const SimDashboard = () => {
     return data;
   };
 
-  const openSidebar = (mode, machine = null) => {
+  const openSidebar = (mode,) => {
     setSidebarMode(mode);
-    setSelectedMachine(machine);
     setShowSidebar(true);
     setSubmissionStatus(""); // Reset submission status when opening the sidebar
   };
+  
+//  update machine params
+  useEffect(() => {
+    setPerformanceParams(prev => ({
+    ...prev,
+    "id" : selectedMachine.id,
+    "name" : selectedMachine.name,
+    "queue": selectedMachine.queue
+}))
+  }, [selectedMachine])
 
-  const handleParamChange = (key, value) => {
-    setParams({ ...params, [key]: value });
-  };
+  //  update machine params
+  useEffect(() => {
+    setTaskParams(prev => ({
+    ...prev,
+    "id": selectedTask.id, 
+    "task_type" : selectedTask.task_type,
+    "data_size" : selectedTask.data_size, 
+    "arrival_time" : selectedTask.arrival_time,
+    "deadline" : selectedTask.deadline,
+}))
+  }, [selectedTask])
+
 
   const handleSchedulingChange = (type) => {
     setScheduling(type);
@@ -125,6 +159,7 @@ const SimDashboard = () => {
         headers: { "Content-Type": "multipart/form-data" },
       });
       console.log("Workload upload success:", res.data);
+      console.log(workloadTableData)
     } catch (err) {
       console.error("Workload upload error:", err);
       alert("Failed to upload workload file.");
@@ -149,6 +184,7 @@ const SimDashboard = () => {
         headers: { "Content-Type": "multipart/form-data" },
       });
       console.log("Config upload success:", res.data);
+      setMachines([...res.data.machines]);
     } catch (err) {
       console.error("Config upload error:", err);
       alert("Failed to upload configuration file.");
@@ -196,6 +232,7 @@ const SimDashboard = () => {
       const response = await axios.post(
         "http://localhost:5001/api/workload/simulate/fcfs",
         { tasks: workloadTableData }
+        
       );
       setFcfsResults(response.data.results);
       alert("Simulation complete!");
@@ -273,12 +310,7 @@ const SimDashboard = () => {
 
               {/* Task Slots */}
               <div className="flex space-x-2 px-3 py-2 border-4 border-black rounded-xl bg-white">
-                {taskSlots.map((_, i) => (
-                  <div
-                    key={i}
-                    className="w-10 h-10 bg-gray-300 rounded border border-gray-700"
-                  ></div>
-                ))}
+              <TaskList machine={batchQ} setSelectedTask={setSelectedTask} onClicked={() => openSidebar("task")}/>
               </div>
 
               {/* Load Balancer Button */}
@@ -302,33 +334,9 @@ const SimDashboard = () => {
 
           {/* Right Side */}
           <div className="flex flex-col items-center space-y-10">
-            {["m1", "m2", "m3"].map((machine, index) => (
-              <div
-                key={machine}
-                className="bg-white border-4 p-4 rounded-lg shadow-md flex items-center space-x-4"
-              >
-                <div className="flex space-x-2">
-                  {taskSlots.map((_, i) => (
-                    <div
-                      key={i}
-                      className="w-10 h-10 bg-gray-300 rounded border border-gray-700"
-                    ></div>
-                  ))}
-                </div>
-                <div
-                  onClick={() => openSidebar("machine", machine)}
-                  className={`${
-                    index === 1
-                      ? "bg-blue-500"
-                      : index === 2
-                      ? "bg-green-600"
-                      : "bg-red-500"
-                  } text-white font-semibold w-16 h-10 rounded-full flex items-center justify-center cursor-pointer hover:scale-105 transition`}
-                >
-                  {machine}
-                </div>
-              </div>
-            ))}
+            <MachineList machs={machines} setSelectedMachine={setSelectedMachine} setSelectedTask={setSelectedTask} onClicked = {
+              () => openSidebar("machine")} onTaskClicked={() => openSidebar("task")}
+            />
 
             {/* Missed Tasks */}
             <div
@@ -356,7 +364,6 @@ const SimDashboard = () => {
 > ▶</button>
           <button className="bg-gray-400 rounded-xl w-16 h-10">⏸</button>
         </div>
-
         <div className="w-full max-w-md flex justify-between items-center px-4">
           <span className="text-sm text-gray-700">progress</span>
           <span className="text-sm text-gray-700">speed</span>
@@ -371,7 +378,7 @@ const SimDashboard = () => {
             animate={{ x: 0 }}
             exit={{ x: "100%" }}
             transition={{ type: "tween", duration: 0.3 }}
-            className="fixed top-0 right-0 h-full w-80 bg-white shadow-lg z-50 p-6 border-l border-gray-300 flex flex-col overflow-y-auto"
+            className="fixed top-0 right-0 h-full w-80 min-w-min bg-white shadow-lg z-50 p-6 border-l border-gray-300 flex flex-col overflow-y-auto"
           >
             <div className="flex justify-between items-center mb-4">
               <h2 className="text-xl font-bold text-gray-800">
@@ -383,7 +390,9 @@ const SimDashboard = () => {
                   ? "Cancelled Tasks"
                   : sidebarMode === "missedTasks"
                   ? "Missed Tasks"
-                  : `Machine: ${selectedMachine?.toUpperCase()}`}
+                  : sidebarMode === "task"
+                  ? `Task: ${String(selectedTask.id)}`
+                  : `Machine: ${selectedMachine.name?.toUpperCase()}`}
               </h2>
               <button
                 onClick={() => setShowSidebar(false)}
@@ -490,27 +499,31 @@ const SimDashboard = () => {
                         </button>
                       </div>
                       {workloadTableData.length > 0 && (
-                        <table className="table-auto border-collapse border border-gray-300 w-full text-sm">
-                          <thead>
-                            <tr>
-                              {Object.keys(workloadTableData[0]).map((header) => (
-                                <th key={header} className="border border-gray-300 px-4 py-2 bg-gray-100">
-                                  {header}
-                                </th>
-                              ))}
-                            </tr>
-                          </thead>
-                          <tbody>
-                            {workloadTableData.map((row, index) => (
-                              <tr key={index}>
-                                {Object.values(row).map((value, idx) => (
-                                  <td key={idx} className="border border-gray-300 px-4 py-2">
-                                    {value}
-                                  </td>
+                        <table className="table-auto border-collapse border border-gray-300 w-min text-sm">
+                          <div style={{maxHeight: "300px", overflow: "auto", width: "min-content"}}>
+                            <thead>
+                              <tr>
+                                {Object.keys(workloadTableData[0]).map((header) => (
+                                  <th key={header} className="border border-gray-300 px-4 py-2 bg-gray-100">
+                                    {header}
+                                  </th>
                                 ))}
                               </tr>
-                            ))}
-                          </tbody>
+                            </thead>
+                              <tbody>
+                                {workloadTableData.map((row, index) => (
+                                <tr key={index} >
+                                  {Object.values(row).map((value, idx) => (
+                                    <td key={idx} className="border border-gray-300 px-4 py-2">
+                                      {value}
+                                    </td>
+                                  ))}
+                                </tr>
+                              ))}
+                            </tbody>
+                          </div>
+                          
+
                         </table>
                       )}
                     </div>
@@ -685,7 +698,7 @@ const SimDashboard = () => {
                             {key.toUpperCase()}
                           </label>
                           <div className="w-full border px-3 py-2 text-sm rounded bg-gray-100">
-                            {params[key] || "N/A"}
+                            {String(performanceParams[key.toLowerCase()]) || "N/A"}
                           </div>
                         </div>
                       ))}
@@ -702,7 +715,7 @@ const SimDashboard = () => {
                           {metric}
                         </label>
                         <div className="w-full border px-3 py-2 text-sm rounded bg-gray-100">
-                          {params[metric.toLowerCase().replace(" ", "")] || "N/A"}
+                          {metricParams[metric.toLowerCase().replace(" ", "")] || "N/A"}
                         </div>
                       </div>
                     ))}
@@ -711,6 +724,35 @@ const SimDashboard = () => {
               </div>
             )}
 
+
+           {sidebarMode === "task" && (
+              <div className="space-y-6">
+                {/* Task Sidebar Content */}
+                <div className="flex space-x-4 border-b pb-2">
+                  <table className="flex w-full text-left border-collapse">
+                  <thead >
+                    <tr className=" flex flex-col gap-3.5 ">
+                      <th className="px-4 py-2 text-sm font-semibold text-gray-700">Task ID</th>
+                      <th className="px-4 py-2 text-sm font-semibold text-gray-700">Type</th>
+                      <th className="px-4 py-2 text-sm font-semibold text-gray-700">Assigned Machine</th>
+                      <th className="px-4 py-2 text-sm font-semibold text-gray-700">Arrival Time</th>
+                      <th className="px-4 py-2 text-sm font-semibold text-gray-700">Start Time</th>
+                      <th className="px-4 py-2 text-sm font-semibold text-gray-700">Missed Time</th>
+                    </tr>
+                  </thead>
+                  <tbody className=" flex flex-col gap-3">
+                      {["ID", "Task_Type", "Assigned_Machine", "Arrival_Time", "Start_Time", "Missed_Time"].map((key) => (
+                        <td key={key} className=" w-full border px-4 py-2 text-sm rounded bg-gray-100">
+                            {String(taskParams[key.toLowerCase()]) || "N/A"}
+                        </td>
+                      ))}
+                  </tbody>
+                </table>
+                 
+                </div>
+              </div>
+            )}
+            
             {sidebarMode === "cancelledTasks" && (
               <div className="space-y-6">
                 {/* Cancelled Tasks Sidebar Content */}
@@ -758,6 +800,8 @@ const SimDashboard = () => {
                 </table>
               </div>
             )}
+
+            
           </motion.div>
         )}
       </AnimatePresence>

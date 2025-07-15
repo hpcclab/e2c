@@ -1,4 +1,4 @@
-current_time = 0
+global current_time
 
 def gct():
     return current_time
