@@ -11,7 +11,8 @@ export default function Task({task, setSelectedTask}) {
         <div className="flex space-x-2" onClick={()=>{
             setSelectedTask(details)
         }}>
-        {details.id >=0 ? details.id : ""}
+        {/* {details.id >=0 ? details.id : ""} */}
+        {details.task_type}
         </div>
     </>
                 

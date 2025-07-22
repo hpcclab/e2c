@@ -3,7 +3,6 @@ import Task from "./Task";
 export default function TaskList({machine, onClicked, setSelectedTask}) {
    const taskSlots = Array.from({ length: 6 });
    const emptyTask = {"id": -1, "task_type": "empty", "data_size" : "", "arrival_time" : "", "deadline" : "",}
-
   return(
     <>
         <div className="flex flex-row-reverse space-x-2 space-x-reverse">

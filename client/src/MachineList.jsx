@@ -6,7 +6,7 @@ export default function MachineList({machs, onClicked, onTaskClicked, setSelecte
     "id": 0, 
     "task_type" : "t0", 
     "data_size" : 0, 
-    "arrival_time" : 0.0,
+    "arrival_time" : 1.0,
     "deadline" : 0,
   },{
     "id": 1, 

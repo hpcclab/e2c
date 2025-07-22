@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import axios from "axios";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion, AnimatePresence, useForceUpdate } from "framer-motion";
 import { TrashIcon } from '@heroicons/react/24/outline';
 import MachineList from "./MachineList";
 import TaskList from "./TaskList";
@@ -16,7 +16,7 @@ const SimDashboard = () => {
     "arrival_time" : "",
     "deadline" : ""});
   const [machines, setMachines] = useState([{"id": -1, "name": "empty", "queue":[]}]);
-  const [batchQ, setBatchQ] = useState({"queue":[]});
+  const [batchQ, setBatchQ] = useState({"id": -2, "name": "Batch Queue", "queue":[]});
 
   const [scheduling, setScheduling] = useState("immediate");
   const [policy, setPolicy] = useState("FirstCome-FirstServe");
@@ -79,6 +79,7 @@ const SimDashboard = () => {
     "name" : selectedMachine.name,
     "queue": selectedMachine.queue
 }))
+console.log("SMQ", selectedMachine.queue)
   }, [selectedMachine])
 
   //  update machine params
@@ -147,6 +148,9 @@ const SimDashboard = () => {
     const reader = new FileReader();
     reader.onload = (event) => {
       const content = event.target.result;
+      setBatchQ({"id": -2, "name": "Batch Queue", "queue": parseCSV(content)});
+      
+      console.log("raw content:", batchQ)
       setWorkloadTableData(parseCSV(content)); // Parse CSV into table data
     };
     reader.readAsText(file);
@@ -159,13 +163,11 @@ const SimDashboard = () => {
         headers: { "Content-Type": "multipart/form-data" },
       });
       console.log("Workload upload success:", res.data);
-      console.log(workloadTableData)
     } catch (err) {
       console.error("Workload upload error:", err);
       alert("Failed to upload workload file.");
     }
   };
-
   const handleConfigUpload = async (e) => {
     const file = e.target.files[0];
     if (!file || !file.name.endsWith(".json")) {
@@ -743,7 +745,7 @@ const SimDashboard = () => {
                   <tbody className=" flex flex-col gap-3">
                       {["ID", "Task_Type", "Assigned_Machine", "Arrival_Time", "Start_Time", "Missed_Time"].map((key) => (
                         <td key={key} className=" w-full border px-4 py-2 text-sm rounded bg-gray-100">
-                            {String(taskParams[key.toLowerCase()]) || "N/A"}
+                            {taskParams[key.toLowerCase()] || "N/A"}
                         </td>
                       ))}
                   </tbody>
