@@ -1,3 +1,4 @@
+from queue import Queue  # Import the Queue class
 
 class MachineType:
     def __init__(self, name):
@@ -23,7 +24,7 @@ class Machine:
         self.type = machine_type
         self.speed = speed
         self.id = identifier
-        self.queue = []
+        self.queue = Queue(maxsize=queue_limit)  # Use Queue with a max size
         self.running_task = None
 
     def is_working(self):
@@ -34,7 +35,7 @@ class Machine:
             self.running_task = (task,)
             return ("admitted", task)
 
-        elif not self.queue.full():
+        elif not self.queue.full():  # Check if the queue is not full
             self.queue.put(task)
             return ("queued", task)
 
@@ -53,7 +54,7 @@ class Machine:
         return {
             "id": self.id,
             "name": self.type.name,
-            "queue": self.queue,
+            "queue": list(self.queue.queue),  # Convert queue to a list for display
             "speed": self.speed,
             "running_task": self.running_task
         }

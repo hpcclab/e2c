@@ -19,6 +19,8 @@ def simulate_fcfs(tasks):
             "finish_time": finish_time,
             "wait_time": start_time - arrival,
             "execution_time": exec_time,
+            "machine_id": task.get("machine_id"),  # Include machine ID if available
+            "machine_type": task.get("machine_type"),  # Include machine type if available
         })
         time = finish_time
     return results

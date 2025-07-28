@@ -22,7 +22,6 @@ class FCFS(BaseScheduler):
             bq = [t.id for t in self.batch_queue.list()]
             s += f'{bq}'
             s += f'\nexecutime: {task.execution_time}'
-            s += f'\testimeated_time: {task.estimated_time}'
             config.log.write(s)
 
         return task
@@ -89,7 +88,7 @@ class FCFS(BaseScheduler):
             for m in config.machines:
                 s += f'\n\tMachine {m.type.name} :'
                 r = [m.running_task[0].id] if m.running_task else []
-                mq = [t.id for t in m.queue.list()]
+                mq = [t.id for t in list(m.queue.queue)]  # Convert queue to a list
                 r.append(mq)
                 s += f'\t{r}'
             config.log.write(s)

@@ -1,10 +1,11 @@
-from flask import Blueprint, request, jsonify
+from flask import Blueprint, request, jsonify, current_app  # Import current_app
 from server.utils.config_loader import load_config_file
 from server.utils.task_generator import generate_tasks
 from server.simulation.fcfs import FCFS
 import server.utils.config as config
+import os
 
-scheduling_bp = Blueprint('scheduling', __name__)
+scheduling_bp = Blueprint('scheduling_bp', __name__)
 
 @scheduling_bp.route('/fcfs', methods=['POST', 'OPTIONS'])
 def run_fcfs():
@@ -13,16 +14,16 @@ def run_fcfs():
 
     data = request.get_json()
     num_tasks = data.get("numTasks", 10)
-    config_filename = data.get("configFilename")  # new line
+    config_filename = data.get("configFilename")
 
     if not config_filename:
         return jsonify({"error": "No config filename provided"}), 400
 
-    config_path = f"static/uploads/{config_filename}"
-    
-    # Reset the global simulator state before loading the new configuration
-    # so that previously loaded machines and tasks do not interfere with the
-    # current simulation run.
+    # Use the absolute path for the config file
+    config_path = os.path.join(current_app.config['UPLOAD_FOLDER'], config_filename)
+    print(f"Attempting to load config file from: {config_path}")  # Debugging
+
+    # Reset the global simulator state
     config.reset()
 
     try:
@@ -42,6 +43,7 @@ def run_fcfs():
     results = [{
         "taskId": task.id,
         "machineId": task.assigned_machine.id if task.assigned_machine else None,
+        "machineType": task.assigned_machine.type.name if task.assigned_machine else None,  # Include machine type
         "start": task.start_time,
         "end": task.end_time,
         "status": task.status.name,

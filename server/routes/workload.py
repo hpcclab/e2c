@@ -28,49 +28,68 @@ def upload_workload():
 
 @workload_bp.route('/simulate/fcfs', methods=['POST'])
 def run_fcfs_simulation():
+    # Check if the configuration file is loaded
+    if not config.settings.get("config_path"):
+        return jsonify({"error": "No config filename provided"}), 400
+
     data = request.get_json()
-    if not data or "tasks" not in data:
-        return jsonify({"error": "Missing 'tasks' in request"}), 400
+    if not data or "tasks" not in data or "profilingData" not in data:
+        return jsonify({"error": "Missing 'tasks' or 'profilingData' in request"}), 400
+
+    tasks = data["tasks"]
+    profiling_data = data["profilingData"]
 
     try:
-        results = simulate_fcfs(data["tasks"])
-        return jsonify({"results": results}), 200
+        # Use profiling data to adjust task execution times or other parameters
+        for task in tasks:
+            profile = next((p for p in profiling_data if p["task_type"] == task["task_type"]), None)
+            if profile:
+                task["execution_time"] = int(profile["execution_time"])  # Example adjustment
+
+        results = simulate_fcfs(tasks)
+        return jsonify(results), 200
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
 @workload_bp.route('/upload/config', methods=['POST'])
 def upload_config():
     file = request.files.get("file")
-    if not file or not file.filename.endswith('.json'):
-        return jsonify({"error": "Invalid or missing JSON file"}), 400
+    file_path = None
 
-    try:
-        # Ensure upload directory exists
-        upload_dir = current_app.config.get('UPLOAD_FOLDER', 'static/uploads')
-        os.makedirs(upload_dir, exist_ok=True)
+    if file:
+        # Validate and save the uploaded file
+        if not file.filename.endswith('.json'):
+            return jsonify({"error": "Invalid or missing JSON file"}), 400
 
-        # Save file
-        file_path = os.path.join(upload_dir, file.filename)
-        file.save(file_path)
-
-        # Parse configuration using shared loader
         try:
-            load_config_file(file_path)
-        except json.JSONDecodeError as ex:
-            return jsonify({"error": f"Invalid JSON: {ex}"}), 400
-        except Exception as ex:
-            return jsonify({"error": str(ex)}), 400
+            # Ensure upload directory exists
+            upload_dir = current_app.config.get('UPLOAD_FOLDER', 'static/uploads')
+            os.makedirs(upload_dir, exist_ok=True)
 
-        # Record dynamic path for later use
-        config.settings["config_path"] = file_path
+            # Save file
+            file_path = os.path.join(upload_dir, file.filename)
+            file.save(file_path)
+        except Exception as e:
+            return jsonify({"error": str(e)}), 500
+    else:
+        # Use an existing file if no file is uploaded
+        file_path = request.json.get("config_path")
+        if not file_path or not os.path.exists(file_path):
+            return jsonify({"error": "Config file not found"}), 400
 
-        return jsonify({
-            "message": "Configuration loaded",
-            "machines": [m.infoAsDict() for m in config.machines],
-            "path": file_path
-        }), 200
+    # Parse configuration using shared loader
+    try:
+        load_config_file(file_path)
+    except json.JSONDecodeError as ex:
+        return jsonify({"error": f"Invalid JSON: {ex}"}), 400
+    except Exception as ex:
+        return jsonify({"error": str(ex)}), 400
 
-    except Exception as e:
-        # Catch-all for unexpected errors
-        return jsonify({"error": str(e)}), 500
+    # Record dynamic path for later use
+    config.settings["config_path"] = file_path
 
+    return jsonify({
+        "message": "Configuration loaded",
+        "machines": [m.infoAsDict() for m in config.machines],
+        "path": file_path
+    }), 200

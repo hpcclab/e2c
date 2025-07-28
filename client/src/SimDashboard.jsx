@@ -220,27 +220,60 @@ console.log("SMQ", selectedMachine.queue)
     setConfigFileName("");
     setConfigFileUploaded(false);
 
-    // Reset submission status
+    // Clear the batch queue visually
+    setBatchQ({ id: -2, name: "Batch Queue", queue: [] });
+    setMachines([{ id: -1, name: "empty", queue: [] }]);
+
+    // Clear FCFS results if needed
+    setFcfsResults([]);
+
+    // Clear status message
     setWorkloadSubmissionStatus("");
   };
 
   const runFCFSSimulation = async () => {
-    if (workloadTableData.length === 0) {
-      alert("Please upload a workload file before running the simulation.");
-      return;
-    }
-
     try {
-      const response = await axios.post(
-        "http://localhost:5001/api/workload/simulate/fcfs",
-        { tasks: workloadTableData }
-        
-      );
-      setFcfsResults(response.data.results);
-      alert("Simulation complete!");
+      // Ensure required files are uploaded
+      if (!workloadFileUploaded || !profilingFileUploaded || !configFileUploaded) {
+        alert("Please upload the workload (.wkl), profiling table (.eet), and configuration (.json) files before running the simulation.");
+        return;
+      }
+  
+      // Prepare data for the FCFS simulation
+      const simulationData = {
+        tasks: workloadTableData,       // Tasks parsed from the .wkl file
+        profilingData: profilingTableData, // Profiling data parsed from the .eet file
+        configFilename: configFileName,    // Configuration file name
+      };
+  
+      // Call the backend API to run the FCFS simulation
+      const response = await axios.post("http://localhost:5001/api/workload/simulate/fcfs", simulationData);
+  
+      // Update the results state
+      const results = response.data;
+      setFcfsResults(results);
+  
+      // Update machines with assigned tasks
+      const updatedMachines = machines.map((machine) => {
+        const assignedTasks = results.filter((task) => task.machineId === machine.id);
+        return {
+          ...machine,
+          queue: assignedTasks.map((task) => ({
+            id: task.taskId,
+            start: task.start,
+            end: task.end,
+            status: task.status,
+          })),
+        };
+      });
+  
+      setMachines(updatedMachines);
+  
+      alert("Simulation completed successfully!");
+      console.log("Simulation results:", results);
     } catch (error) {
       console.error("Error running simulation:", error);
-      alert("Simulation failed.");
+      alert("Failed to run simulation.");
     }
   };
 
@@ -279,6 +312,7 @@ console.log("SMQ", selectedMachine.queue)
         <tr className="bg-gray-200">
           <th className="border px-2 py-1">Task ID</th>
           <th className="border px-2 py-1">Machine ID</th>
+          <th className="border px-2 py-1">Machine Type</th> {/* Add Machine Type */}
           <th className="border px-2 py-1">Start</th>
           <th className="border px-2 py-1">End</th>
           <th className="border px-2 py-1">Status</th>
@@ -289,6 +323,7 @@ console.log("SMQ", selectedMachine.queue)
           <tr key={task.taskId}>
             <td className="border px-2 py-1">{task.taskId}</td>
             <td className="border px-2 py-1">{task.machineId ?? "N/A"}</td>
+            <td className="border px-2 py-1">{task.machineType ?? "N/A"}</td> {/* Display Machine Type */}
             <td className="border px-2 py-1">{task.start}</td>
             <td className="border px-2 py-1">{task.end}</td>
             <td className="border px-2 py-1">{task.status}</td>
@@ -298,10 +333,10 @@ console.log("SMQ", selectedMachine.queue)
     </table>
   </div>
 )}
-        <div className="flex justify-center items-end space-x-12">
+        <div className="flex justify-center items-center space-x-12">
           {/* Left Side */}
-          <div className="flex flex-col items-center space-y-8 -mt-50">
-            <div className="flex items-center space-x-12 -mt-75">
+          <div className="flex flex-col items-center space-y-8 mt-8">
+            <div className="flex items-center space-x-12">
               {/* Workload Button */}
               <div
                 onClick={() => openSidebar("workload")}
@@ -312,7 +347,7 @@ console.log("SMQ", selectedMachine.queue)
 
               {/* Task Slots */}
               <div className="flex space-x-2 px-3 py-2 border-4 border-black rounded-xl bg-white">
-              <TaskList machine={batchQ} setSelectedTask={setSelectedTask} onClicked={() => openSidebar("task")}/>
+              <TaskList machine={batchQ} isBatchQueue={true} setSelectedTask={setSelectedTask} onClicked={() => openSidebar("task")}/>
               </div>
 
               {/* Load Balancer Button */}
@@ -335,7 +370,7 @@ console.log("SMQ", selectedMachine.queue)
           </div>
 
           {/* Right Side */}
-          <div className="flex flex-col items-center space-y-10">
+          <div className="flex flex-col items-center space-y-8 mt-8">
             <MachineList machs={machines} setSelectedMachine={setSelectedMachine} setSelectedTask={setSelectedTask} onClicked = {
               () => openSidebar("machine")} onTaskClicked={() => openSidebar("task")}
             />

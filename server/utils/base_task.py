@@ -12,6 +12,7 @@ class Task:
         self.arrival = 0
         self.execution_time = 0
         self.deadline = 0
+        self.estimated_time = 0  # Add this attribute
 
         self.start_time = None
         self.end_time = None
