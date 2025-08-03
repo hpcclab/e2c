@@ -2,22 +2,6 @@ import { useEffect } from "react";
 import TaskList from "./TaskList";
 
 export default function MachineList({machs, onClicked, onTaskClicked, setSelectedMachine, setSelectedTask}) {
-   const testMachines = [{
-    "id": 0, 
-    "task_type" : "t0", 
-    "data_size" : 0, 
-    "arrival_time" : 1.0,
-    "deadline" : 0,
-  },{
-    "id": 1, 
-    "task_type" : "t1", 
-    "data_size" : 1, 
-    "arrival_time" : 1.1,
-    "deadline" : 1,
-  }]
-  useEffect(()=>{machs.map((machine) => (machine.queue.push(...testMachines)))},[])
-    
-   
    
   return(
     machs.map(machine => (

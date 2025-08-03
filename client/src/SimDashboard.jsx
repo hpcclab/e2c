@@ -14,7 +14,11 @@ const SimDashboard = () => {
   const [selectedTask, setSelectedTask] = useState(
     {"id": -1, "task_type": "empty", "data_size" : "", 
     "arrival_time" : "",
-    "deadline" : ""});
+    "assigned_machine" : "",
+    "deadline" : "",
+    "start": "",
+    "end": "",
+    "status": "",});
   const [machines, setMachines] = useState([{"id": -1, "name": "empty", "queue":[]}]);
   const [batchQ, setBatchQ] = useState({"id": -2, "name": "Batch Queue", "queue":[]});
 
@@ -25,11 +29,15 @@ const SimDashboard = () => {
   const [runtimeModel, setRuntimeModel] = useState("Constant");
   const [performanceParams, setPerformanceParams] = useState({ id: "", power: "", queue: ""});
   const [taskParams, setTaskParams] = useState( {
-    "id": "", 
+    "id": "",
     "task_type" : "",
-    "data_size" : "", 
+    "assigned_machine" : "",
+    "data_size" : "",
     "arrival_time" : "",
     "deadline" : "",
+    "start": "",
+    "end": "",
+    "status": "",
   });
   const [metricParams, setMetricParams] = useState({ mean: "", std: "", mean1: "", std1: "", mean2: "", std2: "" });
 
@@ -88,9 +96,13 @@ console.log("SMQ", selectedMachine.queue)
     ...prev,
     "id": selectedTask.id, 
     "task_type" : selectedTask.task_type,
+    "assigned_machine" : selectedTask.assigned_machine,
     "data_size" : selectedTask.data_size, 
     "arrival_time" : selectedTask.arrival_time,
     "deadline" : selectedTask.deadline,
+    "start": selectedTask.start,
+    "end": selectedTask.end,
+    "status": selectedTask.status,
 }))
   }, [selectedTask])
 
@@ -260,6 +272,11 @@ console.log("SMQ", selectedMachine.queue)
           ...machine,
           queue: assignedTasks.map((task) => ({
             id: task.taskId,
+            task_type: task.task_type,
+            assigned_machine: task.assigned_machine,
+            data_size: task.data_size,
+            arrival_time: task.arrival_time,
+            deadline: task.deadline,
             start: task.start,
             end: task.end,
             status: task.status,
@@ -311,8 +328,10 @@ console.log("SMQ", selectedMachine.queue)
       <thead>
         <tr className="bg-gray-200">
           <th className="border px-2 py-1">Task ID</th>
+          <th className="border px-2 py-1">Task Type</th>
           <th className="border px-2 py-1">Machine ID</th>
-          <th className="border px-2 py-1">Machine Type</th> {/* Add Machine Type */}
+          <th className="border px-2 py-1">Assigned Machine</th> {/* Add Machine Type */}
+          <th className="border px-2 py-1">Arrival Time</th>
           <th className="border px-2 py-1">Start</th>
           <th className="border px-2 py-1">End</th>
           <th className="border px-2 py-1">Status</th>
@@ -322,8 +341,10 @@ console.log("SMQ", selectedMachine.queue)
         {fcfsResults.map((task) => (
           <tr key={task.taskId}>
             <td className="border px-2 py-1">{task.taskId}</td>
+            <td className="border px-2 py-1">{task.task_type}</td>
             <td className="border px-2 py-1">{task.machineId ?? "N/A"}</td>
-            <td className="border px-2 py-1">{task.machineType ?? "N/A"}</td> {/* Display Machine Type */}
+            <td className="border px-2 py-1">{task.assigned_machine ?? "N/A"}</td> {/* Display Machine Type */}
+            <td className="border px-2 py-1">{task.arrival_time}</td>
             <td className="border px-2 py-1">{task.start}</td>
             <td className="border px-2 py-1">{task.end}</td>
             <td className="border px-2 py-1">{task.status}</td>
@@ -778,7 +799,7 @@ console.log("SMQ", selectedMachine.queue)
                     </tr>
                   </thead>
                   <tbody className=" flex flex-col gap-3">
-                      {["ID", "Task_Type", "Assigned_Machine", "Arrival_Time", "Start_Time", "Missed_Time"].map((key) => (
+                      {["ID", "task_type", "assigned_machine", "arrival_time", "start", "missed_time"].map((key) => (
                         <td key={key} className=" w-full border px-4 py-2 text-sm rounded bg-gray-100">
                             {taskParams[key.toLowerCase()] || "N/A"}
                         </td>

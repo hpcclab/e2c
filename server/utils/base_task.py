@@ -9,7 +9,8 @@ class TaskStatus(Enum):
 class Task:
     def __init__(self):
         self.id = None
-        self.arrival = 0
+        self.arrival_time = 0
+        self.task_type = None
         self.execution_time = 0
         self.deadline = 0
         self.estimated_time = 0  # Add this attribute

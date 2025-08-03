@@ -1,10 +1,14 @@
 export default function Task({ task, setSelectedTask }) {
   const details = {
-    id: task.id,
-    task_type: task.task_type,
-    data_size: task.data_size,
-    arrival_time: task.arrival_time,
-    deadline: task.deadline,
+    id: String(task.id),
+    task_type: String(task.task_type),
+    assigned_machine: String(task.assigned_machine),
+    data_size: String(task.data_size),
+    arrival_time: String(task.arrival_time),
+    deadline: String(task.deadline),
+    start: String(task.start),
+    end: String(task.end),
+    status: String(task.status),
   };
 
   return (
@@ -15,7 +19,7 @@ export default function Task({ task, setSelectedTask }) {
       onClick={() => setSelectedTask(details)}
       title={`Task ID: ${details.id}`}
     >
-      {details.task_type}
+      {details.id >=0? details.id : ""}
     </div>
   );
 }

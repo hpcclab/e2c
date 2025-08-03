@@ -42,8 +42,10 @@ def run_fcfs():
 
     results = [{
         "taskId": task.id,
+        "task_type": task.task_type,
         "machineId": task.assigned_machine.id if task.assigned_machine else None,
-        "machineType": task.assigned_machine.type.name if task.assigned_machine else None,  # Include machine type
+        "assigned_machine": task.assigned_machine.type.name if task.assigned_machine else None,  # Include machine type
+        "arrival_time": task.arrival_time,
         "start": task.start_time,
         "end": task.end_time,
         "status": task.status.name,
