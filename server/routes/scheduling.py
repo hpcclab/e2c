@@ -2,6 +2,7 @@ from flask import Blueprint, request, jsonify, current_app  # Import current_app
 from server.utils.config_loader import load_config_file
 from server.utils.task_generator import generate_tasks
 from server.simulation.fcfs import FCFS
+from server.utils.time import reset, increment, gct
 import server.utils.config as config
 import os
 
@@ -25,6 +26,8 @@ def run_fcfs():
 
     # Reset the global simulator state
     config.reset()
+    reset()  # Reset global time
+
 
     try:
         load_config_file(config_path)
@@ -38,7 +41,7 @@ def run_fcfs():
 
     while not config.batch_queue.empty():
         scheduler.schedule()
-        config.time.increment()
+        increment(0.01)  # Increment global time after each scheduling step
 
     results = [{
         "taskId": task.id,

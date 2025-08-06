@@ -11,6 +11,8 @@ const SimDashboard = () => {
   const [showSidebar, setShowSidebar] = useState(false);
   const [sidebarMode, setSidebarMode] = useState(null);
   const [selectedMachine, setSelectedMachine] = useState({"id": -1, "name": "empty", "queue":[]});
+  const [simulationTime, setSimulationTime] = useState(0); //TIME
+
   const [selectedTask, setSelectedTask] = useState(
     {"id": -1, "task_type": "empty", "data_size" : "", 
     "arrival_time" : "",
@@ -286,6 +288,15 @@ console.log("SMQ", selectedMachine.queue)
   
       setMachines(updatedMachines);
   
+      // Simulate time progression
+      const interval = 0.1; // 100ms intervals
+      results.forEach((_, index) => {
+      setTimeout(() => {
+        setSimulationTime((prevTime) => parseFloat((prevTime + interval).toFixed(1))); // Increment simulation time
+      }, index * interval * 1000); // Multiply by 1000 to convert to milliseconds
+      });
+
+
       alert("Simulation completed successfully!");
       console.log("Simulation results:", results);
     } catch (error) {
@@ -352,7 +363,12 @@ console.log("SMQ", selectedMachine.queue)
         ))}
       </tbody>
     </table>
+    <div className="text-center mb-4">
+    <h2 className="text-lg font-semibold">Simulation Time: {simulationTime.toFixed(1)} seconds </h2>
+    </div>
   </div>
+
+  
 )}
         <div className="flex justify-center items-center space-x-12">
           {/* Left Side */}

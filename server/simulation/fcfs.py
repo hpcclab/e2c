@@ -1,5 +1,6 @@
 from server.utils.base_scheduler import BaseScheduler
 from server.utils.base_task import TaskStatus
+from server.utils.time import increment
 import server.utils.config as config
 
 class FCFS(BaseScheduler):
@@ -104,4 +105,5 @@ class FCFS(BaseScheduler):
         if available_machine:
             self.choose()
             self.map(available_machine)
+            increment(0.01)
             return available_machine

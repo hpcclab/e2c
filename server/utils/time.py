@@ -7,6 +7,6 @@ def reset():
     global current_time
     current_time = 0
 
-def increment():
+def increment(step=1):
     global current_time
-    current_time += 1
+    current_time += step
