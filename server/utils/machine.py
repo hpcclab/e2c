@@ -6,7 +6,7 @@ class MachineType:
 
 
 class Machine:
-    def __init__(self, machine_type, speed=1, identifier=None, queue_limit=5):
+    def __init__(self, machine_type, speed=1, identifier=None, weight=1 ,queue_limit=5):
         """Represents a machine in the simulator.
 
         Parameters
@@ -26,6 +26,7 @@ class Machine:
         self.id = identifier
         self.queue = Queue(maxsize=queue_limit)  # Use Queue with a max size
         self.running_task = None
+        self.weight = weight
 
     def is_working(self):
         return self.running_task is not None
@@ -56,7 +57,8 @@ class Machine:
             "name": self.type.name,
             "queue": list(self.queue.queue),  # Convert queue to a list for display
             "speed": self.speed,
-            "running_task": self.running_task
+            "running_task": self.running_task,
+            "weight": self.weight
         }
 
     def __repr__(self):

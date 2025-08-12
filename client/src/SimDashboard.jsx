@@ -92,7 +92,7 @@ const SimDashboard = () => {
 console.log("SMQ", selectedMachine.queue)
   }, [selectedMachine])
 
-  //  update machine params
+  //  update task params
   useEffect(() => {
     setTaskParams(prev => ({
     ...prev,
@@ -107,6 +107,10 @@ console.log("SMQ", selectedMachine.queue)
     "status": selectedTask.status,
 }))
   }, [selectedTask])
+
+ 
+
+
 
 
   const handleSchedulingChange = (type) => {
@@ -255,9 +259,10 @@ console.log("SMQ", selectedMachine.queue)
   
       // Prepare data for the FCFS simulation
       const simulationData = {
-        tasks: workloadTableData,       // Tasks parsed from the .wkl file
-        profilingData: profilingTableData, // Profiling data parsed from the .eet file
+        schedulingPolicy: policy,          // Load balancing policy type
         configFilename: configFileName,    // Configuration file name
+        profilingData: profilingTableData, // Profiling data parsed from the .eet file
+        tasks: workloadTableData,          // Tasks parsed from the .wkl file
       };
   
       // Call the backend API to run the FCFS simulation
@@ -686,6 +691,9 @@ console.log("SMQ", selectedMachine.queue)
                       <option>Min-Expected-Completion-Time</option>
                       <option>Min-Expected-Execution-Time</option>
                       <option>Weighted-Round-Robin</option>
+                      <option>Random</option>
+                      <option>Uniform-Resource-Identifier</option>
+                      <option>Least-Connection</option>
                     </select>
 
                     <label className="flex items-center space-x-2 mt-2">

@@ -1,4 +1,40 @@
 import csv
+from server.simulation.fcfs import FCFS
+from server.simulation.RAND import RAND
+from server.simulation.LC import LC
+from server.simulation.URI import URI
+from server.simulation.WRR import WRR
+def simulate_load_balancing(policy, tasks):
+    if policy ==   'MinCompletion-MinCompletion':
+        print('MM')
+    elif policy ==   'MinCompletion-SoonestDeadline':
+        print('MSD')
+    elif policy == 'MinCompletion-MaxUrgency':
+        print('MMU')
+    elif policy == 'FELARE':
+        print('FEE')
+    elif policy == 'ELARE':
+        print('EE')
+    elif policy == 'FirstCome-FirstServe':
+        schedule = FCFS(tasks)
+    elif policy == 'Weighted-Round-Robin':
+        print('WRR')
+        schedule = WRR(tasks)
+    elif policy == 'Least-Connection':
+        print('LC')
+        schedule = LC(tasks)
+    elif policy == 'Random':
+        print('RAND')
+        schedule = RAND(tasks)
+    elif policy == 'Uniform-Resource-Identifier':
+        print('URI')
+        schedule = URI(tasks)
+    elif policy == 'Min-Expected-Completion-Time':
+        print('MECT')
+    elif policy == 'Min-Expected-Execution-Time':
+        print('MEET')
+    return schedule
+
 
 def simulate_fcfs(tasks):
     """

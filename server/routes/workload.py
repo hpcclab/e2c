@@ -1,7 +1,7 @@
 from flask import Blueprint, request, jsonify, current_app
 import os
 import json
-from server.services.workload_service import parse_csv_workload, simulate_fcfs
+from server.services.workload_service import parse_csv_workload, simulate_fcfs, simulate_load_balancing
 import server.utils.config as config
 from server.utils.config_loader import load_config_file
 
@@ -26,30 +26,6 @@ def upload_workload():
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
-@workload_bp.route('/simulate/fcfs', methods=['POST'])
-def run_fcfs_simulation():
-    # Check if the configuration file is loaded
-    if not config.settings.get("config_path"):
-        return jsonify({"error": "No config filename provided"}), 400
-
-    data = request.get_json()
-    if not data or "tasks" not in data or "profilingData" not in data:
-        return jsonify({"error": "Missing 'tasks' or 'profilingData' in request"}), 400
-
-    tasks = data["tasks"]
-    profiling_data = data["profilingData"]
-
-    try:
-        # Use profiling data to adjust task execution times or other parameters
-        for task in tasks:
-            profile = next((p for p in profiling_data if p["task_type"] == task["task_type"]), None)
-            if profile:
-                task["execution_time"] = int(profile["execution_time"])  # Example adjustment
-
-        results = simulate_fcfs(tasks)
-        return jsonify(results), 200
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
 
 @workload_bp.route('/upload/config', methods=['POST'])
 def upload_config():

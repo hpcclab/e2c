@@ -1,7 +1,8 @@
 from flask import Blueprint, request, jsonify, current_app  # Import current_app
 from server.utils.config_loader import load_config_file
 from server.utils.task_generator import generate_tasks
-from server.simulation.fcfs import FCFS
+from server.services.workload_service import simulate_load_balancing
+
 from server.utils.time import reset, increment, gct
 import server.utils.config as config
 import os
@@ -9,13 +10,14 @@ import os
 scheduling_bp = Blueprint('scheduling_bp', __name__)
 
 @scheduling_bp.route('/fcfs', methods=['POST', 'OPTIONS'])
-def run_fcfs():
+def run_sim():
     if request.method == 'OPTIONS':
         return '', 200  # Allow CORS preflight
 
     data = request.get_json()
     num_tasks = data.get("numTasks", 10)
     config_filename = data.get("configFilename")
+    policy = data["schedulingPolicy"]
 
     if not config_filename:
         return jsonify({"error": "No config filename provided"}), 400
@@ -36,8 +38,8 @@ def run_fcfs():
 
     tasks = generate_tasks(num_tasks)
     config.batch_queue.load(tasks)
-
-    scheduler = FCFS(total_no_of_tasks=num_tasks)
+    print(f"\n<<<<<<<FCFS>>>>>>>>>>\n")
+    scheduler = simulate_load_balancing(policy, num_tasks)
 
     while not config.batch_queue.empty():
         scheduler.schedule()
