@@ -1,6 +1,6 @@
 from flask import Blueprint, request, jsonify, current_app  # Import current_app
 from server.utils.config_loader import load_config_file
-from server.utils.task_generator import generate_tasks
+from server.utils.task_generator import generate_tasks_from_batch
 from server.services.workload_service import simulate_load_balancing
 
 from server.utils.time import reset, increment, gct
@@ -36,8 +36,10 @@ def run_sim():
     except FileNotFoundError:
         return jsonify({"error": f"Config file not found: {config_path}"}), 500
 
-    tasks = generate_tasks(num_tasks)
+    batch_queue = data.get("tasks", [])
+    tasks = generate_tasks_from_batch(batch_queue)    
     config.batch_queue.load(tasks)
+
     print(f"\n<<<<<<<FCFS>>>>>>>>>>\n")
     scheduler = simulate_load_balancing(policy, num_tasks)
 

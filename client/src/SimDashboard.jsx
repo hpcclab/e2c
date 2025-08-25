@@ -2,8 +2,9 @@ import React, { useEffect, useState } from "react";
 import axios from "axios";
 import { motion, AnimatePresence, useForceUpdate } from "framer-motion";
 import { TrashIcon } from '@heroicons/react/24/outline';
-import MachineList from "./MachineList";
-import TaskList from "./TaskList";
+import MachineList from "./components/MachineList";
+import TaskList from "./components/TaskList";
+import DataTable from "./components/DataTable"; // <-- Add this import
 
 const SimDashboard = () => {
   const taskSlots = Array.from({ length: 6 });
@@ -136,7 +137,7 @@ console.log("SMQ", selectedMachine.queue)
     reader.onload = (event) => {
       const content = event.target.result;
       setProfilingTableData(parseCSV(content)); // Parse CSV into table data
-    };
+    }; // <-- Make sure this semicolon is present
     reader.readAsText(file);
 
     const formData = new FormData();
@@ -516,30 +517,7 @@ console.log("SMQ", selectedMachine.queue)
                           <TrashIcon className="w-5 h-5" />
                         </button>
                       </div>
-                      {profilingTableData.length > 0 && (
-                        <table className="table-auto border-collapse border border-gray-300 w-full text-sm">
-                          <thead>
-                            <tr>
-                              {Object.keys(profilingTableData[0]).map((header) => (
-                                <th key={header} className="border border-gray-300 px-4 py-2 bg-gray-100">
-                                  {header}
-                                </th>
-                              ))}
-                            </tr>
-                          </thead>
-                          <tbody>
-                            {profilingTableData.map((row, index) => (
-                              <tr key={index}>
-                                {Object.values(row).map((value, idx) => (
-                                  <td key={idx} className="border border-gray-300 px-4 py-2">
-                                    {value}
-                                  </td>
-                                ))}
-                              </tr>
-                            ))}
-                          </tbody>
-                        </table>
-                      )}
+                      {profilingTableData.length > 0 && <DataTable data={profilingTableData} />}
                     </div>
                   )}
                 </div>
@@ -577,34 +555,7 @@ console.log("SMQ", selectedMachine.queue)
                           <TrashIcon className="w-5 h-5" />
                         </button>
                       </div>
-                      {workloadTableData.length > 0 && (
-                        <table className="table-auto border-collapse border border-gray-300 w-min text-sm">
-                          <div style={{maxHeight: "300px", overflow: "auto", width: "min-content"}}>
-                            <thead>
-                              <tr>
-                                {Object.keys(workloadTableData[0]).map((header) => (
-                                  <th key={header} className="border border-gray-300 px-4 py-2 bg-gray-100">
-                                    {header}
-                                  </th>
-                                ))}
-                              </tr>
-                            </thead>
-                              <tbody>
-                                {workloadTableData.map((row, index) => (
-                                <tr key={index} >
-                                  {Object.values(row).map((value, idx) => (
-                                    <td key={idx} className="border border-gray-300 px-4 py-2">
-                                      {value}
-                                    </td>
-                                  ))}
-                                </tr>
-                              ))}
-                            </tbody>
-                          </div>
-                          
-
-                        </table>
-                      )}
+                      {workloadTableData.length > 0 && <DataTable data={workloadTableData} />}
                     </div>
                   )}
                 </div>
