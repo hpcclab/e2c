@@ -50,3 +50,6 @@ instance/
 # Pylint/mypy
 .mypy_cache/
 .pylint.d/
+
+# Local bash server
+runserver.sh

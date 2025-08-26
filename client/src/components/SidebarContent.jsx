@@ -1,6 +1,5 @@
 import React from "react";
 import { TrashIcon } from "@heroicons/react/24/outline";
-import DataTable from "./components/DataTable";
 
 export const WorkloadSidebar = ({
   profilingFileUploaded,

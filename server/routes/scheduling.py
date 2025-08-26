@@ -57,5 +57,11 @@ def run_sim():
         "end": task.end_time,
         "status": task.status.name,
     } for task in tasks]
-
-    return jsonify(results)
+    
+    # Calculate the actual simulation time as the max end time
+    simulation_time = max((task.end_time for task in tasks if task.end_time is not None), default=0)
+    
+    return jsonify({
+    "results": results,
+    "simulationTime": simulation_time # Use max end time
+})
