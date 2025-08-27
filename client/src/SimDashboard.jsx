@@ -1,10 +1,11 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import axios from "axios";
 import { motion, AnimatePresence, useForceUpdate } from "framer-motion";
 import { TrashIcon } from '@heroicons/react/24/outline';
 import MachineList from "./components/MachineList";
 import TaskList from "./components/TaskList";
 import { WorkloadSidebar } from "./components/SidebarContent";
+import AdmissionsOverlay from "./components/AdmissionsOverlay";
 
 const SimDashboard = () => {
   const taskSlots = Array.from({ length: 6 });
@@ -60,9 +61,30 @@ const SimDashboard = () => {
   const [configFileName, setConfigFileName] = useState("");
   const [configFileUploaded, setConfigFileUploaded] = useState(false);
 
-  const [fcfsResults, setFcfsResults] = useState([]);
+  const [dataResults, setDataResults] = useState([]);
   const [submissionStatus, setSubmissionStatus] = useState(""); // Track submission status
   const [workloadSubmissionStatus, setWorkloadSubmissionStatus] = useState(""); // Track workload submission status
+  const [animatedMachines, setAnimatedMachines] = useState(machines); // ANIMATION
+  const machinesRef = useRef([]);
+  const [flyers, setFlyers] = useState([]);
+
+  const batchSlotsRef = useRef([]);
+  const machineSlotsRef = useRef({});
+
+  const registerBatchSlotRef = (idx, el) => {
+    batchSlotsRef.current[idx] = el || null;
+  };
+
+  const registerMachineSlotRef = (machineId, idx, el) => {
+    if (!machineSlotsRef.current[machineId]) machineSlotsRef.current[machineId] = [];
+    machineSlotsRef.current[machineId][idx] = el || null;
+  };
+
+  const getCenter = (el) => {
+    if (!el) return null;
+    const r = el.getBoundingClientRect();
+    return { x: r.left + r.width / 2, y: r.top + r.height / 2 };
+  };
 
   const parseCSV = (csvContent) => {
     const rows = csvContent.split("\n").map((row) => row.split(","));
@@ -206,6 +228,9 @@ console.log("SMQ", selectedMachine.queue)
       });
       console.log("Config upload success:", res.data);
       setMachines([...res.data.machines]);
+      setAnimatedMachines([...res.data.machines]);
+      machinesRef.current = [...res.data.machines];
+      console.log(animatedMachines)
     } catch (err) {
       console.error("Config upload error:", err);
       alert("Failed to upload configuration file.");
@@ -243,14 +268,16 @@ console.log("SMQ", selectedMachine.queue)
     setBatchQ({ id: -2, name: "Batch Queue", queue: [] });
     setMachines([{ id: -1, name: "empty", queue: [] }]);
 
-    // Clear FCFS results if needed
-    setFcfsResults([]);
+    // Clear results if needed
+    setDataResults([]);
 
     // Clear status message
     setWorkloadSubmissionStatus("");
+
+    setFlyers([]);
   };
 
-  const runFCFSSimulation = async () => {
+  const runDataSimulation = async () => {
     try {
       // Ensure required files are uploaded
       if (!workloadFileUploaded || !profilingFileUploaded || !configFileUploaded) {
@@ -258,22 +285,86 @@ console.log("SMQ", selectedMachine.queue)
         return;
       }
   
-      // Prepare data for the FCFS simulation
+      // Prepare data for the simulation
       const simulationData = {
         schedulingPolicy: policy,          // Load balancing policy type
         configFilename: configFileName,    // Configuration file name
         profilingData: profilingTableData, // Profiling data parsed from the .eet file
         tasks: workloadTableData,          // Tasks parsed from the .wkl file
       };
-  
-      // Call the backend API to run the FCFS simulation
-      const response = await axios.post("http://localhost:5001/api/workload/simulate/fcfs", simulationData);
-  
-      // Update the results state
-      const { results, simulationTime } = response.data;
-      setFcfsResults(results);
 
-      // Animate the timer up to simulationTime
+      const animateAdmissions = (admissionEvents, baseMachines) => {
+        setAnimatedMachines(baseMachines.map(m => ({ ...m, queue: [] }))); // Reset queues
+
+        const play = (idx, currentQueues) => {
+          if (idx >= admissionEvents.length) return;
+
+          const event = admissionEvents[idx];
+          const targetMachineId = event.machineId;
+          const nextSlotIndex = (currentQueues[targetMachineId] || 0);
+
+          const fromEl = batchSlotsRef.current[0];
+          const toEl = (machineSlotsRef.current[targetMachineId] || [])[nextSlotIndex];
+
+          const from = getCenter(fromEl);
+          const to = getCenter(toEl);
+
+          if (!from || !to) {
+            setAnimatedMachines(prev =>
+              prev.map(machine =>
+                machine.id === targetMachineId
+                  ? { ...machine, queue: [...machine.queue, event] }
+                  : machine
+              )
+            );
+            const updated = { ...currentQueues, [targetMachineId]: nextSlotIndex + 1 };
+            setTimeout(() => play(idx + 1, updated), 50);
+            return;
+          }
+
+          const flyerKey = `${event.taskId}-${idx}-${Date.now()}`;
+          const flyer = {
+            key: flyerKey,
+            from,
+            to,
+            label: event.taskId,
+            onComplete: () => {
+              setFlyers((fs) => fs.filter(f => f.key !== flyerKey));
+              setAnimatedMachines(prev =>
+                prev.map(machine =>
+                  machine.id === targetMachineId
+                    ? { ...machine, queue: [...machine.queue, event] }
+                    : machine
+                )
+              );
+              const updated = { ...currentQueues, [targetMachineId]: nextSlotIndex + 1 };
+              setTimeout(() => play(idx + 1, updated), 50);
+            },
+          };
+
+          setFlyers((fs) => [...fs, flyer]);
+        };
+
+        setTimeout(() => {
+          const initialQueues = {};
+          baseMachines.forEach(m => { initialQueues[m.id] = 0; });
+          play(0, initialQueues);
+        }, 100);
+      };
+  
+      const response = await axios.post("http://localhost:5001/api/workload/simulate/data", simulationData);
+  
+      const { results, simulationTime } = response.data;
+      setDataResults(results);
+
+      const admissionEvents = [...results]
+      .filter(task => task.start != null)
+      .sort((a, b) => a.start - b.start);
+      
+      const baseMachines = machinesRef.current.filter(m => m.id !== -1);
+
+      animateAdmissions(admissionEvents, baseMachines);
+
       let current = 0;
       const step = 0.01; 
       const intervalMs = 10;
@@ -289,7 +380,6 @@ console.log("SMQ", selectedMachine.queue)
         }
       }, intervalMs);
 
-      // Update machines with assigned tasks
       const updatedMachines = machines.map((machine) => {
         const assignedTasks = results.filter((task) => task.machineId === machine.id);
         return {
@@ -308,8 +398,6 @@ console.log("SMQ", selectedMachine.queue)
         };
       });
   
-      setMachines(updatedMachines);
-
       alert("Simulation completed successfully!");
       console.log("Simulation results:", results);
     } catch (error) {
@@ -345,16 +433,16 @@ console.log("SMQ", selectedMachine.queue)
       {/* Main Simulation Area */}
       <div className="flex-grow flex flex-col justify-center items-center">
 
-      {fcfsResults.length > 0 && (
+      {dataResults.length > 0 && (
   <div className="px-10 py-4">
-    <h2 className="text-lg font-semibold mb-2">FCFS Results</h2>
+    <h2 className="text-lg font-semibold mb-2">Results</h2>
     <table className="table-auto border-collapse border border-gray-400 w-full text-sm bg-white">
       <thead>
         <tr className="bg-gray-200">
           <th className="border px-2 py-1">Task ID</th>
           <th className="border px-2 py-1">Task Type</th>
           <th className="border px-2 py-1">Machine ID</th>
-          <th className="border px-2 py-1">Assigned Machine</th> {/* Add Machine Type */}
+          <th className="border px-2 py-1">Assigned Machine</th> 
           <th className="border px-2 py-1">Arrival Time</th>
           <th className="border px-2 py-1">Start</th>
           <th className="border px-2 py-1">End</th>
@@ -362,7 +450,7 @@ console.log("SMQ", selectedMachine.queue)
         </tr>
       </thead>
       <tbody>
-        {fcfsResults.map((task) => (
+        {dataResults.map((task) => (
           <tr key={task.taskId}>
             <td className="border px-2 py-1">{task.taskId}</td>
             <td className="border px-2 py-1">{task.task_type}</td>
@@ -397,7 +485,7 @@ console.log("SMQ", selectedMachine.queue)
 
               {/* Task Slots */}
               <div className="flex space-x-2 px-3 py-2 border-4 border-black rounded-xl bg-white">
-              <TaskList machine={batchQ} isBatchQueue={true} setSelectedTask={setSelectedTask} onClicked={() => openSidebar("task")}/>
+              <TaskList machine={batchQ} isBatchQueue={true} setSelectedTask={setSelectedTask} onClicked={() => openSidebar("task")} registerSlotRef={registerBatchSlotRef}/>
               </div>
 
               {/* Load Balancer Button */}
@@ -421,8 +509,8 @@ console.log("SMQ", selectedMachine.queue)
 
           {/* Right Side */}
           <div className="flex flex-col items-center space-y-8 mt-8">
-            <MachineList machs={machines} setSelectedMachine={setSelectedMachine} setSelectedTask={setSelectedTask} onClicked = {
-              () => openSidebar("machine")} onTaskClicked={() => openSidebar("task")}
+            <MachineList machs={animatedMachines} setSelectedMachine={setSelectedMachine} setSelectedTask={setSelectedTask} onClicked = {
+              () => openSidebar("machine")} onTaskClicked={() => openSidebar("task")} registerMachineSlotRef={registerMachineSlotRef}
             />
 
             {/* Missed Tasks */}
@@ -446,7 +534,7 @@ console.log("SMQ", selectedMachine.queue)
         <div className="flex space-x-6">
           <button className="bg-gray-400 rounded-xl w-16 h-10">⟲</button>
           <button
-  onClick={runFCFSSimulation}
+  onClick={runDataSimulation}
   className="bg-green-600 hover:bg-green-700 text-white rounded-xl w-16 h-10"
 > ▶</button>
           <button className="bg-gray-400 rounded-xl w-16 h-10">⏸</button>
@@ -774,6 +862,8 @@ console.log("SMQ", selectedMachine.queue)
           </motion.div>
         )}
       </AnimatePresence>
+
+      <AdmissionsOverlay flyers={flyers} />
     </div>
   );
 };
