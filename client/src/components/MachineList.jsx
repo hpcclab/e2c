@@ -1,4 +1,3 @@
-import { useEffect } from "react";
 import TaskList from "./TaskList";
 
 export default function MachineList({machs, onClicked, onTaskClicked, setSelectedMachine, setSelectedTask}) {
