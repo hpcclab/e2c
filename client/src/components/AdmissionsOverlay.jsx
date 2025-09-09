@@ -1,4 +1,5 @@
 import React from "react";
+import { motion } from "framer-motion";
 
 export default function AdmissionsOverlay({ flyers = [] }) {
   // Each flyer: { key, from: {x,y}, to: {x,y}, label, onComplete }
