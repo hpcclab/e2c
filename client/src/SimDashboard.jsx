@@ -70,6 +70,9 @@ const SimDashboard = () => {
 
   const batchSlotsRef = useRef([]);
   const machineSlotsRef = useRef({});
+  const loadBalancerRef = useRef(null);
+
+  const [animatedTaskIds, setAnimatedTaskIds] = useState([]);
 
   const registerBatchSlotRef = (idx, el) => {
     batchSlotsRef.current[idx] = el || null;
@@ -303,7 +306,7 @@ console.log("SMQ", selectedMachine.queue)
           const targetMachineId = event.machineId;
           const nextSlotIndex = (currentQueues[targetMachineId] || 0);
 
-          const fromEl = batchSlotsRef.current[0];
+          const fromEl = loadBalancerRef.current;
           const toEl = (machineSlotsRef.current[targetMachineId] || [])[nextSlotIndex];
 
           const from = getCenter(fromEl);
@@ -490,8 +493,9 @@ console.log("SMQ", selectedMachine.queue)
 
               {/* Load Balancer Button */}
               <div
+                ref={loadBalancerRef}
                 onClick={() => openSidebar("loadBalancer")}
-                className="bg-gray-800 text-white text-sm font-semibold w-20 h-20 flex items-center justify-center rounded-full cursor-pointer hover:scale-105 transition text-center px-2"
+                className="bg-gray-800 text-white text-lg font-semibold w-30 h-30 flex items-center justify-center rounded-full cursor-pointer hover:scale-110 transition text-center px-2"
               >
                 Load<br />Balancer
               </div>
