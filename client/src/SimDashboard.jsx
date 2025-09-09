@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useRef } from "react";
 import axios from "axios";
-import { motion, AnimatePresence, useForceUpdate } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import { TrashIcon } from '@heroicons/react/24/outline';
 import MachineList from "./components/MachineList";
 import TaskList from "./components/TaskList";
@@ -8,7 +8,6 @@ import { WorkloadSidebar } from "./components/SidebarContent";
 import AdmissionsOverlay from "./components/AdmissionsOverlay";
 
 const SimDashboard = () => {
-  const taskSlots = Array.from({ length: 6 });
 
   const [showSidebar, setShowSidebar] = useState(false);
   const [sidebarMode, setSidebarMode] = useState(null);
@@ -30,7 +29,6 @@ const SimDashboard = () => {
   const [policy, setPolicy] = useState("FirstCome-FirstServe");
   const [queueSize, setQueueSize] = useState("unlimited");
 
-  const [runtimeModel, setRuntimeModel] = useState("Constant");
   const [performanceParams, setPerformanceParams] = useState({ id: "", power: "", queue: ""});
   const [taskParams, setTaskParams] = useState( {
     "id": "",
@@ -43,19 +41,16 @@ const SimDashboard = () => {
     "end": "",
     "status": "",
   });
-  const [metricParams, setMetricParams] = useState({ mean: "", std: "", mean1: "", std1: "", mean2: "", std2: "" });
+  const [metricParams] = useState({ mean: "", std: "", mean1: "", std1: "", mean2: "", std2: "" });
 
   const [machineTab, setMachineTab] = useState("details");
 
   const [profilingFileName, setProfilingFileName] = useState("");
   const [profilingFileUploaded, setProfilingFileUploaded] = useState(false);
-  const [profilingFileContents, setProfilingFileContents] = useState("");
   const [profilingTableData, setProfilingTableData] = useState([]);
-  const [profilingSubmissionStatus, setProfilingSubmissionStatus] = useState(""); // Track profiling submission status
 
   const [workloadFileName, setWorkloadFileName] = useState("");
   const [workloadFileUploaded, setWorkloadFileUploaded] = useState(false);
-  const [workloadFileContents, setWorkloadFileContents] = useState("");
   const [workloadTableData, setWorkloadTableData] = useState([]);
 
   const [configFileName, setConfigFileName] = useState("");
@@ -252,7 +247,7 @@ console.log("SMQ", selectedMachine.queue)
       await new Promise((resolve) => setTimeout(resolve, 1000)); // Simulate API call delay
       setWorkloadSubmissionStatus("Submission successful!");
     } catch (error) {
-      setWorkloadSubmissionStatus("Submission failed.");
+      setWorkloadSubmissionStatus("Submission failed.", error);
     }
   };
 
@@ -416,10 +411,11 @@ console.log("SMQ", selectedMachine.queue)
       await new Promise((resolve) => setTimeout(resolve, 1000)); // Simulate API call delay
       setSubmissionStatus("Submission successful!");
     } catch (error) {
-      setSubmissionStatus("Submission failed.");
+      setSubmissionStatus("Submission failed.", error);
     }
   };
 
+  /* Work on later
   const handleSubmitProfilingWorktable = async () => {
     try {
       // Simulate submission logic
@@ -427,9 +423,10 @@ console.log("SMQ", selectedMachine.queue)
       await new Promise((resolve) => setTimeout(resolve, 1000)); // Simulate API call delay
       setProfilingSubmissionStatus("Submission successful!");
     } catch (error) {
-      setProfilingSubmissionStatus("Submission failed.");
+      setProfilingSubmissionStatus("Submission failed.", error);
     }
   };
+*/
 
   return (
     <div className="bg-[#d9d9d9] min-h-screen flex flex-col relative">
