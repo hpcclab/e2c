@@ -1,12 +1,12 @@
 import React, { useEffect, useState } from "react";
 import axios from "axios";
-import { motion, AnimatePresence, useForceUpdate } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import { TrashIcon } from '@heroicons/react/24/outline';
-import MachineList from "./MachineList";
-import TaskList from "./TaskList";
+import MachineList from "./components/MachineList";
+import TaskList from "./components/TaskList";
+import { WorkloadSidebar } from "./components/SidebarContent";
 
 const SimDashboard = () => {
-  const taskSlots = Array.from({ length: 6 });
 
   const [showSidebar, setShowSidebar] = useState(false);
   const [sidebarMode, setSidebarMode] = useState(null);
@@ -28,7 +28,6 @@ const SimDashboard = () => {
   const [policy, setPolicy] = useState("FirstCome-FirstServe");
   const [queueSize, setQueueSize] = useState("unlimited");
 
-  const [runtimeModel, setRuntimeModel] = useState("Constant");
   const [performanceParams, setPerformanceParams] = useState({ id: "", power: "", queue: ""});
   const [taskParams, setTaskParams] = useState( {
     "id": "",
@@ -41,19 +40,16 @@ const SimDashboard = () => {
     "end": "",
     "status": "",
   });
-  const [metricParams, setMetricParams] = useState({ mean: "", std: "", mean1: "", std1: "", mean2: "", std2: "" });
+  const [metricParams] = useState({ mean: "", std: "", mean1: "", std1: "", mean2: "", std2: "" });
 
   const [machineTab, setMachineTab] = useState("details");
 
   const [profilingFileName, setProfilingFileName] = useState("");
   const [profilingFileUploaded, setProfilingFileUploaded] = useState(false);
-  const [profilingFileContents, setProfilingFileContents] = useState("");
   const [profilingTableData, setProfilingTableData] = useState([]);
-  const [profilingSubmissionStatus, setProfilingSubmissionStatus] = useState(""); // Track profiling submission status
 
   const [workloadFileName, setWorkloadFileName] = useState("");
   const [workloadFileUploaded, setWorkloadFileUploaded] = useState(false);
-  const [workloadFileContents, setWorkloadFileContents] = useState("");
   const [workloadTableData, setWorkloadTableData] = useState([]);
 
   const [configFileName, setConfigFileName] = useState("");
@@ -136,7 +132,7 @@ console.log("SMQ", selectedMachine.queue)
     reader.onload = (event) => {
       const content = event.target.result;
       setProfilingTableData(parseCSV(content)); // Parse CSV into table data
-    };
+    }; // <-- Make sure this semicolon is present
     reader.readAsText(file);
 
     const formData = new FormData();
@@ -223,7 +219,7 @@ console.log("SMQ", selectedMachine.queue)
       await new Promise((resolve) => setTimeout(resolve, 1000)); // Simulate API call delay
       setWorkloadSubmissionStatus("Submission successful!");
     } catch (error) {
-      setWorkloadSubmissionStatus("Submission failed.");
+      setWorkloadSubmissionStatus("Submission failed.", error);
     }
   };
 
@@ -269,9 +265,25 @@ console.log("SMQ", selectedMachine.queue)
       const response = await axios.post("http://localhost:5001/api/workload/simulate/fcfs", simulationData);
   
       // Update the results state
-      const results = response.data;
+      const { results, simulationTime } = response.data;
       setFcfsResults(results);
-  
+
+      // Animate the timer up to simulationTime
+      let current = 0;
+      const step = 0.01; 
+      const intervalMs = 10;
+
+      setSimulationTime(0);
+
+      const timer = setInterval(() => {
+        current = parseFloat((current + step).toFixed(2));
+        setSimulationTime(current);
+        if (current >= simulationTime) {
+          setSimulationTime(Number(simulationTime)); // Ensure exact match at end
+          clearInterval(timer);
+        }
+      }, intervalMs);
+
       // Update machines with assigned tasks
       const updatedMachines = machines.map((machine) => {
         const assignedTasks = results.filter((task) => task.machineId === machine.id);
@@ -292,15 +304,6 @@ console.log("SMQ", selectedMachine.queue)
       });
   
       setMachines(updatedMachines);
-  
-      // Simulate time progression
-      const interval = 0.1; // 100ms intervals
-      results.forEach((_, index) => {
-      setTimeout(() => {
-        setSimulationTime((prevTime) => parseFloat((prevTime + interval).toFixed(1))); // Increment simulation time
-      }, index * interval * 1000); // Multiply by 1000 to convert to milliseconds
-      });
-
 
       alert("Simulation completed successfully!");
       console.log("Simulation results:", results);
@@ -317,10 +320,11 @@ console.log("SMQ", selectedMachine.queue)
       await new Promise((resolve) => setTimeout(resolve, 1000)); // Simulate API call delay
       setSubmissionStatus("Submission successful!");
     } catch (error) {
-      setSubmissionStatus("Submission failed.");
+      setSubmissionStatus("Submission failed.", error);
     }
   };
 
+  /* Work on later
   const handleSubmitProfilingWorktable = async () => {
     try {
       // Simulate submission logic
@@ -328,9 +332,10 @@ console.log("SMQ", selectedMachine.queue)
       await new Promise((resolve) => setTimeout(resolve, 1000)); // Simulate API call delay
       setProfilingSubmissionStatus("Submission successful!");
     } catch (error) {
-      setProfilingSubmissionStatus("Submission failed.");
+      setProfilingSubmissionStatus("Submission failed.", error);
     }
   };
+*/
 
   return (
     <div className="bg-[#d9d9d9] min-h-screen flex flex-col relative">
@@ -369,7 +374,7 @@ console.log("SMQ", selectedMachine.queue)
       </tbody>
     </table>
     <div className="text-center mb-4">
-    <h2 className="text-lg font-semibold">Simulation Time: {simulationTime.toFixed(1)} seconds </h2>
+    <h2 className="text-lg font-semibold">Simulation Time: {simulationTime} seconds </h2>
     </div>
   </div>
 
@@ -482,188 +487,31 @@ console.log("SMQ", selectedMachine.queue)
             </div>
 
             {sidebarMode === "workload" && (
-              <div className="space-y-6">
-                {/* Profiling Table Upload */}
-                <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-1">
-                    Profiling Table (.eet)
-                  </label>
-                  {!profilingFileUploaded && (
-                    <button className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 transition">
-                      <label className="cursor-pointer">
-                        Choose File
-                        <input
-                          type="file"
-                          accept=".eet"
-                          className="hidden"
-                          onChange={handleProfilingUpload}
-                        />
-                      </label>
-                    </button>
-                  )}
-                  {profilingFileName && (
-                    <div className="flex flex-col space-y-2 mt-2">
-                      <div className="flex items-center space-x-2">
-                        <p className="text-sm text-gray-600">Uploaded File: {profilingFileName}</p>
-                        <button
-                          className="text-red-600 hover:text-red-800 transition"
-                          onClick={() => {
-                            setProfilingFileName("");
-                            setProfilingFileUploaded(false);
-                            setProfilingTableData([]);
-                          }}
-                        >
-                          <TrashIcon className="w-5 h-5" />
-                        </button>
-                      </div>
-                      {profilingTableData.length > 0 && (
-                        <table className="table-auto border-collapse border border-gray-300 w-full text-sm">
-                          <thead>
-                            <tr>
-                              {Object.keys(profilingTableData[0]).map((header) => (
-                                <th key={header} className="border border-gray-300 px-4 py-2 bg-gray-100">
-                                  {header}
-                                </th>
-                              ))}
-                            </tr>
-                          </thead>
-                          <tbody>
-                            {profilingTableData.map((row, index) => (
-                              <tr key={index}>
-                                {Object.values(row).map((value, idx) => (
-                                  <td key={idx} className="border border-gray-300 px-4 py-2">
-                                    {value}
-                                  </td>
-                                ))}
-                              </tr>
-                            ))}
-                          </tbody>
-                        </table>
-                      )}
-                    </div>
-                  )}
-                </div>
-
-                {/* Workload File Upload */}
-                <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-1">
-                    Workload File (.wkl)
-                  </label>
-                  {!workloadFileUploaded && (
-                    <button className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 transition">
-                      <label className="cursor-pointer">
-                        Choose File
-                        <input
-                          type="file"
-                          accept=".wkl"
-                          className="hidden"
-                          onChange={handleWorkloadUpload}
-                        />
-                      </label>
-                    </button>
-                  )}
-                  {workloadFileName && (
-                    <div className="flex flex-col space-y-2 mt-2">
-                      <div className="flex items-center space-x-2">
-                        <p className="text-sm text-gray-600">Uploaded File: {workloadFileName}</p>
-                        <button
-                          className="text-red-600 hover:text-red-800 transition"
-                          onClick={() => {
-                            setWorkloadFileName("");
-                            setWorkloadFileUploaded(false);
-                            setWorkloadTableData([]);
-                          }}
-                        >
-                          <TrashIcon className="w-5 h-5" />
-                        </button>
-                      </div>
-                      {workloadTableData.length > 0 && (
-                        <table className="table-auto border-collapse border border-gray-300 w-min text-sm">
-                          <div style={{maxHeight: "300px", overflow: "auto", width: "min-content"}}>
-                            <thead>
-                              <tr>
-                                {Object.keys(workloadTableData[0]).map((header) => (
-                                  <th key={header} className="border border-gray-300 px-4 py-2 bg-gray-100">
-                                    {header}
-                                  </th>
-                                ))}
-                              </tr>
-                            </thead>
-                              <tbody>
-                                {workloadTableData.map((row, index) => (
-                                <tr key={index} >
-                                  {Object.values(row).map((value, idx) => (
-                                    <td key={idx} className="border border-gray-300 px-4 py-2">
-                                      {value}
-                                    </td>
-                                  ))}
-                                </tr>
-                              ))}
-                            </tbody>
-                          </div>
-                          
-
-                        </table>
-                      )}
-                    </div>
-                  )}
-                </div>
-
-                {/* Config File Upload */}
-                <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-1">
-                    Load Configuration File (.json)
-                  </label>
-                  {!configFileUploaded && (
-                    <button className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 transition">
-                      <label className="cursor-pointer">
-                        Choose File
-                        <input
-                          type="file"
-                          accept=".json"
-                          className="hidden"
-                          onChange={handleConfigUpload}
-                        />
-                      </label>
-                    </button>
-                  )}
-                  {configFileName && (
-                    <div className="flex items-center space-x-2 mt-2">
-                      <p className="text-sm text-gray-600">Uploaded File: {configFileName}</p>
-                      <button
-                        className="text-red-600 hover:text-red-800 transition"
-                        onClick={() => {
-                          setConfigFileName("");
-                          setConfigFileUploaded(false);
-                        }}
-                      >
-                        <TrashIcon className="w-5 h-5" />
-                      </button>
-                    </div>
-                  )}
-                </div>
-
-                {/* Submit and Reset Buttons */}
-                <div className="space-y-4">
-                  <button
-                    onClick={handleSubmitWorkloadAndProfiling}
-                    className="w-full bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700 transition"
-                  >
-                    Submit Workload and Profiling Table
-                  </button>
-                  <button
-                    onClick={handleResetWorkload}
-                    className="w-full bg-red-600 text-white px-4 py-2 rounded hover:bg-red-700 transition"
-                  >
-                    Generate New Workload
-                  </button>
-
-                  {/* Success Message */}
-                  {workloadSubmissionStatus && (
-                    <p className="text-sm text-center text-green-600 mt-2">{workloadSubmissionStatus}</p>
-                  )}
-                </div>
-              </div>
+              <WorkloadSidebar
+                profilingFileUploaded={profilingFileUploaded}
+                profilingFileName={profilingFileName}
+                profilingTableData={profilingTableData}
+                workloadFileUploaded={workloadFileUploaded}
+                workloadFileName={workloadFileName}
+                workloadTableData={workloadTableData}
+                configFileUploaded={configFileUploaded}
+                configFileName={configFileName}
+                handleProfilingUpload={handleProfilingUpload}
+                handleWorkloadUpload={handleWorkloadUpload}
+                handleConfigUpload={handleConfigUpload}
+                handleSubmitWorkloadAndProfiling={handleSubmitWorkloadAndProfiling}
+                handleResetWorkload={handleResetWorkload}
+                workloadSubmissionStatus={workloadSubmissionStatus}
+                setProfilingFileName={setProfilingFileName}
+                setProfilingFileUploaded={setProfilingFileUploaded}
+                setProfilingTableData={setProfilingTableData}
+                setWorkloadFileName={setWorkloadFileName}
+                setWorkloadFileUploaded={setWorkloadFileUploaded}
+                setWorkloadTableData={setWorkloadTableData}
+                setConfigFileName={setConfigFileName}
+                setConfigFileUploaded={setConfigFileUploaded}
+                selectedTask={selectedTask}
+              />
             )}
 
             {sidebarMode === "loadBalancer" && (
@@ -774,16 +622,53 @@ console.log("SMQ", selectedMachine.queue)
                   <div className="space-y-6">
                     {/* Machine Details Tab */}
                     <div className="space-y-2">
-                      {["ID", "Power", "Queue Size"].map((key) => (
-                        <div key={key}>
-                          <label className="block text-sm font-semibold text-gray-700 mb-1">
-                            {key.toUpperCase()}
-                          </label>
-                          <div className="w-full border px-3 py-2 text-sm rounded bg-gray-100">
-                            {String(performanceParams[key.toLowerCase()]) || "N/A"}
-                          </div>
+                      <div>
+                        <label className="block text-sm font-semibold text-gray-700 mb-1">ID</label>
+                        <div className="w-full border px-3 py-2 text-sm rounded bg-gray-100">
+                          {performanceParams.id || "N/A"}
                         </div>
-                      ))}
+                      </div>
+                      <div>
+                        <label className="block text-sm font-semibold text-gray-700 mb-1">Name</label>
+                        <div className="w-full border px-3 py-2 text-sm rounded bg-gray-100">
+                          {performanceParams.name || "N/A"}
+                        </div>
+                      </div>
+                      <div>
+                        <label className="block text-sm font-semibold text-gray-700 mb-1">Queue Size</label>
+                        <div className="w-full border px-3 py-2 text-sm rounded bg-gray-100">
+                          {performanceParams.queue ? performanceParams.queue.length : 0}
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Show admitted tasks */}
+                    <div>
+                      <label className="block text-sm font-semibold text-gray-700 mb-1">Admitted Tasks</label>
+                      {performanceParams.queue && performanceParams.queue.length > 0 ? (
+                        <table className="min-w-full text-xs border border-gray-300 bg-white">
+                          <thead>
+                            <tr>
+                              <th className="px-2 py-1 border">ID</th>
+                              <th className="px-2 py-1 border">Type</th>
+                              <th className="px-2 py-1 border">Status</th>
+                              <th className="px-2 py-1 border">Arrival</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {performanceParams.queue.map((task, idx) => (
+                              <tr key={idx}>
+                                <td className="px-2 py-1 border">{task.id}</td>
+                                <td className="px-2 py-1 border">{task.task_type}</td>
+                                <td className="px-2 py-1 border">{task.status}</td>
+                                <td className="px-2 py-1 border">{task.arrival_time}</td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      ) : (
+                        <div className="text-gray-500 text-sm">No tasks admitted</div>
+                      )}
                     </div>
                   </div>
                 )}
@@ -806,8 +691,7 @@ console.log("SMQ", selectedMachine.queue)
               </div>
             )}
 
-
-           {sidebarMode === "task" && (
+            {sidebarMode === "task" && (
               <div className="space-y-6">
                 {/* Task Sidebar Content */}
                 <div className="flex space-x-4 border-b pb-2">

@@ -1,6 +1,6 @@
 from flask import Blueprint, request, jsonify, current_app  # Import current_app
 from server.utils.config_loader import load_config_file
-from server.utils.task_generator import generate_tasks
+from server.utils.task_generator import generate_tasks_from_batch
 from server.services.workload_service import simulate_load_balancing
 
 from server.utils.time import reset, increment, gct
@@ -36,8 +36,10 @@ def run_sim():
     except FileNotFoundError:
         return jsonify({"error": f"Config file not found: {config_path}"}), 500
 
-    tasks = generate_tasks(num_tasks)
+    batch_queue = data.get("tasks", [])
+    tasks = generate_tasks_from_batch(batch_queue)    
     config.batch_queue.load(tasks)
+
     print(f"\n<<<<<<<FCFS>>>>>>>>>>\n")
     scheduler = simulate_load_balancing(policy, num_tasks)
 
@@ -55,5 +57,11 @@ def run_sim():
         "end": task.end_time,
         "status": task.status.name,
     } for task in tasks]
-
-    return jsonify(results)
+    
+    # Calculate the actual simulation time as the max end time
+    simulation_time = max((task.end_time for task in tasks if task.end_time is not None), default=0)
+    
+    return jsonify({
+    "results": results,
+    "simulationTime": simulation_time # Use max end time
+})
