@@ -1,12 +1,7 @@
 import React from "react";
-import {
-  BrowserRouter as Router,
-  Routes,
-  Route,
-  Link
-} from "react-router-dom";
+import { BrowserRouter as Router, Routes, Route, Link } from "react-router-dom";
 import SimDashboard from "./SimDashboard";
-
+import DNDApp from "./DNDAppTEST";
 
 const App = () => {
   return (
@@ -17,10 +12,19 @@ const App = () => {
             <h1 className="text-3xl font-bold">E2C</h1>
             <ul className="flex space-x-6 text-lg">
               <li>
-                <Link to="/e2c" className="hover:underline">Home</Link>
+                <Link to="/e2c" className="hover:underline">
+                  Home
+                </Link>
               </li>
               <li>
-                <Link to="/e2c/simulate" className="hover:underline">Simulation</Link>
+                <Link to="/e2c/simulate" className="hover:underline">
+                  Simulation
+                </Link>
+              </li>
+              <li>
+                <Link to="/e2c/dndtest" className="hover:underline">
+                  dndTest
+                </Link>
               </li>
             </ul>
           </nav>
@@ -30,6 +34,7 @@ const App = () => {
           <Routes>
             <Route path="/e2c" element={<Home />} />
             <Route path="/e2c/simulate" element={<SimDashboard />} />
+            <Route path="/e2c/dndtest" element={<DNDApp />} />
           </Routes>
         </main>
       </div>
@@ -39,10 +44,10 @@ const App = () => {
 
 const Home = () => (
   <div className="max-w-4xl mx-auto bg-white rounded-2xl shadow p-10">
-    <h2 className="text-4xl font-bold text-gray-800 mb-4">Welcome to E2C-Revamp</h2>
-    <p className="text-lg text-gray-700">
-      Try our Sim!
-    </p>
+    <h2 className="text-4xl font-bold text-gray-800 mb-4">
+      Welcome to E2C-Revamp
+    </h2>
+    <p className="text-lg text-gray-700">Try our Sim!</p>
   </div>
 );
 
