@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useRef } from "react";
 import axios from "axios";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion, AnimatePresence, useForceUpdate } from "framer-motion";
 import { TrashIcon } from '@heroicons/react/24/outline';
 import MachineList from "./components/MachineList";
 import TaskList from "./components/TaskList";
@@ -8,6 +8,7 @@ import { WorkloadSidebar } from "./components/SidebarContent";
 import AdmissionsOverlay from "./components/AdmissionsOverlay";
 
 const SimDashboard = () => {
+  const taskSlots = Array.from({ length: 6 });
 
   const [showSidebar, setShowSidebar] = useState(false);
   const [sidebarMode, setSidebarMode] = useState(null);
@@ -29,6 +30,7 @@ const SimDashboard = () => {
   const [policy, setPolicy] = useState("FirstCome-FirstServe");
   const [queueSize, setQueueSize] = useState("unlimited");
 
+  const [runtimeModel, setRuntimeModel] = useState("Constant");
   const [performanceParams, setPerformanceParams] = useState({ id: "", power: "", queue: ""});
   const [taskParams, setTaskParams] = useState( {
     "id": "",
@@ -41,16 +43,19 @@ const SimDashboard = () => {
     "end": "",
     "status": "",
   });
-  const [metricParams] = useState({ mean: "", std: "", mean1: "", std1: "", mean2: "", std2: "" });
+  const [metricParams, setMetricParams] = useState({ mean: "", std: "", mean1: "", std1: "", mean2: "", std2: "" });
 
   const [machineTab, setMachineTab] = useState("details");
 
   const [profilingFileName, setProfilingFileName] = useState("");
   const [profilingFileUploaded, setProfilingFileUploaded] = useState(false);
+  const [profilingFileContents, setProfilingFileContents] = useState("");
   const [profilingTableData, setProfilingTableData] = useState([]);
+  const [profilingSubmissionStatus, setProfilingSubmissionStatus] = useState(""); // Track profiling submission status
 
   const [workloadFileName, setWorkloadFileName] = useState("");
   const [workloadFileUploaded, setWorkloadFileUploaded] = useState(false);
+  const [workloadFileContents, setWorkloadFileContents] = useState("");
   const [workloadTableData, setWorkloadTableData] = useState([]);
 
   const [configFileName, setConfigFileName] = useState("");
@@ -66,6 +71,8 @@ const SimDashboard = () => {
   const batchSlotsRef = useRef([]);
   const machineSlotsRef = useRef({});
   const loadBalancerRef = useRef(null);
+
+  const [missedTasks, setMissedTasks] = useState([]);
 
   const [animatedTaskIds, setAnimatedTaskIds] = useState([]);
 
@@ -247,7 +254,7 @@ console.log("SMQ", selectedMachine.queue)
       await new Promise((resolve) => setTimeout(resolve, 1000)); // Simulate API call delay
       setWorkloadSubmissionStatus("Submission successful!");
     } catch (error) {
-      setWorkloadSubmissionStatus("Submission failed.", error);
+      setWorkloadSubmissionStatus("Submission failed.");
     }
   };
 
@@ -395,6 +402,17 @@ console.log("SMQ", selectedMachine.queue)
           })),
         };
       });
+
+      setDataResults(results);
+
+      // Identify missed tasks: status === "CANCELLED" or (end == null && start == null) or end > deadline
+      const missed = results.filter(
+        t =>
+          t.status === "CANCELLED" ||
+          t.start == null ||
+          (t.deadline && t.end > t.deadline)
+      );
+      setMissedTasks(missed);
   
       alert("Simulation completed successfully!");
       console.log("Simulation results:", results);
@@ -411,11 +429,10 @@ console.log("SMQ", selectedMachine.queue)
       await new Promise((resolve) => setTimeout(resolve, 1000)); // Simulate API call delay
       setSubmissionStatus("Submission successful!");
     } catch (error) {
-      setSubmissionStatus("Submission failed.", error);
+      setSubmissionStatus("Submission failed.");
     }
   };
 
-  /* Work on later
   const handleSubmitProfilingWorktable = async () => {
     try {
       // Simulate submission logic
@@ -423,10 +440,9 @@ console.log("SMQ", selectedMachine.queue)
       await new Promise((resolve) => setTimeout(resolve, 1000)); // Simulate API call delay
       setProfilingSubmissionStatus("Submission successful!");
     } catch (error) {
-      setProfilingSubmissionStatus("Submission failed.", error);
+      setProfilingSubmissionStatus("Submission failed.");
     }
   };
-*/
 
   return (
     <div className="bg-[#d9d9d9] min-h-screen flex flex-col relative">
@@ -698,15 +714,7 @@ console.log("SMQ", selectedMachine.queue)
                       machineTab === "details" ? "text-blue-600 border-b-2 border-blue-600" : "text-gray-500"
                     }`}
                   >
-                    Details
-                  </button>
-                  <button
-                    onClick={() => setMachineTab("performance")}
-                    className={`text-sm font-semibold ${
-                      machineTab === "performance" ? "text-blue-600 border-b-2 border-blue-600" : "text-gray-500"
-                    }`}
-                  >
-                    Performance
+                    Properties
                   </button>
                 </div>
 
@@ -714,22 +722,28 @@ console.log("SMQ", selectedMachine.queue)
                   <div className="space-y-6">
                     {/* Machine Details Tab */}
                     <div className="space-y-2">
-                      <div>
-                        <label className="block text-sm font-semibold text-gray-700 mb-1">ID</label>
-                        <div className="w-full border px-3 py-2 text-sm rounded bg-gray-100">
-                          {performanceParams.id || "N/A"}
-                        </div>
-                      </div>
-                      <div>
+                    <div>
                         <label className="block text-sm font-semibold text-gray-700 mb-1">Name</label>
                         <div className="w-full border px-3 py-2 text-sm rounded bg-gray-100">
                           {performanceParams.name || "N/A"}
                         </div>
                       </div>
                       <div>
-                        <label className="block text-sm font-semibold text-gray-700 mb-1">Queue Size</label>
+                        <label className="block text-sm font-semibold text-gray-700 mb-1">Power</label>
                         <div className="w-full border px-3 py-2 text-sm rounded bg-gray-100">
-                          {performanceParams.queue ? performanceParams.queue.length : 0}
+                          {performanceParams.power !== undefined ? performanceParams.power : "N/A"}
+                        </div>
+                      </div>
+                      <div>
+                        <label className="block text-sm font-semibold text-gray-700 mb-1">Idle Power</label>
+                        <div className="w-full border px-3 py-2 text-sm rounded bg-gray-100">
+                          {performanceParams.idle_power !== undefined ? performanceParams.idle_power : "N/A"}
+                        </div>
+                      </div>
+                      <div>
+                        <label className="block text-sm font-semibold text-gray-700 mb-1">Replicas</label>
+                        <div className="w-full border px-3 py-2 text-sm rounded bg-gray-100">
+                          {performanceParams.replicas !== undefined ? performanceParams.replicas : "N/A"}
                         </div>
                       </div>
                     </div>
@@ -762,22 +776,6 @@ console.log("SMQ", selectedMachine.queue)
                         <div className="text-gray-500 text-sm">No tasks admitted</div>
                       )}
                     </div>
-                  </div>
-                )}
-
-                {machineTab === "performance" && (
-                  <div className="space-y-4">
-                    {/* Machine Performance Tab */}
-                    {["Metric 1", "Metric 2", "Metric 3"].map((metric) => (
-                      <div key={metric}>
-                        <label className="block text-sm font-semibold text-gray-700 mb-1">
-                          {metric}
-                        </label>
-                        <div className="w-full border px-3 py-2 text-sm rounded bg-gray-100">
-                          {metricParams[metric.toLowerCase().replace(" ", "")] || "N/A"}
-                        </div>
-                      </div>
-                    ))}
                   </div>
                 )}
               </div>
@@ -849,11 +847,25 @@ console.log("SMQ", selectedMachine.queue)
                     </tr>
                   </thead>
                   <tbody>
-                    <tr>
-                      <td colSpan="6" className="px-4 py-2 text-sm text-gray-500 text-center">
-                        No data available yet. The simulation has not occurred.
-                      </td>
-                    </tr>
+                    {missedTasks.length === 0 ? (
+                      <tr>
+                        <td colSpan="7" className="px-4 py-2 text-sm text-gray-500 text-center">
+                          No missed tasks.
+                        </td>
+                      </tr>
+                    ) : (
+                      missedTasks.map((task) => (
+                        <tr key={task.taskId}>
+                          <td className="px-4 py-2 border">{task.taskId}</td>
+                          <td className="px-4 py-2 border">{task.task_type}</td>
+                          <td className="px-4 py-2 border">{task.assigned_machine ?? "N/A"}</td>
+                          <td className="px-4 py-2 border">{task.arrival_time}</td>
+                          <td className="px-4 py-2 border">{task.start ?? "N/A"}</td>
+                          <td className="px-4 py-2 border">{task.deadline ?? "N/A"}</td>
+                          <td className="px-4 py-2 border">{task.status}</td>
+                        </tr>
+                      ))
+                    )}
                   </tbody>
                 </table>
               </div>
