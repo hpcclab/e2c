@@ -6,6 +6,7 @@ import {
   Link
 } from "react-router-dom";
 import SimDashboard from "./SimDashboard";
+import WorkloadGenerator from "./WorkloadGenerator";
 
 
 const App = () => {
@@ -22,6 +23,9 @@ const App = () => {
               <li>
                 <Link to="/e2c/simulate" className="hover:underline">Simulation</Link>
               </li>
+              <li>
+                <Link to="/e2c/generate" className="hover:underline">Workload Generator</Link>
+              </li>
             </ul>
           </nav>
         </header>
@@ -30,6 +34,7 @@ const App = () => {
           <Routes>
             <Route path="/e2c" element={<Home />} />
             <Route path="/e2c/simulate" element={<SimDashboard />} />
+            <Route path="/e2c/generate" element={<WorkloadGenerator />} /> 
           </Routes>
         </main>
       </div>

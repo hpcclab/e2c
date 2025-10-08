@@ -19,7 +19,11 @@ export default function MachineList({machs, onClicked, onTaskClicked, setSelecte
         </div>
         <div
           onClick={()=>{
-            setSelectedMachine({"id" : machine.id, "name" : machine.name, "queue": machine.queue})
+            setSelectedMachine({ 
+              name: machine.name,
+              power: machine.power,
+              idle_power: machine.idle_power,
+              replicas: machine.replicas,})
             onClicked()
           }}
           className="text-white bg-blue-600 font-semibold w-16 h-10 rounded-full flex items-center justify-center cursor-pointer hover:scale-105 transition"

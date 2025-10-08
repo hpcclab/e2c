@@ -69,3 +69,5 @@ def upload_config():
         "machines": [m.infoAsDict() for m in config.machines],
         "path": file_path
     }), 200
+    
+    
