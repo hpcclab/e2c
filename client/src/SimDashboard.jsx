@@ -111,14 +111,18 @@ const SimDashboard = () => {
   
 //  update machine params
   useEffect(() => {
-    setPerformanceParams(prev => ({
-    ...prev,
-    "id" : selectedMachine.id,
-    "name" : selectedMachine.name,
-    "queue": selectedMachine.queue
-}))
-console.log("SMQ", selectedMachine.queue)
-  }, [selectedMachine])
+    console.log("Updating performance params with selected machine:", selectedMachine);
+    setPerformanceParams({
+      id: selectedMachine.id,
+      name: selectedMachine.name,
+      queue: selectedMachine.queue,
+      power: selectedMachine.power,
+      idle_power: selectedMachine.idle_power,
+      replicas: selectedMachine.replicas,
+      price: selectedMachine.price,
+      cost: selectedMachine.cost
+    });
+  }, [selectedMachine]);
 
   //  update task params
   useEffect(() => {
@@ -232,10 +236,26 @@ console.log("SMQ", selectedMachine.queue)
         headers: { "Content-Type": "multipart/form-data" },
       });
       console.log("Config upload success:", res.data);
-      setMachines([...res.data.machines]);
-      setAnimatedMachines([...res.data.machines]);
-      machinesRef.current = [...res.data.machines];
-      console.log(animatedMachines)
+      
+      const machinesWithIds = res.data.machines.map((machine, index) => ({
+        id: machine.id !== undefined ? machine.id : index,
+        name: machine.name || `Machine ${index + 1}`,
+        power: machine.power || 0,
+        idle_power: machine.idle_power || 0,
+        speed: machine.speed || 1,
+        weight: machine.weight || 1,
+        replicas: machine.replicas || 1,
+        price: machine.price || 0,
+        cost: machine.cost || 0,
+        queue: machine.queue || []
+      }));
+
+      console.log("Raw machine data from server:", res.data.machines);
+      console.log("Processed machines:", machinesWithIds);
+
+      setMachines(machinesWithIds);
+      setAnimatedMachines(machinesWithIds);
+      machinesRef.current = machinesWithIds;
     } catch (err) {
       console.error("Config upload error:", err);
       alert("Failed to upload configuration file.");
@@ -746,6 +766,16 @@ console.log("SMQ", selectedMachine.queue)
                           {performanceParams.replicas !== undefined ? performanceParams.replicas : "N/A"}
                         </div>
                       </div>
+                        <label className="block text-sm font-semibold text-gray-700 mb-1">Price</label>
+                        <div className="w-full border px-3 py-2 text-sm rounded bg-gray-100">
+                          {performanceParams.price !== undefined ? performanceParams.price : "N/A"}
+                        </div>
+                      </div>
+                    <div>
+                      <label className="block text-sm font-semibold text-gray-700 mb-1">Cost</label>
+                      <div className="w-full border px-3 py-2 text-sm rounded bg-gray-100">
+                        {performanceParams.cost !== undefined ? performanceParams.cost : "N/A"}
+                      </div>                      
                     </div>
 
                     {/* Show admitted tasks */}

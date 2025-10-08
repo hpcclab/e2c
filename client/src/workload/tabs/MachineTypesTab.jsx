@@ -1,11 +1,13 @@
-import React, { useState } from "react";
-import { TrashIcon, PencilIcon, CheckIcon, XMarkIcon } from '@heroicons/react/24/outline';
+import React, { useState } from 'react';
+import { CheckIcon, XMarkIcon, PencilIcon, TrashIcon } from '@heroicons/react/24/outline';
 
-const MachineTypesTab = ({ machineTypes, setMachineTypes, setActiveTab }) => {
+const MachineTypesTab = ({ machineTypes, setMachineTypes, setActiveTab, taskTypes = [] }) => {
   const [newName, setNewName] = useState("");
   const [newPower, setNewPower] = useState("");
   const [newIdlePower, setNewIdlePower] = useState("");
   const [newReplicas, setNewReplicas] = useState("");
+  const [newPrice, setNewPrice] = useState(""); // NEW PRICE
+  const [newCost, setNewCost] = useState(""); // NEW COST
   const [editIdx, setEditIdx] = useState(null);
   const [editRow, setEditRow] = useState({});
 
@@ -18,12 +20,16 @@ const MachineTypesTab = ({ machineTypes, setMachineTypes, setActiveTab }) => {
         power: newPower,
         idlePower: newIdlePower,
         replicas: newReplicas,
+        price: newPrice, // NEW PRICE
+        cost: newCost, // NEW COST
       },
     ]);
     setNewName("");
     setNewPower("");
     setNewIdlePower("");
     setNewReplicas("");
+    setNewPrice(""); // NEW PRICE
+    setNewCost(""); // NEW COST
   };
 
   const startEdit = (idx) => {
@@ -50,17 +56,53 @@ const MachineTypesTab = ({ machineTypes, setMachineTypes, setActiveTab }) => {
     setMachineTypes(machineTypes.filter((_, i) => i !== idx));
   };
 
-  // Save only machine types as config (for full config, pass handler from parent)
-  const handleSaveConfig = () => {
-    const config = {
-      machines: machineTypes.map(m => ({
+   // --- Save Config Handler ---
+   const handleSaveConfig = () => {
+    const configData = {
+      parameters: [
+        {
+          machine_queue_size: 3000,
+          batch_queue_size: 1,
+          scheduling_method: "FCFS",
+          fairness_factor: 1.0,
+        },
+      ],
+      settings: [
+        {
+          path_to_output: "./output",
+          path_to_workload: "./workload",
+          verbosity: 3,
+          gui: 1,
+        },
+      ],
+      task_types: taskTypes.map((t, idx) => ({
+        id: idx + 1,
+        name: t.name,
+        urgency: t.urgency || "BestEffort",
+        deadline: Number(t.slack) || 10.0,
+      })),
+      battery: [
+        {
+          capacity: 5000.0,
+        },
+      ],
+      machines: machineTypes.map((m) => ({
         name: m.name,
         power: Number(m.power),
         idle_power: Number(m.idlePower),
         replicas: Number(m.replicas),
+        price: Number(m.price), // NEW PRICE
+        cost: Number(m.cost), // NEW COST
       })),
+      cloud: [
+        {
+          bandwidth: 15000.0,
+          network_latency: 0.015,
+        },
+      ],
     };
-    const blob = new Blob([JSON.stringify(config, null, 2)], { type: "application/json" });
+
+    const blob = new Blob([JSON.stringify(configData, null, 2)], { type: "application/json" });
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
     link.href = url;
@@ -82,6 +124,8 @@ const MachineTypesTab = ({ machineTypes, setMachineTypes, setActiveTab }) => {
               <th className="border px-2 py-1">Power</th>
               <th className="border px-2 py-1">Idle Power</th>
               <th className="border px-2 py-1"># of Replicas</th>
+              <th className="border px-2 py-1">Price</th> {/* NEW PRICE */}
+              <th className="border px-2 py-1">Cost</th> {/* NEW COST */}
               <th className="border px-2 py-1">Actions</th>
             </tr>
           </thead>
@@ -98,7 +142,7 @@ const MachineTypesTab = ({ machineTypes, setMachineTypes, setActiveTab }) => {
                       <td className="border px-2 py-1">
                         <input
                           type="text"
-                          value={editRow.name}
+                          value={editRow.name || ""}
                           onChange={e => handleEditChange("name", e.target.value)}
                           className="border rounded px-2 py-1 w-full"
                         />
@@ -106,7 +150,7 @@ const MachineTypesTab = ({ machineTypes, setMachineTypes, setActiveTab }) => {
                       <td className="border px-2 py-1">
                         <input
                           type="number"
-                          value={editRow.power}
+                          value={editRow.power || ""}
                           onChange={e => handleEditChange("power", e.target.value)}
                           className="border rounded px-2 py-1 w-full"
                         />
@@ -114,7 +158,7 @@ const MachineTypesTab = ({ machineTypes, setMachineTypes, setActiveTab }) => {
                       <td className="border px-2 py-1">
                         <input
                           type="number"
-                          value={editRow.idlePower}
+                          value={editRow.idlePower || ""}
                           onChange={e => handleEditChange("idlePower", e.target.value)}
                           className="border rounded px-2 py-1 w-full"
                         />
@@ -122,8 +166,24 @@ const MachineTypesTab = ({ machineTypes, setMachineTypes, setActiveTab }) => {
                       <td className="border px-2 py-1">
                         <input
                           type="number"
-                          value={editRow.replicas}
+                          value={editRow.replicas || ""}
                           onChange={e => handleEditChange("replicas", e.target.value)}
+                          className="border rounded px-2 py-1 w-full"
+                        />
+                      </td>
+                      <td className="border px-2 py-1">
+                        <input
+                          type="number"
+                          value={editRow.price || ""}
+                          onChange={e => handleEditChange("price", e.target.value)}
+                          className="border rounded px-2 py-1 w-full"
+                        />
+                      </td>
+                      <td className="border px-2 py-1">
+                        <input
+                          type="number"
+                          value={editRow.cost || ""}      
+                          onChange={e => handleEditChange("cost", e.target.value)}
                           className="border rounded px-2 py-1 w-full"
                         />
                       </td>
@@ -142,6 +202,8 @@ const MachineTypesTab = ({ machineTypes, setMachineTypes, setActiveTab }) => {
                       <td className="border px-2 py-1">{type.power || "-"}</td>
                       <td className="border px-2 py-1">{type.idlePower || "-"}</td>
                       <td className="border px-2 py-1">{type.replicas || "-"}</td>
+                      <td className="border px-2 py-1">{type.price || "-"}</td> {/* NEW PRICE */}
+                      <td className="border px-2 py-1">{type.cost || "-"}</td> {/* NEW COST */}
                       <td className="border px-2 py-1 flex gap-2">
                         <button onClick={() => startEdit(idx)} title="Edit">
                           <PencilIcon className="w-5 h-5 text-blue-600" />
@@ -187,6 +249,20 @@ const MachineTypesTab = ({ machineTypes, setMachineTypes, setActiveTab }) => {
             placeholder="# of Replicas"
             value={newReplicas}
             onChange={e => setNewReplicas(e.target.value)}
+            className="border rounded px-3 py-2"
+          />
+          <input
+            type="number"
+            placeholder="Price" // NEW PRICE
+            value={newPrice}
+            onChange={e => setNewPrice(e.target.value)}
+            className="border rounded px-3 py-2"
+          />
+          <input
+            type="number"
+            placeholder="Cost" // NEW COST
+            value={newCost}
+            onChange={e => setNewCost(e.target.value)}
             className="border rounded px-3 py-2"
           />
           <button
