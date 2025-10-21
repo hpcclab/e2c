@@ -2,6 +2,7 @@ from flask import Flask
 from flask_cors import CORS
 from server.routes.scheduling import scheduling_bp
 from server.routes.workload import workload_bp
+from server.routes.config import config_bp
 import os
 
 app = Flask(__name__)
@@ -18,6 +19,7 @@ CORS(app, resources={r"/api/*": {"origins": "http://localhost:5173"}}, supports_
 # Register blueprints
 app.register_blueprint(scheduling_bp, url_prefix="/api/workload/simulate")
 app.register_blueprint(workload_bp, url_prefix="/api/workload")
+app.register_blueprint(config_bp, url_prefix="/api/config")
 
 @app.route("/")
 def index():

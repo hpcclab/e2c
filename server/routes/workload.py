@@ -56,18 +56,16 @@ def upload_config():
     # Parse configuration using shared loader
     try:
         load_config_file(file_path)
+        # Set the config path in settings for later updates
+        config.settings["config_path"] = file_path
     except json.JSONDecodeError as ex:
         return jsonify({"error": f"Invalid JSON: {ex}"}), 400
     except Exception as ex:
         return jsonify({"error": str(ex)}), 400
-
-    # Record dynamic path for later use
-    config.settings["config_path"] = file_path
 
     return jsonify({
         "message": "Configuration loaded",
         "machines": [m.infoAsDict() for m in config.machines],
         "path": file_path
     }), 200
-    
-    
+

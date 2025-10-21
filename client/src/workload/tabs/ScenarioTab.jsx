@@ -97,8 +97,8 @@ const ScenarioTab = ({
   scenarioRows = [],
   setScenarioRows,
   setActiveTab,
-  setWorkloadFiles,           // <-- pass this from parent
-  setSelectedWorkloadIdx,     // <-- pass this from parent
+  setWorkloadFiles,
+  setSelectedWorkloadIdx,
   taskTypes
 }) => {
   const initialTaskType = taskTypes && taskTypes.length > 0

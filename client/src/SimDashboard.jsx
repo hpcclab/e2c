@@ -6,6 +6,7 @@ import MachineList from "./components/MachineList";
 import TaskList from "./components/TaskList";
 import { WorkloadSidebar } from "./components/SidebarContent";
 import AdmissionsOverlay from "./components/AdmissionsOverlay";
+import EditMachineProperties from './components/EditMachineProperties';
 
 const SimDashboard = () => {
   const taskSlots = Array.from({ length: 6 });
@@ -111,14 +112,18 @@ const SimDashboard = () => {
   
 //  update machine params
   useEffect(() => {
-    setPerformanceParams(prev => ({
-    ...prev,
-    "id" : selectedMachine.id,
-    "name" : selectedMachine.name,
-    "queue": selectedMachine.queue
-}))
-console.log("SMQ", selectedMachine.queue)
-  }, [selectedMachine])
+    console.log("Updating performance params with selected machine:", selectedMachine);
+    setPerformanceParams({
+      id: selectedMachine.id,
+      name: selectedMachine.name,
+      queue: selectedMachine.queue,
+      power: selectedMachine.power,
+      idle_power: selectedMachine.idle_power,
+      replicas: selectedMachine.replicas,
+      price: selectedMachine.price,
+      cost: selectedMachine.cost
+    });
+  }, [selectedMachine]);
 
   //  update task params
   useEffect(() => {
@@ -232,10 +237,24 @@ console.log("SMQ", selectedMachine.queue)
         headers: { "Content-Type": "multipart/form-data" },
       });
       console.log("Config upload success:", res.data);
-      setMachines([...res.data.machines]);
-      setAnimatedMachines([...res.data.machines]);
-      machinesRef.current = [...res.data.machines];
-      console.log(animatedMachines)
+      
+      const machinesWithIds = res.data.machines.map((machine, index) => ({
+        id: machine.id !== undefined ? machine.id : index,
+        name: machine.name || `Machine ${index + 1}`,
+        power: machine.power || 0,
+        idle_power: machine.idle_power || 0,
+        replicas: machine.replicas || 1,
+        price: machine.price || 0,
+        cost: machine.cost || 0,
+        queue: machine.queue || []
+      }));
+
+      console.log("Raw machine data from server:", res.data.machines);
+      console.log("Processed machines:", machinesWithIds);
+
+      setMachines(machinesWithIds);
+      setAnimatedMachines(machinesWithIds);
+      machinesRef.current = machinesWithIds;
     } catch (err) {
       console.error("Config upload error:", err);
       alert("Failed to upload configuration file.");
@@ -281,6 +300,73 @@ console.log("SMQ", selectedMachine.queue)
 
     setFlyers([]);
   };
+// Add function to handle machine property updates
+  const handleMachinePropertySave = async (updatedMachine) => {
+    try {
+      console.log("Saving machine properties:", updatedMachine);
+      
+      // Update the machines ref
+      machinesRef.current = machinesRef.current.map(machine =>
+        machine.id === updatedMachine.id ? updatedMachine : machine
+      );
+      
+      // Generate updated config - make sure all machines are included
+      const allMachines = machinesRef.current.filter(m => m.id !== -1);
+      
+      const updatedConfig = {
+        parameters: [
+          {
+            machine_queue_size: 3000,
+            batch_queue_size: 1,
+            scheduling_method: "FCFS",
+            fairness_factor: 1.0,
+          },
+        ],
+        settings: [
+          {
+            path_to_output: "./output",
+            path_to_workload: "./workload",
+            verbosity: 3,
+            gui: 1,
+          },
+        ],
+        task_types: [],
+        battery: [{ capacity: 5000.0 }],
+        machines: allMachines.map(m => ({
+          name: m.name || "",
+          power: Number(m.power) || 0,
+          idle_power: Number(m.idle_power) || 0,
+          replicas: Number(m.replicas) || 1,
+          price: Number(m.price) || 0,
+          cost: Number(m.cost) || 0,
+        })),
+        cloud: [
+          {
+            bandwidth: 15000.0,
+            network_latency: 0.015,
+          },
+        ],
+      };
+
+      console.log("Sending config update:", updatedConfig);
+
+      // Send updated config to backend
+      const response = await axios.post("http://localhost:5001/api/config/update", updatedConfig);
+      console.log("Config update response:", response.data);
+      
+      console.log("Machine properties updated successfully");
+    } catch (error) {
+      console.error("Failed to update machine properties:", error);
+      console.error("Error details:", error.response?.data);
+      
+      // Show more specific error message
+      const errorMessage = error.response?.data?.error || error.message || "Unknown error occurred";
+      alert(`Failed to update machine properties: ${errorMessage}`);
+      
+      throw error;
+    }
+  };
+
 
   const runDataSimulation = async () => {
     try {
@@ -722,30 +808,14 @@ console.log("SMQ", selectedMachine.queue)
                   <div className="space-y-6">
                     {/* Machine Details Tab */}
                     <div className="space-y-2">
-                    <div>
-                        <label className="block text-sm font-semibold text-gray-700 mb-1">Name</label>
-                        <div className="w-full border px-3 py-2 text-sm rounded bg-gray-100">
-                          {performanceParams.name || "N/A"}
-                        </div>
-                      </div>
-                      <div>
-                        <label className="block text-sm font-semibold text-gray-700 mb-1">Power</label>
-                        <div className="w-full border px-3 py-2 text-sm rounded bg-gray-100">
-                          {performanceParams.power !== undefined ? performanceParams.power : "N/A"}
-                        </div>
-                      </div>
-                      <div>
-                        <label className="block text-sm font-semibold text-gray-700 mb-1">Idle Power</label>
-                        <div className="w-full border px-3 py-2 text-sm rounded bg-gray-100">
-                          {performanceParams.idle_power !== undefined ? performanceParams.idle_power : "N/A"}
-                        </div>
-                      </div>
-                      <div>
-                        <label className="block text-sm font-semibold text-gray-700 mb-1">Replicas</label>
-                        <div className="w-full border px-3 py-2 text-sm rounded bg-gray-100">
-                          {performanceParams.replicas !== undefined ? performanceParams.replicas : "N/A"}
-                        </div>
-                      </div>
+                    <EditMachineProperties
+                selectedMachine={selectedMachine}
+                setSelectedMachine={setSelectedMachine}
+                onSave={handleMachinePropertySave}
+                animatedMachines={animatedMachines}
+                setAnimatedMachines={setAnimatedMachines}
+              />
+    
                     </div>
 
                     {/* Show admitted tasks */}
