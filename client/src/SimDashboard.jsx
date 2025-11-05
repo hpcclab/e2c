@@ -28,9 +28,12 @@ import iotNode from "./components/iotNode";
 import edgeSpace from "./components/edgeSpace";
 import cloudSpace from "./components/cloudSpace";
 import edgeLockedNode from "./components/edgeLockedNode";
+import workloadNode from "./components/workloadNode";
 import "./assets/flow.css";
 import "./assets/index.css";
 import { useGlobalState } from "./context/GlobalStates";
+import LBNode from "./components/LBNode";
+import QueueNode from "./components/QueueNode";
 
 // import TemplatesContainer from "./components/TemplatesContainer";
 // import DropZone from "./components/DropZone";
@@ -43,6 +46,9 @@ const nodeTypes = {
   edgeSpace: edgeSpace,
   cloudSpace: cloudSpace,
   edgeLockedNode: edgeLockedNode,
+  workloadNode: workloadNode,
+  LBNode: LBNode,
+  QueueNode: QueueNode,
 };
 
 // End Drag and Drop Requirements and Imports
@@ -60,6 +66,7 @@ const SimDashboard = () => {
     setSelectedTask,
     machines,
     setMachines,
+    onDragStop,
     iot,
     setIot,
     batchQ,
@@ -80,6 +87,10 @@ const SimDashboard = () => {
     setSubmissionStatus,
     workloadSubmissionStatus,
     setWorkloadSubmissionStatus,
+    machinesRef,
+    machineSlotsRef,
+    batchSlotsRef,
+    loadBalancerRef,
   } = useGlobalState();
   // End Global States
   // DND
@@ -142,6 +153,7 @@ const SimDashboard = () => {
   });
 
   const [machineTab, setMachineTab] = useState("details");
+  const [IOTTab, setIOTTab] = useState("details");
 
   const [profilingFileName, setProfilingFileName] = useState("");
   const [profilingFileUploaded, setProfilingFileUploaded] = useState(false);
@@ -160,12 +172,7 @@ const SimDashboard = () => {
 
   const [dataResults, setDataResults] = useState([]);
   const [animatedMachines, setAnimatedMachines] = useState(machines); // ANIMATION
-  const machinesRef = useRef([]);
   const [flyers, setFlyers] = useState([]);
-
-  const batchSlotsRef = useRef([]);
-  const machineSlotsRef = useRef({});
-  const loadBalancerRef = useRef(null);
 
   const [missedTasks, setMissedTasks] = useState([]);
 
@@ -644,32 +651,41 @@ const SimDashboard = () => {
       alert("Failed to run simulation.");
     }
   };
+  // Update React Flow Machines
   useEffect(() => {
-    setNodes((nds) => {
-      const nodeIndex = nds.findIndex((n) => n.type === "machineNode");
+    setNodes((prevNodes) => {
+      // Remove all existing machineNodes
+      const otherNodes = prevNodes.filter((n) => n.type !== "machineNode");
 
-      if (nodeIndex !== -1) {
-        // Replace data entirely so ReactFlow triggers update
-        const updatedNodes = [...nds];
-        updatedNodes[nodeIndex] = {
-          ...updatedNodes[nodeIndex],
-          data: { machine: [...machines] }, // make a new array reference
-        };
-        return updatedNodes;
-      } else {
-        // Add node if it doesn't exist
-        return [
-          ...nds,
-          {
-            id: "1",
-            type: "machineNode",
-            data: { machine: [...machines] },
-            position: { x: 250, y: 70 },
-          },
-        ];
-      }
+      // Map each machine to its own node
+      const machineNodes = machines.map((m, index) => ({
+        id: `machine-${m.id}`,
+        type: "machineNode",
+        data: { machine: m },
+        position: m.position ?? { x: 725, y: 70 + index * 150 }, // stacked vertically
+      }));
+
+      return [...otherNodes, ...machineNodes];
     });
   }, [machines, setNodes]);
+
+  // Update React Flow IOT
+  useEffect(() => {
+    setNodes((prevNodes) => {
+      // Remove all existing iotNode
+      const otherNodes = prevNodes.filter((n) => n.type !== "iotNode");
+
+      // Map each machine to its own node
+      const iotNodes = iot.map((m, index) => ({
+        id: `IOT-${m.id}`,
+        type: "iotNode",
+        data: { iot: m },
+        position: m.position ?? { x: -200, y: 70 + index * 150 }, // stacked vertically
+      }));
+
+      return [...otherNodes, ...iotNodes];
+    });
+  }, [iot, setNodes]);
 
   const handleSubmitLoadBalancer = async () => {
     try {
@@ -694,8 +710,8 @@ const SimDashboard = () => {
   };
 
   return (
-    <div className="bg-[#d9d9d9] min-h-screen flex flex-col relative">
-      {/* DND Test */}
+    <div className="bg-[#d9d9d9] max-w-screen min-w-screen min-h-screen flex flex-col relative">
+      {/* DND */}
       <ReactFlowProvider>
         <div className=" p-8 bg-gray-100 size-dvw max-w-screen max-h-screen min-w-screen min-h-screen">
           <div className="dndflow">
@@ -705,6 +721,7 @@ const SimDashboard = () => {
                 edges={edges}
                 nodeTypes={nodeTypes}
                 onNodesChange={onNodesChange}
+                onNodeDragStop={onDragStop}
                 onEdgesChange={onEdgesChange}
                 onConnect={onConnect}
                 onPaneClick={onPaneClick}
@@ -900,6 +917,8 @@ const SimDashboard = () => {
                   ? `Task: ${String(selectedTask.id)}`
                   : sidebarMode === "machine"
                   ? `Machine: ${selectedMachine.name?.toUpperCase()}`
+                  : sidebarMode === "IOT"
+                  ? `IOT: ${selectedIOT.name?.toUpperCase()}`
                   : "Drag and Drop Templates"}
               </h2>
               <button
@@ -1190,7 +1209,78 @@ const SimDashboard = () => {
                 {/* <SidebarTemplates /> */}
               </div>
             )}
+            {sidebarMode === "IOT" && (
+              <div className="space-y-6">
+                {/* IOT Sidebar Content */}
+                <div className="flex space-x-4 border-b pb-2">
+                  <button
+                    onClick={() => setIOTTab("details")}
+                    className={`text-sm font-semibold ${
+                      IOTTab === "details"
+                        ? "text-blue-600 border-b-2 border-blue-600"
+                        : "text-gray-500"
+                    }`}
+                  >
+                    Properties
+                  </button>
+                </div>
 
+                {IOTTab === "details" && (
+                  <div className="space-y-6">
+                    {/* IOT Details Tab */}
+                    <div className="space-y-2">
+                      {/* <EditIOTProperties
+                        selectedIOT={selectedIOT}
+                        setSelectedIOT={setSelectedIOT}
+                        onSave={handleIOTPropertySave}
+                        animatedIOTs={animatedIOTs}
+                        setAnimatedIOTs={setAnimatedIOTs}
+                      /> */}
+                    </div>
+
+                    {/* Show admitted tasks */}
+                    <div>
+                      <label className="block text-sm font-semibold text-gray-700 mb-1">
+                        Admitted Tasks
+                      </label>
+                      {performanceParams.queue &&
+                      performanceParams.queue.length > 0 ? (
+                        <table className="min-w-full text-xs border border-gray-300 bg-white">
+                          <thead>
+                            <tr>
+                              <th className="px-2 py-1 border">ID</th>
+                              <th className="px-2 py-1 border">Type</th>
+                              <th className="px-2 py-1 border">Status</th>
+                              <th className="px-2 py-1 border">Arrival</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {performanceParams.queue.map((task, idx) => (
+                              <tr key={idx}>
+                                <td className="px-2 py-1 border">{task.id}</td>
+                                <td className="px-2 py-1 border">
+                                  {task.task_type}
+                                </td>
+                                <td className="px-2 py-1 border">
+                                  {task.status}
+                                </td>
+                                <td className="px-2 py-1 border">
+                                  {task.arrival_time}
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      ) : (
+                        <div className="text-gray-500 text-sm">
+                          No tasks admitted
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
             {sidebarMode === "missedTasks" && (
               <div className="space-y-6">
                 {/* Missed Tasks Sidebar Content */}
