@@ -1,11 +1,8 @@
 import React from "react";
-import {
-  BrowserRouter as Router,
-  Routes,
-  Route,
-  Link
-} from "react-router-dom";
+import { BrowserRouter as Router, Routes, Route, Link } from "react-router-dom";
 import SimDashboard from "./SimDashboard";
+import DNDApp from "./DNDAppTEST";
+import "./assets/index.css";
 import WorkloadGenerator from "./WorkloadGenerator";
 
 
@@ -18,10 +15,19 @@ const App = () => {
             <h1 className="text-3xl font-bold">E2C</h1>
             <ul className="flex space-x-6 text-lg">
               <li>
-                <Link to="/e2c" className="hover:underline">Home</Link>
+                <Link to="/e2c" className="hover:underline">
+                  Home
+                </Link>
               </li>
               <li>
-                <Link to="/e2c/simulate" className="hover:underline">Simulation</Link>
+                <Link to="/e2c/simulate" className="hover:underline">
+                  Simulation
+                </Link>
+              </li>
+              <li>
+                <Link to="/e2c/dndtest" className="hover:underline">
+                  dndTest
+                </Link>
               </li>
               <li>
                 <Link to="/e2c/generate" className="hover:underline">Workload Generator</Link>
@@ -31,11 +37,12 @@ const App = () => {
         </header>
 
         <main className="p-6">
-          <Routes>
-            <Route path="/e2c" element={<Home />} />
-            <Route path="/e2c/simulate" element={<SimDashboard />} />
-            <Route path="/e2c/generate" element={<WorkloadGenerator />} /> 
-          </Routes>
+            <Routes>
+              <Route path="/e2c" element={<Home />} />
+              <Route path="/e2c/simulate" element={<SimDashboard />} />
+              <Route path="/e2c/dndtest" element={<DNDApp />} />
+               <Route path="/e2c/generate" element={<WorkloadGenerator />} /> 
+            </Routes>
         </main>
       </div>
     </Router>
@@ -44,10 +51,10 @@ const App = () => {
 
 const Home = () => (
   <div className="max-w-4xl mx-auto bg-white rounded-2xl shadow p-10">
-    <h2 className="text-4xl font-bold text-gray-800 mb-4">Welcome to E2C-Revamp</h2>
-    <p className="text-lg text-gray-700">
-      Try our Sim!
-    </p>
+    <h2 className="text-4xl font-bold text-gray-800 mb-4">
+      Welcome to E2C-Revamp
+    </h2>
+    <p className="text-lg text-gray-700">Try our Sim!</p>
   </div>
 );
 

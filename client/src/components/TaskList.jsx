@@ -9,7 +9,10 @@ export default function TaskList({ machine, onClicked, setSelectedTask, isBatchQ
     arrival_time: "",
     deadline: "",
   };
-
+  function handleChildClick(event) {
+    event.stopPropagation();
+    onClicked();
+  }
   return (
     <div className="flex gap-2">
       {taskSlots.map((_, i) => {
@@ -21,11 +24,15 @@ export default function TaskList({ machine, onClicked, setSelectedTask, isBatchQ
               if (registerSlotRef) registerSlotRef(i, el);
             }}
             className="relative min-w-[40px] h-10 px-2 bg-gray-300 rounded border border-gray-700 items-center justify-center text-s"
-            onClick={onClicked}
-            title={task.assigned_machine?.type?.name || "No Machine Assigned"} 
+            onClick={handleChildClick}
+            title={task.assigned_machine?.type?.name || "No Machine Assigned"}
           >
             {machine.queue.length > 0 ? (
-              <Task task={task} setSelectedTask={setSelectedTask} isBatchQueue={isBatchQueue} />
+              <Task
+                task={task}
+                setSelectedTask={setSelectedTask}
+                isBatchQueue={isBatchQueue}
+              />
             ) : (
               ""
             )}
