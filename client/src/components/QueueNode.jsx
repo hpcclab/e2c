@@ -1,24 +1,23 @@
 import React, { memo } from "react";
 import { Handle, Position } from "@xyflow/react";
 import { useGlobalState } from "../context/GlobalStates";
-
-import IoT from "./IoT";
+import TaskList from "./TaskList";
 
 export default memo(({ data, isConnectable }) => {
   const {
-    setSelectedIOT,
     setSidebarMode,
     setShowSidebar,
     setSubmissionStatus,
+    batchQ,
+    isBatchQueue,
+    setSelectedTask,
+    registerBatchSlotRef,
   } = useGlobalState();
   const openSidebar = (mode) => {
     setSidebarMode(mode);
     setShowSidebar(true);
-    setSubmissionStatus("");
+    setSubmissionStatus(""); // Reset submission status when opening the sidebar
   };
-
-  const iot = data.iot;
-
   return (
     <>
       <Handle
@@ -28,11 +27,12 @@ export default memo(({ data, isConnectable }) => {
         isConnectable={isConnectable}
       />
       <div>
-        <IoT
-          key={iot.id}
-          iot={iot}
-          setSelectedIOT={setSelectedIOT}
-          onClicked={() => openSidebar("IOT")}
+        <TaskList
+          machine={batchQ}
+          isBatchQueue={true}
+          setSelectedTask={setSelectedTask}
+          onClicked={() => openSidebar("task")}
+          registerSlotRef={registerBatchSlotRef}
         />
       </div>
       <Handle
