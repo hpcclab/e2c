@@ -2,6 +2,8 @@ import React from "react";
 import { BrowserRouter as Router, Routes, Route, Link } from "react-router-dom";
 import SimDashboard from "./SimDashboard";
 import DNDApp from "./DNDAppTEST";
+import { DragAndDropProvider } from "./context/DragAndDropContext.jsx";
+import "./assets/index.css";
 
 const App = () => {
   return (
@@ -31,11 +33,13 @@ const App = () => {
         </header>
 
         <main className="p-6">
-          <Routes>
-            <Route path="/e2c" element={<Home />} />
-            <Route path="/e2c/simulate" element={<SimDashboard />} />
-            <Route path="/e2c/dndtest" element={<DNDApp />} />
-          </Routes>
+          <DragAndDropProvider>
+            <Routes>
+              <Route path="/e2c" element={<Home />} />
+              <Route path="/e2c/simulate" element={<SimDashboard />} />
+              <Route path="/e2c/dndtest" element={<DNDApp />} />
+            </Routes>
+          </DragAndDropProvider>
         </main>
       </div>
     </Router>

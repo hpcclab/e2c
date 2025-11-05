@@ -1,6 +1,11 @@
 import Task from "./Task";
 
-export default function TaskList({ machine, onClicked, setSelectedTask, isBatchQueue = false }) {
+export default function TaskList({
+  machine,
+  onClicked,
+  setSelectedTask,
+  isBatchQueue = false,
+}) {
   const taskSlots = Array.from({ length: 6 });
   const emptyTask = {
     id: -1,
@@ -9,7 +14,10 @@ export default function TaskList({ machine, onClicked, setSelectedTask, isBatchQ
     arrival_time: "",
     deadline: "",
   };
-
+  function handleChildClick(event) {
+    event.stopPropagation();
+    onClicked();
+  }
   return (
     <div className="flex gap-2">
       {taskSlots.map((_, i) => {
@@ -18,11 +26,15 @@ export default function TaskList({ machine, onClicked, setSelectedTask, isBatchQ
           <div
             key={i}
             className="relative min-w-[40px] h-10 px-2 bg-gray-300 rounded border border-gray-700 items-center justify-center text-s"
-            onClick={onClicked}
+            onClick={handleChildClick}
             title={task.assigned_machine?.type?.name || "No Machine Assigned"} // Tooltip for machine type
           >
             {machine.queue.length > 0 ? (
-              <Task task={task} setSelectedTask={setSelectedTask} isBatchQueue={isBatchQueue} />
+              <Task
+                task={task}
+                setSelectedTask={setSelectedTask}
+                isBatchQueue={isBatchQueue}
+              />
             ) : (
               ""
             )}

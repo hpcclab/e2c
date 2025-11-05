@@ -1,46 +1,142 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useCallback, useRef } from "react";
 import axios from "axios";
 import { motion, AnimatePresence } from "framer-motion";
-import { TrashIcon } from '@heroicons/react/24/outline';
+import { TrashIcon } from "@heroicons/react/24/outline";
 import MachineList from "./components/MachineList";
 import TaskList from "./components/TaskList";
 import { WorkloadSidebar } from "./components/SidebarContent";
 
+// Drag and drop imports and requirements
+
+import {
+  Background,
+  Controls,
+  Panel,
+  ReactFlow,
+  ReactFlowProvider,
+  addEdge,
+  useEdgesState,
+  useNodesState,
+} from "@xyflow/react";
+
+import Sidebar from "./components/Sidebar";
+import ContextMenu from "./context/ContextMenu";
+import machineNode from "./components/machineNode";
+import iotNode from "./components/iotNode";
+import edgeSpace from "./components/edgeSpace";
+import cloudSpace from "./components/cloudSpace";
+import edgeLockedNode from "./components/edgeLockedNode";
+import "./assets/flow.css";
+import "./assets/index.css";
+import { useGlobalState } from "./context/GlobalStates";
+
+// import TemplatesContainer from "./components/TemplatesContainer";
+// import DropZone from "./components/DropZone";
+// import DragOverlayComponent from "./components/DragOverlay";
+// import SidebarTemplates from "./components/SidebarTemplates";
+
+const nodeTypes = {
+  machineNode: machineNode,
+  iotNode: iotNode,
+  edgeSpace: edgeSpace,
+  cloudSpace: cloudSpace,
+  edgeLockedNode: edgeLockedNode,
+};
+
+// End Drag and Drop Requirements and Imports
+
 const SimDashboard = () => {
+  // Global States
+  const {
+    selectedMachine,
+    setSelectedMachine,
+    selectedIOT,
+    setSelectedIOT,
+    simulationTime,
+    setSimulationTime,
+    selectedTask,
+    setSelectedTask,
+    machines,
+    setMachines,
+    iot,
+    setIot,
+    batchQ,
+    setBatchQ,
+    showSidebar,
+    setShowSidebar,
+    sidebarMode,
+    setSidebarMode,
+    edges,
+    setEdges,
+    onEdgesChange,
+    menu,
+    setMenu,
+    nodes,
+    setNodes,
+    onNodesChange,
+    submissionStatus,
+    setSubmissionStatus,
+    workloadSubmissionStatus,
+    setWorkloadSubmissionStatus,
+  } = useGlobalState();
+  // End Global States
+  // DND
+  const reactFlowWrapper = useRef(null);
+  const onConnect = useCallback(
+    (params) => setEdges((eds) => addEdge(params, eds)),
+    [setEdges]
+  );
+  const onNodeContextMenu = useCallback(
+    (event, node) => {
+      event.preventDefault();
+      const pane = reactFlowWrapper.current.getBoundingClientRect();
 
-  const [showSidebar, setShowSidebar] = useState(false);
-  const [sidebarMode, setSidebarMode] = useState(null);
-  const [selectedMachine, setSelectedMachine] = useState({"id": -1, "name": "empty", "queue":[]});
-  const [simulationTime, setSimulationTime] = useState(0); //TIME
-
-  const [selectedTask, setSelectedTask] = useState(
-    {"id": -1, "task_type": "empty", "data_size" : "", 
-    "arrival_time" : "",
-    "assigned_machine" : "",
-    "deadline" : "",
-    "start": "",
-    "end": "",
-    "status": "",});
-  const [machines, setMachines] = useState([{"id": -1, "name": "empty", "queue":[]}]);
-  const [batchQ, setBatchQ] = useState({"id": -2, "name": "Batch Queue", "queue":[]});
+      setMenu({
+        id: node.id,
+        top: event.clientY < pane.height - 200 ? event.clientY : null,
+        left: event.clientX < pane.width - 200 ? event.clientX : null,
+        right:
+          event.clientX >= pane.width - 200 ? pane.width - event.clientX : null,
+        bottom:
+          event.clientY >= pane.height - 200
+            ? pane.height - event.clientY
+            : null,
+      });
+    },
+    [setMenu]
+  );
+  // Close the context menu if it's open whenever the window is clicked.
+  const onPaneClick = useCallback(() => setMenu(null), [setMenu]);
+  // END DND
 
   const [scheduling, setScheduling] = useState("immediate");
   const [policy, setPolicy] = useState("FirstCome-FirstServe");
   const [queueSize, setQueueSize] = useState("unlimited");
 
-  const [performanceParams, setPerformanceParams] = useState({ id: "", power: "", queue: ""});
-  const [taskParams, setTaskParams] = useState( {
-    "id": "",
-    "task_type" : "",
-    "assigned_machine" : "",
-    "data_size" : "",
-    "arrival_time" : "",
-    "deadline" : "",
-    "start": "",
-    "end": "",
-    "status": "",
+  const [performanceParams, setPerformanceParams] = useState({
+    id: "",
+    power: "",
+    queue: "",
   });
-  const [metricParams] = useState({ mean: "", std: "", mean1: "", std1: "", mean2: "", std2: "" });
+  const [taskParams, setTaskParams] = useState({
+    id: "",
+    task_type: "",
+    assigned_machine: "",
+    data_size: "",
+    arrival_time: "",
+    deadline: "",
+    start: "",
+    end: "",
+    status: "",
+  });
+  const [metricParams] = useState({
+    mean: "",
+    std: "",
+    mean1: "",
+    std1: "",
+    mean2: "",
+    std2: "",
+  });
 
   const [machineTab, setMachineTab] = useState("details");
 
@@ -56,8 +152,6 @@ const SimDashboard = () => {
   const [configFileUploaded, setConfigFileUploaded] = useState(false);
 
   const [fcfsResults, setFcfsResults] = useState([]);
-  const [submissionStatus, setSubmissionStatus] = useState(""); // Track submission status
-  const [workloadSubmissionStatus, setWorkloadSubmissionStatus] = useState(""); // Track workload submission status
 
   const parseCSV = (csvContent) => {
     const rows = csvContent.split("\n").map((row) => row.split(","));
@@ -71,43 +165,37 @@ const SimDashboard = () => {
     return data;
   };
 
-  const openSidebar = (mode,) => {
+  const openSidebar = (mode) => {
     setSidebarMode(mode);
     setShowSidebar(true);
     setSubmissionStatus(""); // Reset submission status when opening the sidebar
   };
-  
-//  update machine params
+
+  //  update machine params
   useEffect(() => {
-    setPerformanceParams(prev => ({
-    ...prev,
-    "id" : selectedMachine.id,
-    "name" : selectedMachine.name,
-    "queue": selectedMachine.queue
-}))
-console.log("SMQ", selectedMachine.queue)
-  }, [selectedMachine])
+    setPerformanceParams((prev) => ({
+      ...prev,
+      id: selectedMachine.id,
+      name: selectedMachine.name,
+      queue: selectedMachine.queue,
+    }));
+  }, [selectedMachine]);
 
   //  update task params
   useEffect(() => {
-    setTaskParams(prev => ({
-    ...prev,
-    "id": selectedTask.id, 
-    "task_type" : selectedTask.task_type,
-    "assigned_machine" : selectedTask.assigned_machine,
-    "data_size" : selectedTask.data_size, 
-    "arrival_time" : selectedTask.arrival_time,
-    "deadline" : selectedTask.deadline,
-    "start": selectedTask.start,
-    "end": selectedTask.end,
-    "status": selectedTask.status,
-}))
-  }, [selectedTask])
-
- 
-
-
-
+    setTaskParams((prev) => ({
+      ...prev,
+      id: selectedTask.id,
+      task_type: selectedTask.task_type,
+      assigned_machine: selectedTask.assigned_machine,
+      data_size: selectedTask.data_size,
+      arrival_time: selectedTask.arrival_time,
+      deadline: selectedTask.deadline,
+      start: selectedTask.start,
+      end: selectedTask.end,
+      status: selectedTask.status,
+    }));
+  }, [selectedTask]);
 
   const handleSchedulingChange = (type) => {
     setScheduling(type);
@@ -139,9 +227,13 @@ console.log("SMQ", selectedMachine.queue)
     formData.append("file", file);
 
     try {
-      const res = await axios.post("http://localhost:5001/api/workload/upload", formData, {
-        headers: { "Content-Type": "multipart/form-data" },
-      });
+      const res = await axios.post(
+        "http://localhost:5001/api/workload/upload",
+        formData,
+        {
+          headers: { "Content-Type": "multipart/form-data" },
+        }
+      );
       console.log("Profiling upload success:", res.data);
     } catch (err) {
       console.error("Profiling upload error:", err);
@@ -162,9 +254,9 @@ console.log("SMQ", selectedMachine.queue)
     const reader = new FileReader();
     reader.onload = (event) => {
       const content = event.target.result;
-      setBatchQ({"id": -2, "name": "Batch Queue", "queue": parseCSV(content)});
-      
-      console.log("raw content:", batchQ)
+      setBatchQ({ id: -2, name: "Batch Queue", queue: parseCSV(content) });
+
+      console.log("raw content:", batchQ);
       setWorkloadTableData(parseCSV(content)); // Parse CSV into table data
     };
     reader.readAsText(file);
@@ -173,9 +265,13 @@ console.log("SMQ", selectedMachine.queue)
     formData.append("file", file);
 
     try {
-      const res = await axios.post("http://localhost:5001/api/workload/upload", formData, {
-        headers: { "Content-Type": "multipart/form-data" },
-      });
+      const res = await axios.post(
+        "http://localhost:5001/api/workload/upload",
+        formData,
+        {
+          headers: { "Content-Type": "multipart/form-data" },
+        }
+      );
       console.log("Workload upload success:", res.data);
     } catch (err) {
       console.error("Workload upload error:", err);
@@ -196,9 +292,13 @@ console.log("SMQ", selectedMachine.queue)
     formData.append("file", file);
 
     try {
-      const res = await axios.post("http://localhost:5001/api/workload/upload/config", formData, {
-        headers: { "Content-Type": "multipart/form-data" },
-      });
+      const res = await axios.post(
+        "http://localhost:5001/api/workload/upload/config",
+        formData,
+        {
+          headers: { "Content-Type": "multipart/form-data" },
+        }
+      );
       console.log("Config upload success:", res.data);
       setMachines([...res.data.machines]);
     } catch (err) {
@@ -208,8 +308,14 @@ console.log("SMQ", selectedMachine.queue)
   };
 
   const handleSubmitWorkloadAndProfiling = async () => {
-    if (!workloadFileUploaded || !profilingFileUploaded || !configFileUploaded) {
-      alert("Please upload the workload (.wkl), profiling table (.eet), and configuration (.json) files before submitting.");
+    if (
+      !workloadFileUploaded ||
+      !profilingFileUploaded ||
+      !configFileUploaded
+    ) {
+      alert(
+        "Please upload the workload (.wkl), profiling table (.eet), and configuration (.json) files before submitting."
+      );
       return;
     }
 
@@ -248,29 +354,38 @@ console.log("SMQ", selectedMachine.queue)
   const runFCFSSimulation = async () => {
     try {
       // Ensure required files are uploaded
-      if (!workloadFileUploaded || !profilingFileUploaded || !configFileUploaded) {
-        alert("Please upload the workload (.wkl), profiling table (.eet), and configuration (.json) files before running the simulation.");
+      if (
+        !workloadFileUploaded ||
+        !profilingFileUploaded ||
+        !configFileUploaded
+      ) {
+        alert(
+          "Please upload the workload (.wkl), profiling table (.eet), and configuration (.json) files before running the simulation."
+        );
         return;
       }
-  
+
       // Prepare data for the FCFS simulation
       const simulationData = {
-        schedulingPolicy: policy,          // Load balancing policy type
-        configFilename: configFileName,    // Configuration file name
+        schedulingPolicy: policy, // Load balancing policy type
+        configFilename: configFileName, // Configuration file name
         profilingData: profilingTableData, // Profiling data parsed from the .eet file
-        tasks: workloadTableData,          // Tasks parsed from the .wkl file
+        tasks: workloadTableData, // Tasks parsed from the .wkl file
       };
-  
+
       // Call the backend API to run the FCFS simulation
-      const response = await axios.post("http://localhost:5001/api/workload/simulate/fcfs", simulationData);
-  
+      const response = await axios.post(
+        "http://localhost:5001/api/workload/simulate/fcfs",
+        simulationData
+      );
+
       // Update the results state
       const { results, simulationTime } = response.data;
       setFcfsResults(results);
 
       // Animate the timer up to simulationTime
       let current = 0;
-      const step = 0.01; 
+      const step = 0.01;
       const intervalMs = 10;
 
       setSimulationTime(0);
@@ -286,7 +401,9 @@ console.log("SMQ", selectedMachine.queue)
 
       // Update machines with assigned tasks
       const updatedMachines = machines.map((machine) => {
-        const assignedTasks = results.filter((task) => task.machineId === machine.id);
+        const assignedTasks = results.filter(
+          (task) => task.machineId === machine.id
+        );
         return {
           ...machine,
           queue: assignedTasks.map((task) => ({
@@ -302,7 +419,7 @@ console.log("SMQ", selectedMachine.queue)
           })),
         };
       });
-  
+
       setMachines(updatedMachines);
 
       alert("Simulation completed successfully!");
@@ -312,6 +429,32 @@ console.log("SMQ", selectedMachine.queue)
       alert("Failed to run simulation.");
     }
   };
+  useEffect(() => {
+    setNodes((nds) => {
+      const nodeIndex = nds.findIndex((n) => n.type === "machineNode");
+
+      if (nodeIndex !== -1) {
+        // Replace data entirely so ReactFlow triggers update
+        const updatedNodes = [...nds];
+        updatedNodes[nodeIndex] = {
+          ...updatedNodes[nodeIndex],
+          data: { machine: [...machines] }, // make a new array reference
+        };
+        return updatedNodes;
+      } else {
+        // Add node if it doesn't exist
+        return [
+          ...nds,
+          {
+            id: "1",
+            type: "machineNode",
+            data: { machine: [...machines] },
+            position: { x: 250, y: 70 },
+          },
+        ];
+      }
+    });
+  }, [machines, setNodes]);
 
   const handleSubmitLoadBalancer = async () => {
     try {
@@ -324,62 +467,96 @@ console.log("SMQ", selectedMachine.queue)
     }
   };
 
-  /* Work on later
-  const handleSubmitProfilingWorktable = async () => {
-    try {
-      // Simulate submission logic
-      setProfilingSubmissionStatus("Submitting...");
-      await new Promise((resolve) => setTimeout(resolve, 1000)); // Simulate API call delay
-      setProfilingSubmissionStatus("Submission successful!");
-    } catch (error) {
-      setProfilingSubmissionStatus("Submission failed.", error);
-    }
-  };
-*/
-
   return (
     <div className="bg-[#d9d9d9] min-h-screen flex flex-col relative">
+      {/* DND Test */}
+      <ReactFlowProvider>
+        <div className=" p-8 bg-gray-100 size-dvw max-w-screen max-h-screen min-w-screen min-h-screen">
+          <div className="dndflow">
+            <div className="reactflow-wrapper " ref={reactFlowWrapper}>
+              <ReactFlow
+                nodes={nodes}
+                edges={edges}
+                nodeTypes={nodeTypes}
+                onNodesChange={onNodesChange}
+                onEdgesChange={onEdgesChange}
+                onConnect={onConnect}
+                onPaneClick={onPaneClick}
+                onNodeContextMenu={onNodeContextMenu}
+                fitView
+              >
+                <Controls />
+                <Background />
+                {menu && <ContextMenu onClick={onPaneClick} {...menu} />}
+                <Panel position="top-left">
+                  <div className="xy-theme__button-group">
+                    <button
+                      className={`xy-theme__button ${""}`}
+                      onClick={() => {}}
+                    >
+                      View Mode
+                    </button>
+                    <button
+                      className={`xy-theme__button ${""}`}
+                      onClick={() => {}}
+                    >
+                      Wire Mode
+                    </button>
+                  </div>
+                </Panel>
+              </ReactFlow>
+            </div>
+            <Sidebar setNodes={setNodes} />
+          </div>
+        </div>
+      </ReactFlowProvider>
       {/* Main Simulation Area */}
+
       <div className="flex-grow flex flex-col justify-center items-center">
-
-      {fcfsResults.length > 0 && (
-  <div className="px-10 py-4">
-    <h2 className="text-lg font-semibold mb-2">FCFS Results</h2>
-    <table className="table-auto border-collapse border border-gray-400 w-full text-sm bg-white">
-      <thead>
-        <tr className="bg-gray-200">
-          <th className="border px-2 py-1">Task ID</th>
-          <th className="border px-2 py-1">Task Type</th>
-          <th className="border px-2 py-1">Machine ID</th>
-          <th className="border px-2 py-1">Assigned Machine</th> {/* Add Machine Type */}
-          <th className="border px-2 py-1">Arrival Time</th>
-          <th className="border px-2 py-1">Start</th>
-          <th className="border px-2 py-1">End</th>
-          <th className="border px-2 py-1">Status</th>
-        </tr>
-      </thead>
-      <tbody>
-        {fcfsResults.map((task) => (
-          <tr key={task.taskId}>
-            <td className="border px-2 py-1">{task.taskId}</td>
-            <td className="border px-2 py-1">{task.task_type}</td>
-            <td className="border px-2 py-1">{task.machineId ?? "N/A"}</td>
-            <td className="border px-2 py-1">{task.assigned_machine ?? "N/A"}</td> {/* Display Machine Type */}
-            <td className="border px-2 py-1">{task.arrival_time}</td>
-            <td className="border px-2 py-1">{task.start}</td>
-            <td className="border px-2 py-1">{task.end}</td>
-            <td className="border px-2 py-1">{task.status}</td>
-          </tr>
-        ))}
-      </tbody>
-    </table>
-    <div className="text-center mb-4">
-    <h2 className="text-lg font-semibold">Simulation Time: {simulationTime} seconds </h2>
-    </div>
-  </div>
-
-  
-)}
+        {fcfsResults.length > 0 && (
+          <div className="px-10 py-4">
+            <h2 className="text-lg font-semibold mb-2">FCFS Results</h2>
+            <table className="table-auto border-collapse border border-gray-400 w-full text-sm bg-white">
+              <thead>
+                <tr className="bg-gray-200">
+                  <th className="border px-2 py-1">Task ID</th>
+                  <th className="border px-2 py-1">Task Type</th>
+                  <th className="border px-2 py-1">Machine ID</th>
+                  <th className="border px-2 py-1">Assigned Machine</th>{" "}
+                  {/* Add Machine Type */}
+                  <th className="border px-2 py-1">Arrival Time</th>
+                  <th className="border px-2 py-1">Start</th>
+                  <th className="border px-2 py-1">End</th>
+                  <th className="border px-2 py-1">Status</th>
+                </tr>
+              </thead>
+              <tbody>
+                {fcfsResults.map((task) => (
+                  <tr key={task.taskId}>
+                    <td className="border px-2 py-1">{task.taskId}</td>
+                    <td className="border px-2 py-1">{task.task_type}</td>
+                    <td className="border px-2 py-1">
+                      {task.machineId ?? "N/A"}
+                    </td>
+                    <td className="border px-2 py-1">
+                      {task.assigned_machine ?? "N/A"}
+                    </td>{" "}
+                    {/* Display Machine Type */}
+                    <td className="border px-2 py-1">{task.arrival_time}</td>
+                    <td className="border px-2 py-1">{task.start}</td>
+                    <td className="border px-2 py-1">{task.end}</td>
+                    <td className="border px-2 py-1">{task.status}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+            <div className="text-center mb-4">
+              <h2 className="text-lg font-semibold">
+                Simulation Time: {simulationTime} seconds{" "}
+              </h2>
+            </div>
+          </div>
+        )}
         <div className="flex justify-center items-center space-x-12">
           {/* Left Side */}
           <div className="flex flex-col items-center space-y-8 mt-8">
@@ -394,7 +571,12 @@ console.log("SMQ", selectedMachine.queue)
 
               {/* Task Slots */}
               <div className="flex space-x-2 px-3 py-2 border-4 border-black rounded-xl bg-white">
-              <TaskList machine={batchQ} isBatchQueue={true} setSelectedTask={setSelectedTask} onClicked={() => openSidebar("task")}/>
+                <TaskList
+                  machine={batchQ}
+                  isBatchQueue={true}
+                  setSelectedTask={setSelectedTask}
+                  onClicked={() => openSidebar("task")}
+                />
               </div>
 
               {/* Load Balancer Button */}
@@ -402,7 +584,9 @@ console.log("SMQ", selectedMachine.queue)
                 onClick={() => openSidebar("loadBalancer")}
                 className="bg-gray-800 text-white text-sm font-semibold w-20 h-20 flex items-center justify-center rounded-full cursor-pointer hover:scale-105 transition text-center px-2"
               >
-                Load<br />Balancer
+                Load
+                <br />
+                Balancer
               </div>
             </div>
 
@@ -412,14 +596,20 @@ console.log("SMQ", selectedMachine.queue)
               onClick={() => openSidebar("cancelledTasks")}
             >
               <TrashIcon className="w-10 h-10 text-gray-800" />
-              <span className="text-gray-800 text-sm font-semibold mt-1">Cancelled Tasks</span>
+              <span className="text-gray-800 text-sm font-semibold mt-1">
+                Cancelled Tasks
+              </span>
             </div>
           </div>
 
           {/* Right Side */}
           <div className="flex flex-col items-center space-y-8 mt-8">
-            <MachineList machs={machines} setSelectedMachine={setSelectedMachine} setSelectedTask={setSelectedTask} onClicked = {
-              () => openSidebar("machine")} onTaskClicked={() => openSidebar("task")}
+            <MachineList
+              machs={machines}
+              setSelectedMachine={setSelectedMachine}
+              setSelectedTask={setSelectedTask}
+              onClicked={() => openSidebar("machine")}
+              onTaskClicked={() => openSidebar("task")}
             />
 
             {/* Missed Tasks */}
@@ -428,7 +618,9 @@ console.log("SMQ", selectedMachine.queue)
               onClick={() => openSidebar("missedTasks")}
             >
               <TrashIcon className="w-10 h-10 text-gray-800" />
-              <span className="text-gray-800 text-sm font-semibold mt-1">Missed Tasks</span>
+              <span className="text-gray-800 text-sm font-semibold mt-1">
+                Missed Tasks
+              </span>
             </div>
           </div>
         </div>
@@ -437,15 +629,18 @@ console.log("SMQ", selectedMachine.queue)
       {/* Footer */}
       <div className="bg-[#eeeeee] border-t border-gray-400 p-4 flex flex-col items-center space-y-4">
         <div className="flex justify-center items-center space-x-10">
-         {/* Img go here */}
+          {/* Img go here */}
         </div>
 
         <div className="flex space-x-6">
           <button className="bg-gray-400 rounded-xl w-16 h-10">⟲</button>
           <button
-  onClick={runFCFSSimulation}
-  className="bg-green-600 hover:bg-green-700 text-white rounded-xl w-16 h-10"
-> ▶</button>
+            onClick={runFCFSSimulation}
+            className="bg-green-600 hover:bg-green-700 text-white rounded-xl w-16 h-10"
+          >
+            {" "}
+            ▶
+          </button>
           <button className="bg-gray-400 rounded-xl w-16 h-10">⏸</button>
         </div>
         <div className="w-full max-w-md flex justify-between items-center px-4">
@@ -476,7 +671,9 @@ console.log("SMQ", selectedMachine.queue)
                   ? "Missed Tasks"
                   : sidebarMode === "task"
                   ? `Task: ${String(selectedTask.id)}`
-                  : `Machine: ${selectedMachine.name?.toUpperCase()}`}
+                  : sidebarMode === "machine"
+                  ? `Machine: ${selectedMachine.name?.toUpperCase()}`
+                  : "Drag and Drop Templates"}
               </h2>
               <button
                 onClick={() => setShowSidebar(false)}
@@ -499,7 +696,9 @@ console.log("SMQ", selectedMachine.queue)
                 handleProfilingUpload={handleProfilingUpload}
                 handleWorkloadUpload={handleWorkloadUpload}
                 handleConfigUpload={handleConfigUpload}
-                handleSubmitWorkloadAndProfiling={handleSubmitWorkloadAndProfiling}
+                handleSubmitWorkloadAndProfiling={
+                  handleSubmitWorkloadAndProfiling
+                }
                 handleResetWorkload={handleResetWorkload}
                 workloadSubmissionStatus={workloadSubmissionStatus}
                 setProfilingFileName={setProfilingFileName}
@@ -518,7 +717,9 @@ console.log("SMQ", selectedMachine.queue)
               <form className="space-y-6">
                 {/* Load Balancer Sidebar Content */}
                 <div className="space-y-2">
-                  <label className="text-sm font-medium text-gray-700">Scheduling</label>
+                  <label className="text-sm font-medium text-gray-700">
+                    Scheduling
+                  </label>
                   <div className="space-y-1">
                     <label className="flex items-center space-x-2">
                       <input
@@ -577,7 +778,9 @@ console.log("SMQ", selectedMachine.queue)
                     onChange={(e) => setQueueSize(e.target.value)}
                     disabled={scheduling === "immediate"} // Disable editing for immediate scheduling
                     className={`w-full border px-3 py-2 text-sm rounded ${
-                      scheduling === "immediate" ? "bg-gray-100 opacity-60" : "bg-white"
+                      scheduling === "immediate"
+                        ? "bg-gray-100 opacity-60"
+                        : "bg-white"
                     }`}
                   />
                 </div>
@@ -591,7 +794,9 @@ console.log("SMQ", selectedMachine.queue)
                 </button>
 
                 {submissionStatus && (
-                  <p className="text-sm text-center text-green-600 mt-2">{submissionStatus}</p>
+                  <p className="text-sm text-center text-green-600 mt-2">
+                    {submissionStatus}
+                  </p>
                 )}
               </form>
             )}
@@ -603,7 +808,9 @@ console.log("SMQ", selectedMachine.queue)
                   <button
                     onClick={() => setMachineTab("details")}
                     className={`text-sm font-semibold ${
-                      machineTab === "details" ? "text-blue-600 border-b-2 border-blue-600" : "text-gray-500"
+                      machineTab === "details"
+                        ? "text-blue-600 border-b-2 border-blue-600"
+                        : "text-gray-500"
                     }`}
                   >
                     Details
@@ -611,7 +818,9 @@ console.log("SMQ", selectedMachine.queue)
                   <button
                     onClick={() => setMachineTab("performance")}
                     className={`text-sm font-semibold ${
-                      machineTab === "performance" ? "text-blue-600 border-b-2 border-blue-600" : "text-gray-500"
+                      machineTab === "performance"
+                        ? "text-blue-600 border-b-2 border-blue-600"
+                        : "text-gray-500"
                     }`}
                   >
                     Performance
@@ -623,29 +832,40 @@ console.log("SMQ", selectedMachine.queue)
                     {/* Machine Details Tab */}
                     <div className="space-y-2">
                       <div>
-                        <label className="block text-sm font-semibold text-gray-700 mb-1">ID</label>
+                        <label className="block text-sm font-semibold text-gray-700 mb-1">
+                          ID
+                        </label>
                         <div className="w-full border px-3 py-2 text-sm rounded bg-gray-100">
                           {performanceParams.id || "N/A"}
                         </div>
                       </div>
                       <div>
-                        <label className="block text-sm font-semibold text-gray-700 mb-1">Name</label>
+                        <label className="block text-sm font-semibold text-gray-700 mb-1">
+                          Name
+                        </label>
                         <div className="w-full border px-3 py-2 text-sm rounded bg-gray-100">
                           {performanceParams.name || "N/A"}
                         </div>
                       </div>
                       <div>
-                        <label className="block text-sm font-semibold text-gray-700 mb-1">Queue Size</label>
+                        <label className="block text-sm font-semibold text-gray-700 mb-1">
+                          Queue Size
+                        </label>
                         <div className="w-full border px-3 py-2 text-sm rounded bg-gray-100">
-                          {performanceParams.queue ? performanceParams.queue.length : 0}
+                          {performanceParams.queue
+                            ? performanceParams.queue.length
+                            : 0}
                         </div>
                       </div>
                     </div>
 
                     {/* Show admitted tasks */}
                     <div>
-                      <label className="block text-sm font-semibold text-gray-700 mb-1">Admitted Tasks</label>
-                      {performanceParams.queue && performanceParams.queue.length > 0 ? (
+                      <label className="block text-sm font-semibold text-gray-700 mb-1">
+                        Admitted Tasks
+                      </label>
+                      {performanceParams.queue &&
+                      performanceParams.queue.length > 0 ? (
                         <table className="min-w-full text-xs border border-gray-300 bg-white">
                           <thead>
                             <tr>
@@ -659,15 +879,23 @@ console.log("SMQ", selectedMachine.queue)
                             {performanceParams.queue.map((task, idx) => (
                               <tr key={idx}>
                                 <td className="px-2 py-1 border">{task.id}</td>
-                                <td className="px-2 py-1 border">{task.task_type}</td>
-                                <td className="px-2 py-1 border">{task.status}</td>
-                                <td className="px-2 py-1 border">{task.arrival_time}</td>
+                                <td className="px-2 py-1 border">
+                                  {task.task_type}
+                                </td>
+                                <td className="px-2 py-1 border">
+                                  {task.status}
+                                </td>
+                                <td className="px-2 py-1 border">
+                                  {task.arrival_time}
+                                </td>
                               </tr>
                             ))}
                           </tbody>
                         </table>
                       ) : (
-                        <div className="text-gray-500 text-sm">No tasks admitted</div>
+                        <div className="text-gray-500 text-sm">
+                          No tasks admitted
+                        </div>
                       )}
                     </div>
                   </div>
@@ -682,7 +910,9 @@ console.log("SMQ", selectedMachine.queue)
                           {metric}
                         </label>
                         <div className="w-full border px-3 py-2 text-sm rounded bg-gray-100">
-                          {metricParams[metric.toLowerCase().replace(" ", "")] || "N/A"}
+                          {metricParams[
+                            metric.toLowerCase().replace(" ", "")
+                          ] || "N/A"}
                         </div>
                       </div>
                     ))}
@@ -696,49 +926,88 @@ console.log("SMQ", selectedMachine.queue)
                 {/* Task Sidebar Content */}
                 <div className="flex space-x-4 border-b pb-2">
                   <table className="flex w-full text-left border-collapse">
-                  <thead >
-                    <tr className=" flex flex-col gap-3.5 ">
-                      <th className="px-4 py-2 text-sm font-semibold text-gray-700">Task ID</th>
-                      <th className="px-4 py-2 text-sm font-semibold text-gray-700">Type</th>
-                      <th className="px-4 py-2 text-sm font-semibold text-gray-700">Assigned Machine</th>
-                      <th className="px-4 py-2 text-sm font-semibold text-gray-700">Arrival Time</th>
-                      <th className="px-4 py-2 text-sm font-semibold text-gray-700">Start Time</th>
-                      <th className="px-4 py-2 text-sm font-semibold text-gray-700">Missed Time</th>
-                    </tr>
-                  </thead>
-                  <tbody className=" flex flex-col gap-3">
-                      {["ID", "task_type", "assigned_machine", "arrival_time", "start", "missed_time"].map((key) => (
-                        <td key={key} className=" w-full border px-4 py-2 text-sm rounded bg-gray-100">
-                            {taskParams[key.toLowerCase()] || "N/A"}
+                    <thead>
+                      <tr className=" flex flex-col gap-3.5 ">
+                        <th className="px-4 py-2 text-sm font-semibold text-gray-700">
+                          Task ID
+                        </th>
+                        <th className="px-4 py-2 text-sm font-semibold text-gray-700">
+                          Type
+                        </th>
+                        <th className="px-4 py-2 text-sm font-semibold text-gray-700">
+                          Assigned Machine
+                        </th>
+                        <th className="px-4 py-2 text-sm font-semibold text-gray-700">
+                          Arrival Time
+                        </th>
+                        <th className="px-4 py-2 text-sm font-semibold text-gray-700">
+                          Start Time
+                        </th>
+                        <th className="px-4 py-2 text-sm font-semibold text-gray-700">
+                          Missed Time
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody className=" flex flex-col gap-3">
+                      {[
+                        "ID",
+                        "task_type",
+                        "assigned_machine",
+                        "arrival_time",
+                        "start",
+                        "missed_time",
+                      ].map((key) => (
+                        <td
+                          key={key}
+                          className=" w-full border px-4 py-2 text-sm rounded bg-gray-100"
+                        >
+                          {taskParams[key.toLowerCase()] || "N/A"}
                         </td>
                       ))}
-                  </tbody>
-                </table>
-                 
+                    </tbody>
+                  </table>
                 </div>
               </div>
             )}
-            
+
             {sidebarMode === "cancelledTasks" && (
               <div className="space-y-6">
                 {/* Cancelled Tasks Sidebar Content */}
                 <table className="w-full text-left border-collapse">
                   <thead>
                     <tr className="border-b">
-                      <th className="px-4 py-2 text-sm font-semibold text-gray-700">Task ID</th>
-                      <th className="px-4 py-2 text-sm font-semibold text-gray-700">Type</th>
-                      <th className="px-4 py-2 text-sm font-semibold text-gray-700">Arrival Time</th>
-                      <th className="px-4 py-2 text-sm font-semibold text-gray-700">Cancellation Time</th>
+                      <th className="px-4 py-2 text-sm font-semibold text-gray-700">
+                        Task ID
+                      </th>
+                      <th className="px-4 py-2 text-sm font-semibold text-gray-700">
+                        Type
+                      </th>
+                      <th className="px-4 py-2 text-sm font-semibold text-gray-700">
+                        Arrival Time
+                      </th>
+                      <th className="px-4 py-2 text-sm font-semibold text-gray-700">
+                        Cancellation Time
+                      </th>
                     </tr>
                   </thead>
                   <tbody>
                     <tr>
-                      <td colSpan="4" className="px-4 py-2 text-sm text-gray-500 text-center">
+                      <td
+                        colSpan="4"
+                        className="px-4 py-2 text-sm text-gray-500 text-center"
+                      >
                         No data available yet. The simulation has not occurred.
                       </td>
                     </tr>
                   </tbody>
                 </table>
+              </div>
+            )}
+
+            {sidebarMode === "dndtemplates" && (
+              <div className="space-y-6">
+                {/* Drag and Drop Templates */}
+                {/* <SidebarTemplates /> */}
               </div>
             )}
 
@@ -748,17 +1017,32 @@ console.log("SMQ", selectedMachine.queue)
                 <table className="w-full text-left border-collapse">
                   <thead>
                     <tr className="border-b">
-                      <th className="px-4 py-2 text-sm font-semibold text-gray-700">Task ID</th>
-                      <th className="px-4 py-2 text-sm font-semibold text-gray-700">Type</th>
-                      <th className="px-4 py-2 text-sm font-semibold text-gray-700">Assigned Machine</th>
-                      <th className="px-4 py-2 text-sm font-semibold text-gray-700">Arrival Time</th>
-                      <th className="px-4 py-2 text-sm font-semibold text-gray-700">Start Time</th>
-                      <th className="px-4 py-2 text-sm font-semibold text-gray-700">Missed Time</th>
+                      <th className="px-4 py-2 text-sm font-semibold text-gray-700">
+                        Task ID
+                      </th>
+                      <th className="px-4 py-2 text-sm font-semibold text-gray-700">
+                        Type
+                      </th>
+                      <th className="px-4 py-2 text-sm font-semibold text-gray-700">
+                        Assigned Machine
+                      </th>
+                      <th className="px-4 py-2 text-sm font-semibold text-gray-700">
+                        Arrival Time
+                      </th>
+                      <th className="px-4 py-2 text-sm font-semibold text-gray-700">
+                        Start Time
+                      </th>
+                      <th className="px-4 py-2 text-sm font-semibold text-gray-700">
+                        Missed Time
+                      </th>
                     </tr>
                   </thead>
                   <tbody>
                     <tr>
-                      <td colSpan="6" className="px-4 py-2 text-sm text-gray-500 text-center">
+                      <td
+                        colSpan="6"
+                        className="px-4 py-2 text-sm text-gray-500 text-center"
+                      >
                         No data available yet. The simulation has not occurred.
                       </td>
                     </tr>
@@ -766,8 +1050,6 @@ console.log("SMQ", selectedMachine.queue)
                 </table>
               </div>
             )}
-
-            
           </motion.div>
         )}
       </AnimatePresence>
