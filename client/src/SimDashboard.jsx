@@ -1,10 +1,12 @@
 import React, { useEffect, useState, useCallback, useRef } from "react";
 import axios from "axios";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion, AnimatePresence, useForceUpdate } from "framer-motion";
 import { TrashIcon } from "@heroicons/react/24/outline";
 import MachineList from "./components/MachineList";
 import TaskList from "./components/TaskList";
 import { WorkloadSidebar } from "./components/SidebarContent";
+import AdmissionsOverlay from "./components/AdmissionsOverlay";
+import EditMachineProperties from './components/EditMachineProperties';
 
 // Drag and drop imports and requirements
 
@@ -113,45 +115,66 @@ const SimDashboard = () => {
   const [policy, setPolicy] = useState("FirstCome-FirstServe");
   const [queueSize, setQueueSize] = useState("unlimited");
 
-  const [performanceParams, setPerformanceParams] = useState({
-    id: "",
-    power: "",
-    queue: "",
+  const [runtimeModel, setRuntimeModel] = useState("Constant");
+  const [performanceParams, setPerformanceParams] = useState({ id: "", power: "", queue: ""});
+  const [taskParams, setTaskParams] = useState( {
+    "id": "",
+    "task_type" : "",
+    "assigned_machine" : "",
+    "data_size" : "",
+    "arrival_time" : "",
+    "deadline" : "",
+    "start": "",
+    "end": "",
+    "status": "",
   });
-  const [taskParams, setTaskParams] = useState({
-    id: "",
-    task_type: "",
-    assigned_machine: "",
-    data_size: "",
-    arrival_time: "",
-    deadline: "",
-    start: "",
-    end: "",
-    status: "",
-  });
-  const [metricParams] = useState({
-    mean: "",
-    std: "",
-    mean1: "",
-    std1: "",
-    mean2: "",
-    std2: "",
-  });
+  const [metricParams, setMetricParams] = useState({ mean: "", std: "", mean1: "", std1: "", mean2: "", std2: "" });
 
   const [machineTab, setMachineTab] = useState("details");
 
   const [profilingFileName, setProfilingFileName] = useState("");
   const [profilingFileUploaded, setProfilingFileUploaded] = useState(false);
+  const [profilingFileContents, setProfilingFileContents] = useState("");
   const [profilingTableData, setProfilingTableData] = useState([]);
+  const [profilingSubmissionStatus, setProfilingSubmissionStatus] = useState(""); // Track profiling submission status
 
   const [workloadFileName, setWorkloadFileName] = useState("");
   const [workloadFileUploaded, setWorkloadFileUploaded] = useState(false);
+  const [workloadFileContents, setWorkloadFileContents] = useState("");
   const [workloadTableData, setWorkloadTableData] = useState([]);
 
   const [configFileName, setConfigFileName] = useState("");
   const [configFileUploaded, setConfigFileUploaded] = useState(false);
 
-  const [fcfsResults, setFcfsResults] = useState([]);
+  const [dataResults, setDataResults] = useState([]);
+  const [submissionStatus, setSubmissionStatus] = useState(""); // Track submission status
+  const [workloadSubmissionStatus, setWorkloadSubmissionStatus] = useState(""); // Track workload submission status
+  const [animatedMachines, setAnimatedMachines] = useState(machines); // ANIMATION
+  const machinesRef = useRef([]);
+  const [flyers, setFlyers] = useState([]);
+
+  const batchSlotsRef = useRef([]);
+  const machineSlotsRef = useRef({});
+  const loadBalancerRef = useRef(null);
+
+  const [missedTasks, setMissedTasks] = useState([]);
+
+  const [animatedTaskIds, setAnimatedTaskIds] = useState([]);
+
+  const registerBatchSlotRef = (idx, el) => {
+    batchSlotsRef.current[idx] = el || null;
+  };
+
+  const registerMachineSlotRef = (machineId, idx, el) => {
+    if (!machineSlotsRef.current[machineId]) machineSlotsRef.current[machineId] = [];
+    machineSlotsRef.current[machineId][idx] = el || null;
+  };
+
+  const getCenter = (el) => {
+    if (!el) return null;
+    const r = el.getBoundingClientRect();
+    return { x: r.left + r.width / 2, y: r.top + r.height / 2 };
+  };
 
   const parseCSV = (csvContent) => {
     const rows = csvContent.split("\n").map((row) => row.split(","));
@@ -173,12 +196,17 @@ const SimDashboard = () => {
 
   //  update machine params
   useEffect(() => {
-    setPerformanceParams((prev) => ({
-      ...prev,
+    console.log("Updating performance params with selected machine:", selectedMachine);
+    setPerformanceParams({
       id: selectedMachine.id,
       name: selectedMachine.name,
       queue: selectedMachine.queue,
-    }));
+      power: selectedMachine.power,
+      idle_power: selectedMachine.idle_power,
+      replicas: selectedMachine.replicas,
+      price: selectedMachine.price,
+      cost: selectedMachine.cost
+    });
   }, [selectedMachine]);
 
   //  update task params
@@ -300,7 +328,24 @@ const SimDashboard = () => {
         }
       );
       console.log("Config upload success:", res.data);
-      setMachines([...res.data.machines]);
+      
+      const machinesWithIds = res.data.machines.map((machine, index) => ({
+        id: machine.id !== undefined ? machine.id : index,
+        name: machine.name || `Machine ${index + 1}`,
+        power: machine.power || 0,
+        idle_power: machine.idle_power || 0,
+        replicas: machine.replicas || 1,
+        price: machine.price || 0,
+        cost: machine.cost || 0,
+        queue: machine.queue || []
+      }));
+
+      console.log("Raw machine data from server:", res.data.machines);
+      console.log("Processed machines:", machinesWithIds);
+
+      setMachines(machinesWithIds);
+      setAnimatedMachines(machinesWithIds);
+      machinesRef.current = machinesWithIds;
     } catch (err) {
       console.error("Config upload error:", err);
       alert("Failed to upload configuration file.");
@@ -325,7 +370,7 @@ const SimDashboard = () => {
       await new Promise((resolve) => setTimeout(resolve, 1000)); // Simulate API call delay
       setWorkloadSubmissionStatus("Submission successful!");
     } catch (error) {
-      setWorkloadSubmissionStatus("Submission failed.", error);
+      setWorkloadSubmissionStatus("Submission failed.");
     }
   };
 
@@ -344,14 +389,83 @@ const SimDashboard = () => {
     setBatchQ({ id: -2, name: "Batch Queue", queue: [] });
     setMachines([{ id: -1, name: "empty", queue: [] }]);
 
-    // Clear FCFS results if needed
-    setFcfsResults([]);
+    // Clear results if needed
+    setDataResults([]);
 
     // Clear status message
     setWorkloadSubmissionStatus("");
+
+    setFlyers([]);
+  };
+// Add function to handle machine property updates
+  const handleMachinePropertySave = async (updatedMachine) => {
+    try {
+      console.log("Saving machine properties:", updatedMachine);
+      
+      // Update the machines ref
+      machinesRef.current = machinesRef.current.map(machine =>
+        machine.id === updatedMachine.id ? updatedMachine : machine
+      );
+      
+      // Generate updated config - make sure all machines are included
+      const allMachines = machinesRef.current.filter(m => m.id !== -1);
+      
+      const updatedConfig = {
+        parameters: [
+          {
+            machine_queue_size: 3000,
+            batch_queue_size: 1,
+            scheduling_method: "FCFS",
+            fairness_factor: 1.0,
+          },
+        ],
+        settings: [
+          {
+            path_to_output: "./output",
+            path_to_workload: "./workload",
+            verbosity: 3,
+            gui: 1,
+          },
+        ],
+        task_types: [],
+        battery: [{ capacity: 5000.0 }],
+        machines: allMachines.map(m => ({
+          name: m.name || "",
+          power: Number(m.power) || 0,
+          idle_power: Number(m.idle_power) || 0,
+          replicas: Number(m.replicas) || 1,
+          price: Number(m.price) || 0,
+          cost: Number(m.cost) || 0,
+        })),
+        cloud: [
+          {
+            bandwidth: 15000.0,
+            network_latency: 0.015,
+          },
+        ],
+      };
+
+      console.log("Sending config update:", updatedConfig);
+
+      // Send updated config to backend
+      const response = await axios.post("http://localhost:5001/api/config/update", updatedConfig);
+      console.log("Config update response:", response.data);
+      
+      console.log("Machine properties updated successfully");
+    } catch (error) {
+      console.error("Failed to update machine properties:", error);
+      console.error("Error details:", error.response?.data);
+      
+      // Show more specific error message
+      const errorMessage = error.response?.data?.error || error.message || "Unknown error occurred";
+      alert(`Failed to update machine properties: ${errorMessage}`);
+      
+      throw error;
+    }
   };
 
-  const runFCFSSimulation = async () => {
+
+  const runDataSimulation = async () => {
     try {
       // Ensure required files are uploaded
       if (
@@ -364,8 +478,8 @@ const SimDashboard = () => {
         );
         return;
       }
-
-      // Prepare data for the FCFS simulation
+  
+      // Prepare data for the simulation
       const simulationData = {
         schedulingPolicy: policy, // Load balancing policy type
         configFilename: configFileName, // Configuration file name
@@ -373,17 +487,78 @@ const SimDashboard = () => {
         tasks: workloadTableData, // Tasks parsed from the .wkl file
       };
 
-      // Call the backend API to run the FCFS simulation
-      const response = await axios.post(
-        "http://localhost:5001/api/workload/simulate/fcfs",
-        simulationData
-      );
+      const animateAdmissions = (admissionEvents, baseMachines) => {
+        setAnimatedMachines(baseMachines.map(m => ({ ...m, queue: [] }))); // Reset queues
 
-      // Update the results state
+        const play = (idx, currentQueues) => {
+          if (idx >= admissionEvents.length) return;
+
+          const event = admissionEvents[idx];
+          const targetMachineId = event.machineId;
+          const nextSlotIndex = (currentQueues[targetMachineId] || 0);
+
+          const fromEl = loadBalancerRef.current;
+          const toEl = (machineSlotsRef.current[targetMachineId] || [])[nextSlotIndex];
+
+          const from = getCenter(fromEl);
+          const to = getCenter(toEl);
+
+          if (!from || !to) {
+            setAnimatedMachines(prev =>
+              prev.map(machine =>
+                machine.id === targetMachineId
+                  ? { ...machine, queue: [...machine.queue, event] }
+                  : machine
+              )
+            );
+            const updated = { ...currentQueues, [targetMachineId]: nextSlotIndex + 1 };
+            setTimeout(() => play(idx + 1, updated), 50);
+            return;
+          }
+
+          const flyerKey = `${event.taskId}-${idx}-${Date.now()}`;
+          const flyer = {
+            key: flyerKey,
+            from,
+            to,
+            label: event.taskId,
+            onComplete: () => {
+              setFlyers((fs) => fs.filter(f => f.key !== flyerKey));
+              setAnimatedMachines(prev =>
+                prev.map(machine =>
+                  machine.id === targetMachineId
+                    ? { ...machine, queue: [...machine.queue, event] }
+                    : machine
+                )
+              );
+              const updated = { ...currentQueues, [targetMachineId]: nextSlotIndex + 1 };
+              setTimeout(() => play(idx + 1, updated), 50);
+            },
+          };
+
+          setFlyers((fs) => [...fs, flyer]);
+        };
+
+        setTimeout(() => {
+          const initialQueues = {};
+          baseMachines.forEach(m => { initialQueues[m.id] = 0; });
+          play(0, initialQueues);
+        }, 100);
+      };
+  
+      const response = await axios.post("http://localhost:5001/api/workload/simulate/data", simulationData);
+  
       const { results, simulationTime } = response.data;
-      setFcfsResults(results);
+      setDataResults(results);
 
-      // Animate the timer up to simulationTime
+      const admissionEvents = [...results]
+      .filter(task => task.start != null)
+      .sort((a, b) => a.start - b.start);
+      
+      const baseMachines = machinesRef.current.filter(m => m.id !== -1);
+
+      animateAdmissions(admissionEvents, baseMachines);
+
       let current = 0;
       const step = 0.01;
       const intervalMs = 10;
@@ -399,7 +574,6 @@ const SimDashboard = () => {
         }
       }, intervalMs);
 
-      // Update machines with assigned tasks
       const updatedMachines = machines.map((machine) => {
         const assignedTasks = results.filter(
           (task) => task.machineId === machine.id
@@ -420,8 +594,17 @@ const SimDashboard = () => {
         };
       });
 
-      setMachines(updatedMachines);
+      setDataResults(results);
 
+      // Identify missed tasks: status === "CANCELLED" or (end == null && start == null) or end > deadline
+      const missed = results.filter(
+        t =>
+          t.status === "CANCELLED" ||
+          t.start == null ||
+          (t.deadline && t.end > t.deadline)
+      );
+      setMissedTasks(missed);
+  
       alert("Simulation completed successfully!");
       console.log("Simulation results:", results);
     } catch (error) {
@@ -463,7 +646,18 @@ const SimDashboard = () => {
       await new Promise((resolve) => setTimeout(resolve, 1000)); // Simulate API call delay
       setSubmissionStatus("Submission successful!");
     } catch (error) {
-      setSubmissionStatus("Submission failed.", error);
+      setSubmissionStatus("Submission failed.");
+    }
+  };
+
+  const handleSubmitProfilingWorktable = async () => {
+    try {
+      // Simulate submission logic
+      setProfilingSubmissionStatus("Submitting...");
+      await new Promise((resolve) => setTimeout(resolve, 1000)); // Simulate API call delay
+      setProfilingSubmissionStatus("Submission successful!");
+    } catch (error) {
+      setProfilingSubmissionStatus("Submission failed.");
     }
   };
 
@@ -512,51 +706,44 @@ const SimDashboard = () => {
       </ReactFlowProvider>
       {/* Main Simulation Area */}
 
-      <div className="flex-grow flex flex-col justify-center items-center">
-        {fcfsResults.length > 0 && (
-          <div className="px-10 py-4">
-            <h2 className="text-lg font-semibold mb-2">FCFS Results</h2>
-            <table className="table-auto border-collapse border border-gray-400 w-full text-sm bg-white">
-              <thead>
-                <tr className="bg-gray-200">
-                  <th className="border px-2 py-1">Task ID</th>
-                  <th className="border px-2 py-1">Task Type</th>
-                  <th className="border px-2 py-1">Machine ID</th>
-                  <th className="border px-2 py-1">Assigned Machine</th>{" "}
-                  {/* Add Machine Type */}
-                  <th className="border px-2 py-1">Arrival Time</th>
-                  <th className="border px-2 py-1">Start</th>
-                  <th className="border px-2 py-1">End</th>
-                  <th className="border px-2 py-1">Status</th>
-                </tr>
-              </thead>
-              <tbody>
-                {fcfsResults.map((task) => (
-                  <tr key={task.taskId}>
-                    <td className="border px-2 py-1">{task.taskId}</td>
-                    <td className="border px-2 py-1">{task.task_type}</td>
-                    <td className="border px-2 py-1">
-                      {task.machineId ?? "N/A"}
-                    </td>
-                    <td className="border px-2 py-1">
-                      {task.assigned_machine ?? "N/A"}
-                    </td>{" "}
-                    {/* Display Machine Type */}
-                    <td className="border px-2 py-1">{task.arrival_time}</td>
-                    <td className="border px-2 py-1">{task.start}</td>
-                    <td className="border px-2 py-1">{task.end}</td>
-                    <td className="border px-2 py-1">{task.status}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-            <div className="text-center mb-4">
-              <h2 className="text-lg font-semibold">
-                Simulation Time: {simulationTime} seconds{" "}
-              </h2>
-            </div>
-          </div>
-        )}
+      {dataResults.length > 0 && (
+  <div className="px-10 py-4">
+    <h2 className="text-lg font-semibold mb-2">Results</h2>
+    <table className="table-auto border-collapse border border-gray-400 w-full text-sm bg-white">
+      <thead>
+        <tr className="bg-gray-200">
+          <th className="border px-2 py-1">Task ID</th>
+          <th className="border px-2 py-1">Task Type</th>
+          <th className="border px-2 py-1">Machine ID</th>
+          <th className="border px-2 py-1">Assigned Machine</th> 
+          <th className="border px-2 py-1">Arrival Time</th>
+          <th className="border px-2 py-1">Start</th>
+          <th className="border px-2 py-1">End</th>
+          <th className="border px-2 py-1">Status</th>
+        </tr>
+      </thead>
+      <tbody>
+        {dataResults.map((task) => (
+          <tr key={task.taskId}>
+            <td className="border px-2 py-1">{task.taskId}</td>
+            <td className="border px-2 py-1">{task.task_type}</td>
+            <td className="border px-2 py-1">{task.machineId ?? "N/A"}</td>
+            <td className="border px-2 py-1">{task.assigned_machine ?? "N/A"}</td> {/* Display Machine Type */}
+            <td className="border px-2 py-1">{task.arrival_time}</td>
+            <td className="border px-2 py-1">{task.start}</td>
+            <td className="border px-2 py-1">{task.end}</td>
+            <td className="border px-2 py-1">{task.status}</td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
+    <div className="text-center mb-4">
+    <h2 className="text-lg font-semibold">Simulation Time: {simulationTime} seconds </h2>
+    </div>
+  </div>
+
+  
+)}
         <div className="flex justify-center items-center space-x-12">
           {/* Left Side */}
           <div className="flex flex-col items-center space-y-8 mt-8">
@@ -571,18 +758,14 @@ const SimDashboard = () => {
 
               {/* Task Slots */}
               <div className="flex space-x-2 px-3 py-2 border-4 border-black rounded-xl bg-white">
-                <TaskList
-                  machine={batchQ}
-                  isBatchQueue={true}
-                  setSelectedTask={setSelectedTask}
-                  onClicked={() => openSidebar("task")}
-                />
+              <TaskList machine={batchQ} isBatchQueue={true} setSelectedTask={setSelectedTask} onClicked={() => openSidebar("task")} registerSlotRef={registerBatchSlotRef}/>
               </div>
 
               {/* Load Balancer Button */}
               <div
+                ref={loadBalancerRef}
                 onClick={() => openSidebar("loadBalancer")}
-                className="bg-gray-800 text-white text-sm font-semibold w-20 h-20 flex items-center justify-center rounded-full cursor-pointer hover:scale-105 transition text-center px-2"
+                className="bg-gray-800 text-white text-lg font-semibold w-30 h-30 flex items-center justify-center rounded-full cursor-pointer hover:scale-110 transition text-center px-2"
               >
                 Load
                 <br />
@@ -604,12 +787,8 @@ const SimDashboard = () => {
 
           {/* Right Side */}
           <div className="flex flex-col items-center space-y-8 mt-8">
-            <MachineList
-              machs={machines}
-              setSelectedMachine={setSelectedMachine}
-              setSelectedTask={setSelectedTask}
-              onClicked={() => openSidebar("machine")}
-              onTaskClicked={() => openSidebar("task")}
+            <MachineList machs={animatedMachines} setSelectedMachine={setSelectedMachine} setSelectedTask={setSelectedTask} onClicked = {
+              () => openSidebar("machine")} onTaskClicked={() => openSidebar("task")} registerMachineSlotRef={registerMachineSlotRef}
             />
 
             {/* Missed Tasks */}
@@ -635,12 +814,9 @@ const SimDashboard = () => {
         <div className="flex space-x-6">
           <button className="bg-gray-400 rounded-xl w-16 h-10">⟲</button>
           <button
-            onClick={runFCFSSimulation}
-            className="bg-green-600 hover:bg-green-700 text-white rounded-xl w-16 h-10"
-          >
-            {" "}
-            ▶
-          </button>
+  onClick={runDataSimulation}
+  className="bg-green-600 hover:bg-green-700 text-white rounded-xl w-16 h-10"
+> ▶</button>
           <button className="bg-gray-400 rounded-xl w-16 h-10">⏸</button>
         </div>
         <div className="w-full max-w-md flex justify-between items-center px-4">
@@ -813,17 +989,7 @@ const SimDashboard = () => {
                         : "text-gray-500"
                     }`}
                   >
-                    Details
-                  </button>
-                  <button
-                    onClick={() => setMachineTab("performance")}
-                    className={`text-sm font-semibold ${
-                      machineTab === "performance"
-                        ? "text-blue-600 border-b-2 border-blue-600"
-                        : "text-gray-500"
-                    }`}
-                  >
-                    Performance
+                    Properties
                   </button>
                 </div>
 
@@ -831,32 +997,14 @@ const SimDashboard = () => {
                   <div className="space-y-6">
                     {/* Machine Details Tab */}
                     <div className="space-y-2">
-                      <div>
-                        <label className="block text-sm font-semibold text-gray-700 mb-1">
-                          ID
-                        </label>
-                        <div className="w-full border px-3 py-2 text-sm rounded bg-gray-100">
-                          {performanceParams.id || "N/A"}
-                        </div>
-                      </div>
-                      <div>
-                        <label className="block text-sm font-semibold text-gray-700 mb-1">
-                          Name
-                        </label>
-                        <div className="w-full border px-3 py-2 text-sm rounded bg-gray-100">
-                          {performanceParams.name || "N/A"}
-                        </div>
-                      </div>
-                      <div>
-                        <label className="block text-sm font-semibold text-gray-700 mb-1">
-                          Queue Size
-                        </label>
-                        <div className="w-full border px-3 py-2 text-sm rounded bg-gray-100">
-                          {performanceParams.queue
-                            ? performanceParams.queue.length
-                            : 0}
-                        </div>
-                      </div>
+                    <EditMachineProperties
+                selectedMachine={selectedMachine}
+                setSelectedMachine={setSelectedMachine}
+                onSave={handleMachinePropertySave}
+                animatedMachines={animatedMachines}
+                setAnimatedMachines={setAnimatedMachines}
+              />
+    
                     </div>
 
                     {/* Show admitted tasks */}
@@ -898,24 +1046,6 @@ const SimDashboard = () => {
                         </div>
                       )}
                     </div>
-                  </div>
-                )}
-
-                {machineTab === "performance" && (
-                  <div className="space-y-4">
-                    {/* Machine Performance Tab */}
-                    {["Metric 1", "Metric 2", "Metric 3"].map((metric) => (
-                      <div key={metric}>
-                        <label className="block text-sm font-semibold text-gray-700 mb-1">
-                          {metric}
-                        </label>
-                        <div className="w-full border px-3 py-2 text-sm rounded bg-gray-100">
-                          {metricParams[
-                            metric.toLowerCase().replace(" ", "")
-                          ] || "N/A"}
-                        </div>
-                      </div>
-                    ))}
                   </div>
                 )}
               </div>
@@ -1038,14 +1168,25 @@ const SimDashboard = () => {
                     </tr>
                   </thead>
                   <tbody>
-                    <tr>
-                      <td
-                        colSpan="6"
-                        className="px-4 py-2 text-sm text-gray-500 text-center"
-                      >
-                        No data available yet. The simulation has not occurred.
-                      </td>
-                    </tr>
+                    {missedTasks.length === 0 ? (
+                      <tr>
+                        <td colSpan="7" className="px-4 py-2 text-sm text-gray-500 text-center">
+                          No missed tasks.
+                        </td>
+                      </tr>
+                    ) : (
+                      missedTasks.map((task) => (
+                        <tr key={task.taskId}>
+                          <td className="px-4 py-2 border">{task.taskId}</td>
+                          <td className="px-4 py-2 border">{task.task_type}</td>
+                          <td className="px-4 py-2 border">{task.assigned_machine ?? "N/A"}</td>
+                          <td className="px-4 py-2 border">{task.arrival_time}</td>
+                          <td className="px-4 py-2 border">{task.start ?? "N/A"}</td>
+                          <td className="px-4 py-2 border">{task.deadline ?? "N/A"}</td>
+                          <td className="px-4 py-2 border">{task.status}</td>
+                        </tr>
+                      ))
+                    )}
                   </tbody>
                 </table>
               </div>
@@ -1053,6 +1194,8 @@ const SimDashboard = () => {
           </motion.div>
         )}
       </AnimatePresence>
+
+      <AdmissionsOverlay flyers={flyers} />
     </div>
   );
 };

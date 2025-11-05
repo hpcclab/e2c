@@ -22,11 +22,16 @@ class Machine:
         """
 
         self.type = machine_type
-        self.speed = speed
         self.id = identifier
         self.queue = Queue(maxsize=queue_limit)  # Use Queue with a max size
         self.running_task = None
-        self.weight = weight
+
+        # Initialize additional properties
+        self.power = 0
+        self.idle_power = 0
+        self.replicas = 1
+        self.price = 0
+        self.cost = 0
 
     def is_working(self):
         return self.running_task is not None
@@ -53,12 +58,14 @@ class Machine:
     
     def infoAsDict(self):
         return {
-            "id": self.id,
             "name": self.type.name,
             "queue": list(self.queue.queue),  # Convert queue to a list for display
-            "speed": self.speed,
             "running_task": self.running_task,
-            "weight": self.weight
+            "power": self.power,
+            "idle_power": self.idle_power,
+            "replicas": self.replicas,
+            "price": self.price,
+            "cost": self.cost
         }
 
     def __repr__(self):

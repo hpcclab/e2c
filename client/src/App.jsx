@@ -2,8 +2,9 @@ import React from "react";
 import { BrowserRouter as Router, Routes, Route, Link } from "react-router-dom";
 import SimDashboard from "./SimDashboard";
 import DNDApp from "./DNDAppTEST";
-import { DragAndDropProvider } from "./context/DragAndDropContext.jsx";
 import "./assets/index.css";
+import WorkloadGenerator from "./WorkloadGenerator";
+
 
 const App = () => {
   return (
@@ -28,18 +29,20 @@ const App = () => {
                   dndTest
                 </Link>
               </li>
+              <li>
+                <Link to="/e2c/generate" className="hover:underline">Workload Generator</Link>
+              </li>
             </ul>
           </nav>
         </header>
 
         <main className="p-6">
-          <DragAndDropProvider>
             <Routes>
               <Route path="/e2c" element={<Home />} />
               <Route path="/e2c/simulate" element={<SimDashboard />} />
               <Route path="/e2c/dndtest" element={<DNDApp />} />
+               <Route path="/e2c/generate" element={<WorkloadGenerator />} /> 
             </Routes>
-          </DragAndDropProvider>
         </main>
       </div>
     </Router>

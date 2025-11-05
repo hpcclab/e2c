@@ -4,37 +4,36 @@ from server.simulation.RAND import RAND
 from server.simulation.LC import LC
 from server.simulation.URI import URI
 from server.simulation.WRR import WRR
+
 def simulate_load_balancing(policy, tasks):
-    if policy ==   'MinCompletion-MinCompletion':
-        print('MM')
-    elif policy ==   'MinCompletion-SoonestDeadline':
-        print('MSD')
+    schedule = None
+    if policy == 'MinCompletion-MinCompletion':
+        raise NotImplementedError("Policy 'MinCompletion-MinCompletion' not implemented")
+    elif policy == 'MinCompletion-SoonestDeadline':
+        raise NotImplementedError("Policy 'MinCompletion-SoonestDeadline' not implemented")
     elif policy == 'MinCompletion-MaxUrgency':
-        print('MMU')
+        raise NotImplementedError("Policy 'MinCompletion-MaxUrgency' not implemented")
     elif policy == 'FELARE':
-        print('FEE')
+        raise NotImplementedError("Policy 'FELARE' not implemented")
     elif policy == 'ELARE':
-        print('EE')
+        raise NotImplementedError("Policy 'ELARE' not implemented")
     elif policy == 'FirstCome-FirstServe':
         schedule = FCFS(tasks)
     elif policy == 'Weighted-Round-Robin':
-        print('WRR')
         schedule = WRR(tasks)
     elif policy == 'Least-Connection':
-        print('LC')
         schedule = LC(tasks)
     elif policy == 'Random':
-        print('RAND')
         schedule = RAND(tasks)
     elif policy == 'Uniform-Resource-Identifier':
-        print('URI')
         schedule = URI(tasks)
     elif policy == 'Min-Expected-Completion-Time':
-        print('MECT')
+        raise NotImplementedError("Policy 'Min-Expected-Completion-Time' not implemented")
     elif policy == 'Min-Expected-Execution-Time':
-        print('MEET')
+        raise NotImplementedError("Policy 'Min-Expected-Execution-Time' not implemented")
+    else:
+        raise ValueError(f"Unknown policy '{policy}'")
     return schedule
-
 
 def simulate_fcfs(tasks):
     """
