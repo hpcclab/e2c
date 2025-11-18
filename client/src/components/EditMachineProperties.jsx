@@ -110,7 +110,7 @@ const EditMachineProperties = ({
         </div>
 
         <div>
-          <label className="block text-sm font-semibold text-gray-700 mb-1">Price</label>
+          <label className="block text-sm font-semibold text-gray-700 mb-1">($) Price / hr</label>
           <input
             type="number"
             step="0.01"
@@ -121,14 +121,10 @@ const EditMachineProperties = ({
         </div>
 
         <div>
-          <label className="block text-sm font-semibold text-gray-700 mb-1">Cost</label>
-          <input
-            type="number"
-            step="0.01"
-            value={editedMachine.cost}
-            onChange={e => handleChange('cost', Number(e.target.value))}
-            className="w-full border px-3 py-2 text-sm rounded"
-          />
+          <label className="block text-sm font-semibold text-gray-700 mb-1">($) Cost</label>
+          <div className="w-full border px-3 py-2 text-sm rounded bg-gray-100 text-gray-600">
+            {editedMachine.cost !== undefined ? editedMachine.cost : "-"}
+          </div>
         </div>
 
         <div className="flex gap-2 mt-4">
@@ -165,42 +161,79 @@ const EditMachineProperties = ({
         <div>
           <label className="block text-sm font-semibold text-gray-700 mb-1">Name</label>
           <div className="w-full border px-3 py-2 text-sm rounded bg-gray-100">
-            {selectedMachine.name || "N/A"}
+            {selectedMachine.name || "-"}
           </div>
         </div>
 
         <div>
           <label className="block text-sm font-semibold text-gray-700 mb-1">Power</label>
           <div className="w-full border px-3 py-2 text-sm rounded bg-gray-100">
-            {selectedMachine.power !== undefined ? selectedMachine.power : "N/A"}
+            {selectedMachine.power !== undefined ? selectedMachine.power : "-"}
           </div>
         </div>
 
         <div>
           <label className="block text-sm font-semibold text-gray-700 mb-1">Idle Power</label>
           <div className="w-full border px-3 py-2 text-sm rounded bg-gray-100">
-            {selectedMachine.idle_power !== undefined ? selectedMachine.idle_power : "N/A"}
+            {selectedMachine.idle_power !== undefined ? selectedMachine.idle_power : "-"}
           </div>
         </div>
 
         <div>
           <label className="block text-sm font-semibold text-gray-700 mb-1">Replicas</label>
           <div className="w-full border px-3 py-2 text-sm rounded bg-gray-100">
-            {selectedMachine.replicas !== undefined ? selectedMachine.replicas : "N/A"}
+            {selectedMachine.replicas !== undefined ? selectedMachine.replicas : "-"}
           </div>
         </div>
 
         <div>
-          <label className="block text-sm font-semibold text-gray-700 mb-1">Price</label>
+          <label className="block text-sm font-semibold text-gray-700 mb-1">($) Price / hr</label>
           <div className="w-full border px-3 py-2 text-sm rounded bg-gray-100">
-            {selectedMachine.price !== undefined ? selectedMachine.price : "N/A"}
+            {selectedMachine.price !== undefined ? `$${selectedMachine.price}` : "-"}
+          </div>
+        </div>
+
+        {/* Utilization and Cost Information */}
+        <div className="border-t pt-2 mt-4">
+          <label className="block text-sm font-semibold text-gray-700 mb-2">Simulation Results</label>
+          
+          <div className="grid grid-cols-2 gap-2 text-xs">
+            <div>
+              <span className="font-medium text-gray-600">Tasks Completed:</span>
+              <div className="bg-blue-50 px-2 py-1 rounded">
+                {selectedMachine.total_tasks || 0}
+              </div>
+            </div>
+            
+            <div>
+              <span className="font-medium text-gray-600">Utilization Hours:</span>
+              <div className="bg-green-50 px-2 py-1 rounded">
+                {selectedMachine.utilization_time ? selectedMachine.utilization_time.toFixed(3) : "0.000"}h
+              </div>
+            </div>
+            
+            <div>
+              <span className="font-medium text-gray-600">Total Cost:</span>
+              <div className="bg-yellow-50 px-2 py-1 rounded font-semibold">
+                ${selectedMachine.total_cost ? selectedMachine.total_cost.toFixed(2) : "0.00"}
+              </div>
+            </div>
+            
+            <div>
+              <span className="font-medium text-gray-600">Cost/Task:</span>
+              <div className="bg-purple-50 px-2 py-1 rounded">
+                ${selectedMachine.total_tasks && selectedMachine.total_cost 
+                  ? (selectedMachine.total_cost / selectedMachine.total_tasks).toFixed(2) 
+                  : "0.00"}
+              </div>
+            </div>
           </div>
         </div>
 
         <div>
-          <label className="block text-sm font-semibold text-gray-700 mb-1">Cost</label>
+          <label className="block text-sm font-semibold text-gray-700 mb-1">($) Cost</label>
           <div className="w-full border px-3 py-2 text-sm rounded bg-gray-100">
-            {selectedMachine.cost !== undefined ? selectedMachine.cost : "N/A"}
+            {selectedMachine.cost !== undefined ? selectedMachine.cost : "-"}
           </div>
         </div>
       </div>

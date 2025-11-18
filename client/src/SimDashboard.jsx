@@ -320,6 +320,7 @@ const SimDashboard = () => {
       alert("Failed to upload workload file.");
     }
   };
+
   const handleConfigUpload = async (e) => {
     const file = e.target.files[0];
     if (!file || !file.name.endsWith(".json")) {
@@ -343,19 +344,36 @@ const SimDashboard = () => {
       );
       console.log("Config upload success:", res.data);
 
-      const machinesWithIds = res.data.machines.map((machine, index) => ({
-        id: machine.id !== undefined ? machine.id : index,
-        name: machine.name || `Machine ${index + 1}`,
-        power: machine.power || 0,
-        idle_power: machine.idle_power || 0,
-        replicas: machine.replicas || 1,
-        price: machine.price || 0,
-        cost: machine.cost || 0,
-        queue: machine.queue || [],
-      }));
+      // Group machines by base name and track replicas
+      const machineMap = {};
+      res.data.machines.forEach((machine) => {
+        const baseName = machine.base_name || machine.name;
 
-      console.log("Raw machine data from server:", res.data.machines);
-      console.log("Processed machines:", machinesWithIds);
+        if (!machineMap[baseName]) {
+          machineMap[baseName] = {
+            id: machine.id,
+            name: baseName,
+            power: machine.power || 0,
+            idle_power: machine.idle_power || 0,
+            replicas: machine.replicas || 1,
+            price: machine.price || 0,
+            cost: machine.cost || 0,
+            queue: machine.queue || [],
+            replica_instances: [],
+          };
+        }
+
+        // Add this specific replica instance
+        machineMap[baseName].replica_instances.push({
+          id: machine.id,
+          replica_number: machine.replica_number,
+          queue: machine.queue || [],
+        });
+      });
+
+      const machinesWithIds = Object.values(machineMap);
+
+      console.log("Processed machines with replicas:", machinesWithIds);
 
       setMachines(machinesWithIds);
       setAnimatedMachines(machinesWithIds);
@@ -580,7 +598,7 @@ const SimDashboard = () => {
         simulationData
       );
 
-      const { results, simulationTime } = response.data;
+      const { results, simulationTime, machine_stats } = response.data;
       setDataResults(results);
 
       const admissionEvents = [...results]
@@ -606,27 +624,40 @@ const SimDashboard = () => {
         }
       }, intervalMs);
 
+      // Update machines with stats from simulation
       const updatedMachines = machines.map((machine) => {
-        const assignedTasks = results.filter(
-          (task) => task.machineId === machine.id
+        const stats = machine_stats?.find(
+          (s) => s.base_name === machine.name
         );
-        return {
-          ...machine,
-          queue: assignedTasks.map((task) => ({
-            id: task.taskId,
-            task_type: task.task_type,
-            assigned_machine: task.assigned_machine,
-            data_size: task.data_size,
-            arrival_time: task.arrival_time,
-            deadline: task.deadline,
-            start: task.start,
-            end: task.end,
-            status: task.status,
-          })),
-        };
+
+        if (stats) {
+          const totalUtilization = stats.replicas.reduce(
+            (sum, r) => sum + r.utilization_hours,
+            0
+          );
+          const totalCost = stats.replicas.reduce(
+            (sum, r) => sum + r.cost,
+            0
+          );
+          const totalTasks = stats.replicas.reduce(
+            (sum, r) => sum + r.tasks_completed,
+            0
+          );
+
+          return {
+            ...machine,
+            utilization_time: totalUtilization,
+            total_cost: totalCost,
+            total_tasks: totalTasks,
+            replica_stats: stats.replicas,
+          };
+        }
+
+        return machine;
       });
 
-      setDataResults(results);
+      setAnimatedMachines(updatedMachines);
+      machinesRef.current = updatedMachines;
 
       // Identify missed tasks: status === "CANCELLED" or (end == null && start == null) or end > deadline
       const missed = results.filter(
@@ -644,6 +675,7 @@ const SimDashboard = () => {
       alert("Failed to run simulation.");
     }
   };
+
   useEffect(() => {
     setNodes((nds) => {
       const nodeIndex = nds.findIndex((n) => n.type === "machineNode");
@@ -972,6 +1004,7 @@ const SimDashboard = () => {
                       <option>Least-Connection</option>
                     </select>
 
+                    {/*
                     <label className="flex items-center space-x-2 mt-2">
                       <input
                         type="radio"
@@ -981,6 +1014,7 @@ const SimDashboard = () => {
                       />
                       <span className="text-sm">Batch Scheduling</span>
                     </label>
+                      
 
                     <select
                       disabled={scheduling !== "batch"}
@@ -992,9 +1026,11 @@ const SimDashboard = () => {
                       <option>FELARE</option>
                       <option>ELARE</option>
                     </select>
+                    */}
                   </div>
                 </div>
-
+                
+                {/*
                 <div>
                   <label className="block text-sm font-semibold text-gray-700 mb-1">
                     Machine Queue Size
@@ -1011,6 +1047,7 @@ const SimDashboard = () => {
                     }`}
                   />
                 </div>
+                */}
 
                 <button
                   type="button"

@@ -27,8 +27,6 @@ const WorkloadGenerator = () => {
   const [workloadFiles, setWorkloadFiles] = useState([]); // Array of workload arrays
   const [selectedWorkloadIdx, setSelectedWorkloadIdx] = useState(0);
   
-  const numTasks = taskTypes.length;
-
   const renderTab = () => {
     switch (activeTab) {
       case "scenario":

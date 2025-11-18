@@ -25,11 +25,15 @@ class Machine:
         self.id = identifier
         self.queue = Queue(maxsize=queue_limit)  # Use Queue with a max size
         self.running_task = None
+        self.speed = speed
+        self.weight = weight
 
         # Initialize additional properties
         self.power = 0
         self.idle_power = 0
         self.replicas = 1
+        self.replica_number = 0  # Which replica instance this is (0 = base, 1+ = replicas)
+        self.base_name = ""  # Base machine type name
         self.price = 0
         self.cost = 0
 
@@ -57,8 +61,16 @@ class Machine:
         return None
     
     def infoAsDict(self):
+        # Include replica information in the dict
+        display_name = f"{self.base_name or self.type.name}"
+        if self.replicas > 1:
+            display_name = f"{display_name} #{self.replica_number}"
+        
         return {
-            "name": self.type.name,
+            "id": self.id,
+            "name": display_name,
+            "base_name": self.base_name or self.type.name,
+            "replica_number": self.replica_number,
             "queue": list(self.queue.queue),  # Convert queue to a list for display
             "running_task": self.running_task,
             "power": self.power,
@@ -72,4 +84,6 @@ class Machine:
         running_id = self.running_task[0].id if self.running_task else "None"
         queued_ids = [task.id for task in list(self.queue.queue)]
         label = self.id if self.id is not None else self.type.name
+        if self.replicas > 1:
+            label = f"{label} (Replica {self.replica_number})"
         return f"<Machine {label} speed={self.speed}, Running: {running_id}, Queue: {queued_ids}>"

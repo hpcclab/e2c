@@ -42,12 +42,22 @@ export default function MachineList({machs, onClicked, onTaskClicked, setSelecte
     }));
   };
   
+  // Calculate cost: price/hour × hours utilized (from simulation results)
+  const calculateCost = (machine) => {
+    const hours = machine.utilization_time || 0; // actual utilization hours from simulation
+    const pricePerHour = machine.price || 0;
+    return (pricePerHour * hours).toFixed(2);
+  };
+  
   return(
     <div className="max-h-96 overflow-y-auto pr-2 space-y-4">
       {machs.map((machine, machineIndex) => {
         const hasReplicas = machine.replicas > 1;
         const isExpanded = expandedMachines[machine.id];
         const replicas = getMachineReplicas(machine, machineIndex);
+        const totalCost = calculateCost(machine);
+        const utilizationHours = (machine.utilization_time || 0).toFixed(3);
+        const totalTasks = machine.total_tasks || 0;
         
         return (
           <div key={machine.id}>
@@ -79,72 +89,90 @@ export default function MachineList({machs, onClicked, onTaskClicked, setSelecte
                 />
               </div>
 
-              <div
-                onClick={()=>{
-                  setSelectedMachine({
-                    "id": machine.id,
-                    "originalId": machine.id,
-                    "name": machine.name, 
-                    "replicaNumber": 0,
-                    "queue": machine.queue,
-                    "power": machine.power,
-                    "idle_power": machine.idle_power,
-                    "replicas": machine.replicas,
-                    "price": machine.price,
-                    "cost": machine.cost
-                  })
-                  onClicked()
-                }}
-                className={`text-white ${getMachineColor(machineIndex)} font-semibold w-20 h-10 rounded-full flex items-center justify-center cursor-pointer hover:scale-105 transition text-xs`}
-              >
-                {machine.name}
-                {hasReplicas && (
-                  <span className="ml-1 text-xs">({machine.replicas})</span>
-                )}
+              <div className="flex flex-col items-end space-y-1">
+                <div
+                  onClick={()=>{
+                    setSelectedMachine({
+                      "id": machine.id,
+                      "originalId": machine.id,
+                      "name": machine.name, 
+                      "replicaNumber": 0,
+                      "queue": machine.queue,
+                      "power": machine.power,
+                      "idle_power": machine.idle_power,
+                      "replicas": machine.replicas,
+                      "price": machine.price,
+                      "cost": machine.cost,
+                      "utilization_time": machine.utilization_time || 0,
+                      "total_cost": machine.total_cost || 0,
+                      "total_tasks": machine.total_tasks || 0
+                    })
+                    onClicked()
+                  }}
+                  className={`text-white ${getMachineColor(machineIndex)} font-semibold w-20 h-10 rounded-full flex items-center justify-center cursor-pointer hover:scale-105 transition text-xs`}
+                  title={`${totalTasks} tasks, ${utilizationHours}h × $${machine.price}/h = $${totalCost}`}
+                >
+                  {machine.name}
+                  {hasReplicas && (
+                    <span className="ml-1 text-xs">({machine.replicas})</span>
+                  )}
+                </div>
               </div>
             </div>
 
             {/* Replica Rows (shown when expanded) */}
             {hasReplicas && isExpanded && (
               <div className="ml-8 mt-2 space-y-2">
-                {replicas.map((replica) => (
-                  <div
-                    key={replica.id}
-                    className="bg-gray-50 border-2 border-gray-300 p-3 rounded-lg shadow-sm flex items-center space-x-4"
-                  >
-                    <div className="flex space-x-2 flex-1">
-                      <TaskList
-                        machine={replica}
-                        onClicked={onTaskClicked}
-                        setSelectedTask={setSelectedTask}
-                        registerSlotRef={(slotIdx, el) => {
-                          if (registerMachineSlotRef) registerMachineSlotRef(replica.id, slotIdx, el);
-                        }}
-                      />
-                    </div>
-
+                {replicas.map((replica) => {
+                  const replicaCost = calculateCost(replica);
+                  const replicaHours = (replica.utilization_time || 0).toFixed(3);
+                  const replicaTasks = replica.total_tasks || 0;
+                  
+                  return (
                     <div
-                      onClick={()=>{
-                        setSelectedMachine({
-                          "id": replica.id,
-                          "originalId": replica.originalId,
-                          "name": replica.displayName, 
-                          "replicaNumber": replica.replicaNumber,
-                          "queue": replica.queue,
-                          "power": replica.power,
-                          "idle_power": replica.idle_power,
-                          "replicas": replica.replicas,
-                          "price": replica.price,
-                          "cost": replica.cost
-                        })
-                        onClicked()
-                      }}
-                      className={`text-white ${getMachineColor(replica.colorIndex)} font-semibold w-20 h-8 rounded-full flex items-center justify-center cursor-pointer hover:scale-105 transition text-xs`}
+                      key={replica.id}
+                      className="bg-gray-50 border-2 border-gray-300 p-3 rounded-lg shadow-sm flex items-center space-x-4"
                     >
-                      {replica.displayName}
+                      <div className="flex space-x-2 flex-1">
+                        <TaskList
+                          machine={replica}
+                          onClicked={onTaskClicked}
+                          setSelectedTask={setSelectedTask}
+                          registerSlotRef={(slotIdx, el) => {
+                            if (registerMachineSlotRef) registerMachineSlotRef(replica.id, slotIdx, el);
+                          }}
+                        />
+                      </div>
+
+                      <div className="flex flex-col items-end space-y-1">
+                        <div
+                          onClick={()=>{
+                            setSelectedMachine({
+                              "id": replica.id,
+                              "originalId": replica.originalId,
+                              "name": replica.displayName, 
+                              "replicaNumber": replica.replicaNumber,
+                              "queue": replica.queue,
+                              "power": replica.power,
+                              "idle_power": replica.idle_power,
+                              "replicas": replica.replicas,
+                              "price": replica.price,
+                              "cost": replica.cost,
+                              "utilization_time": replica.utilization_time || 0,
+                              "total_cost": replica.total_cost || 0,
+                              "total_tasks": replica.total_tasks || 0
+                            })
+                            onClicked()
+                          }}
+                          className={`text-white ${getMachineColor(replica.colorIndex)} font-semibold w-20 h-8 rounded-full flex items-center justify-center cursor-pointer hover:scale-105 transition text-xs`}
+                          title={`${replicaTasks} tasks, ${replicaHours}h × $${replica.price}/h = $${replicaCost}`}
+                        >
+                          {replica.displayName}
+                        </div>
+                      </div>
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             )}
           </div>

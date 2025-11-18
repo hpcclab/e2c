@@ -3,7 +3,7 @@ import { Handle, Position } from "@xyflow/react";
 import { Machine } from "./Machine";
 import { useGlobalState } from "../context/GlobalStates";
 
-export default memo(({ data, isConnectable }) => {
+const MachineNode = memo(({ data, isConnectable }) => {
   const {
     setSelectedTask,
     setSelectedMachine,
@@ -12,18 +12,13 @@ export default memo(({ data, isConnectable }) => {
     setShowSidebar,
     setSubmissionStatus,
   } = useGlobalState();
-  // const machines = Array.isArray(data.machine) ? data.machine : [];
-  const handleMachineClicked = () => {
-    console.log("Machine clicked!");
-  };
-  const handleTaskClicked = (task) => {
-    console.log("Task clicked:", task);
-  };
+
   const openSidebar = (mode) => {
     setSidebarMode(mode);
     setShowSidebar(true);
-    setSubmissionStatus(""); // Reset submission status when opening the sidebar
+    setSubmissionStatus("");
   };
+
   return (
     <>
       <Handle
@@ -33,15 +28,16 @@ export default memo(({ data, isConnectable }) => {
         isConnectable={isConnectable}
       />
 
-      <div className="space-y-4">
+      <div className="space-y-4 max-h-96 overflow-y-auto pr-2">
         <div className="machine-node">
           {machines.length === 0 ? (
-            <div>No machines available</div>
+            <div className="text-gray-500 text-sm">No machines available</div>
           ) : (
-            machines.map((machine) => (
+            machines.map((machine, index) => (
               <Machine
                 key={machine.id}
                 machine={machine}
+                machineIndex={index}
                 setSelectedTask={setSelectedTask}
                 setSelectedMachine={setSelectedMachine}
                 onTaskClicked={() => openSidebar("task")}
@@ -60,3 +56,5 @@ export default memo(({ data, isConnectable }) => {
     </>
   );
 });
+
+export default MachineNode;
