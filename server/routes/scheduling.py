@@ -57,23 +57,62 @@ def run_sim():
     results = []
     for idx, task in enumerate(tasks, start=1):
         tid = getattr(task, "id", None) or idx
+        
+        # Get machine information including replica details
+        machine_info = None
+        if task.assigned_machine:
+            machine_info = {
+                "id": task.assigned_machine.id,
+                "name": task.assigned_machine.base_name or task.assigned_machine.type.name,
+                "replica_number": task.assigned_machine.replica_number,
+                "display_name": task.assigned_machine.infoAsDict()["name"]
+            }
+        
         results.append({
-            "id": tid,                         # UI-friendly key
-            "taskId": tid,                     # Backward compatibility
-            "task_id": tid,                    # Snake_case alias
+            "id": tid,
+            "taskId": tid,
+            "task_id": tid,
             "task_type": task.task_type,
             "machineId": task.assigned_machine.id if task.assigned_machine else None,
-            "assigned_machine": task.assigned_machine.type.name if task.assigned_machine else None,
+            "assigned_machine": machine_info["display_name"] if machine_info else None,
+            "machine_base_name": machine_info["name"] if machine_info else None,
+            "machine_replica_number": machine_info["replica_number"] if machine_info else None,
             "arrival_time": task.arrival_time,
             "start": task.start_time,
             "end": task.end_time,
             "status": task.status.name,
+            "data_size": getattr(task, "data_size", 0),  # Use getattr with default value
         })
     
     # Calculate the actual simulation time as the max end time
     simulation_time = max((task.end_time for task in tasks if task.end_time is not None), default=0)
     
+    # Return machine utilization data grouped by base type
+    machine_stats = {}
+    for machine in config.machines:
+        base_name = machine.base_name or machine.type.name
+        if base_name not in machine_stats:
+            machine_stats[base_name] = {
+                "base_name": base_name,
+                "total_replicas": machine.replicas,
+                "replicas": []
+            }
+        
+        # Calculate utilization for this replica
+        assigned_tasks = [t for t in tasks if t.assigned_machine and t.assigned_machine.id == machine.id]
+        utilization_time = sum((t.end_time - t.start_time) for t in assigned_tasks if t.start_time and t.end_time)
+        
+        machine_stats[base_name]["replicas"].append({
+            "id": machine.id,
+            "replica_number": machine.replica_number,
+            "tasks_completed": len(assigned_tasks),
+            "utilization_seconds": utilization_time,
+            "utilization_hours": utilization_time / 3600,
+            "cost": (utilization_time / 3600) * machine.price
+        })
+    
     return jsonify({
         "results": results,
-        "simulationTime": simulation_time  # Use max end time
+        "simulationTime": simulation_time,
+        "machine_stats": list(machine_stats.values())
     }), 200

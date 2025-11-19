@@ -4,7 +4,7 @@ import { Handle, Position } from "@xyflow/react";
 import { Machine } from "./Machine";
 import { useGlobalState } from "../context/GlobalStates";
 
-export default memo(({ data, isConnectable }) => {
+const MachineNode = memo(({ data, isConnectable }) => {
   const {
     setSelectedTask,
     setSelectedMachine,
@@ -46,3 +46,5 @@ export default memo(({ data, isConnectable }) => {
     </>
   );
 });
+
+export default MachineNode;

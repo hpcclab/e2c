@@ -180,12 +180,7 @@ const MachineTypesTab = ({ machineTypes, setMachineTypes, setActiveTab, taskType
                         />
                       </td>
                       <td className="border px-2 py-1">
-                        <input
-                          type="number"
-                          value={editRow.cost || ""}      
-                          onChange={e => handleEditChange("cost", e.target.value)}
-                          className="border rounded px-2 py-1 w-full"
-                        />
+                          {type.cost || "-"} {/* NEW COST CANT BE EDITED */}
                       </td>
                       <td className="border px-2 py-1 flex gap-2">
                         <button onClick={saveEdit} title="Save">
@@ -253,18 +248,12 @@ const MachineTypesTab = ({ machineTypes, setMachineTypes, setActiveTab, taskType
           />
           <input
             type="number"
-            placeholder="Price" // NEW PRICE
+            placeholder="($) Price / hr" // NEW PRICE
             value={newPrice}
             onChange={e => setNewPrice(e.target.value)}
             className="border rounded px-3 py-2"
           />
-          <input
-            type="number"
-            placeholder="Cost" // NEW COST
-            value={newCost}
-            onChange={e => setNewCost(e.target.value)}
-            className="border rounded px-3 py-2"
-          />
+
           <button
             className="bg-blue-600 text-white px-4 py-2 rounded mt-2"
             onClick={addMachineType}
