@@ -68,6 +68,11 @@ export default function Sidebar() {
           id: Date.now(), // unique ID
           name: `Machine ${Date.now().toString().slice(-4)}`,
           queue: [],
+          power: 0,
+          idle_power: 0,
+          replicas: 1,
+          price: 0,
+          cost: 0,
           position,
         };
 
@@ -91,7 +96,7 @@ export default function Sidebar() {
         setNodes((nds) => nds.concat(newNode));
       }
     },
-    [setNodes, screenToFlowPosition, setMachines]
+    [setNodes, screenToFlowPosition, setMachines, setIot]
   );
 
   return (
