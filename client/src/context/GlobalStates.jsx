@@ -1,5 +1,5 @@
 // GlobalState.js
-import React, { createContext, useContext, useState } from "react";
+import React, { createContext, useContext, useState, useRef } from "react";
 import { useEdgesState, useNodesState } from "@xyflow/react";
 
 const GlobalContext = createContext();
@@ -13,9 +13,9 @@ export const GlobalProvider = ({ children }) => {
     queue: [],
   });
   const [selectedIOT, setSelectedIOT] = useState({
-    id: -1,
+    id: -3,
     name: "empty iot",
-    properties: {},
+    properties: [],
   });
   const [simulationTime, setSimulationTime] = useState(0); //TIME
 
@@ -33,7 +33,7 @@ export const GlobalProvider = ({ children }) => {
   const [machines, setMachines] = useState([
     { id: -1, name: "empty", queue: [] },
   ]);
-  const [iot, setIot] = useState([{ id: -1, name: "empty", properties: {} }]);
+  const [iot, setIot] = useState([{ id: -3, name: "empty", properties: {} }]);
   const [batchQ, setBatchQ] = useState({
     id: -2,
     name: "Batch Queue",
@@ -43,15 +43,49 @@ export const GlobalProvider = ({ children }) => {
   const [sidebarMode, setSidebarMode] = useState(null);
   const [edges, setEdges, onEdgesChange] = useEdgesState([]);
   const [menu, setMenu] = useState(null);
+  const onDragStop = (event, node) => {
+    if (node.type === "machineNode") {
+      setMachines((prev) =>
+        prev.map((m) =>
+          `machine-${m.id}` === node.id
+            ? { ...m, position: node.position } // update position in state
+            : m
+        )
+      );
+    } else if (node.type === "iotNode") {
+      setIot((prev) =>
+        prev.map((i) =>
+          `IOT-${i.id}` === node.id
+            ? { ...i, position: node.position } // update position in state
+            : i
+        )
+      );
+    }
+  };
+
   const [nodes, setNodes, onNodesChange] = useNodesState([
     {
-      id: "1",
-      type: "machineNode",
+      id: "lb",
+      type: "LBNode",
       data: { machine: machines },
-      position: { x: 250, y: 70 },
+      position: { x: 520, y: 60 },
     },
 
     {
+      id: "wl",
+      type: "workloadNode",
+      data: { machine: machines },
+      position: { x: 0, y: 60 },
+    },
+    {
+      id: "bq",
+      type: "QueueNode",
+      data: { machine: machines },
+      position: { x: 160, y: 90 },
+    },
+  ]);
+  /* future Node reference
+{
       id: "edgeType",
       type: "edgeSpace",
       position: { x: -100, y: 200 },
@@ -71,9 +105,13 @@ export const GlobalProvider = ({ children }) => {
       parentId: "edgeType",
       extent: "parent",
     },
-  ]);
+  */
   const [submissionStatus, setSubmissionStatus] = useState(""); // Track submission status
   const [workloadSubmissionStatus, setWorkloadSubmissionStatus] = useState(""); // Track workload submission status
+  const machinesRef = useRef([]);
+  const batchSlotsRef = useRef([]);
+  const machineSlotsRef = useRef({});
+  const loadBalancerRef = useRef(null);
   // End Define States
 
   const value = {
@@ -88,6 +126,7 @@ export const GlobalProvider = ({ children }) => {
     machines,
     setMachines,
     iot,
+    onDragStop,
     setIot,
     batchQ,
     setBatchQ,
@@ -107,6 +146,10 @@ export const GlobalProvider = ({ children }) => {
     setSubmissionStatus,
     workloadSubmissionStatus,
     setWorkloadSubmissionStatus,
+    machinesRef,
+    machineSlotsRef,
+    batchSlotsRef,
+    loadBalancerRef,
   };
 
   return (

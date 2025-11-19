@@ -2,23 +2,18 @@ import React, { memo } from "react";
 import { Handle, Position } from "@xyflow/react";
 import { useGlobalState } from "../context/GlobalStates";
 
-import IoT from "./IoT";
-
 export default memo(({ data, isConnectable }) => {
   const {
-    setSelectedIOT,
     setSidebarMode,
     setShowSidebar,
     setSubmissionStatus,
+    loadBalancerRef,
   } = useGlobalState();
   const openSidebar = (mode) => {
     setSidebarMode(mode);
     setShowSidebar(true);
-    setSubmissionStatus("");
+    setSubmissionStatus(""); // Reset submission status when opening the sidebar
   };
-
-  const iot = data.iot;
-
   return (
     <>
       <Handle
@@ -28,12 +23,16 @@ export default memo(({ data, isConnectable }) => {
         isConnectable={isConnectable}
       />
       <div>
-        <IoT
-          key={iot.id}
-          iot={iot}
-          setSelectedIOT={setSelectedIOT}
-          onClicked={() => openSidebar("IOT")}
-        />
+        {/* Load Balancer Button */}
+        <div
+          ref={loadBalancerRef}
+          onClick={() => openSidebar("loadBalancer")}
+          className="bg-gray-800 text-white text-lg font-semibold w-25 h-25 flex items-center justify-center rounded-full cursor-pointer hover:scale-110 transition text-center px-2"
+        >
+          Load
+          <br />
+          Balancer
+        </div>
       </div>
       <Handle
         type="source"

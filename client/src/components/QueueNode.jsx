@@ -1,41 +1,38 @@
-// machineNode.jsx
 import React, { memo } from "react";
 import { Handle, Position } from "@xyflow/react";
-import { Machine } from "./Machine";
 import { useGlobalState } from "../context/GlobalStates";
+import TaskList from "./TaskList";
 
-const MachineNode = memo(({ data, isConnectable }) => {
+export default memo(({ data, isConnectable }) => {
   const {
-    setSelectedTask,
-    setSelectedMachine,
     setSidebarMode,
     setShowSidebar,
     setSubmissionStatus,
+    batchQ,
+    isBatchQueue,
+    setSelectedTask,
+    registerBatchSlotRef,
   } = useGlobalState();
-
   const openSidebar = (mode) => {
     setSidebarMode(mode);
     setShowSidebar(true);
-    setSubmissionStatus("");
+    setSubmissionStatus(""); // Reset submission status when opening the sidebar
   };
-
-  const machine = data.machine;
-
   return (
     <>
       <Handle
         type="target"
         position={Position.Left}
+        onConnect={(params) => console.log("handle onConnect", params)}
         isConnectable={isConnectable}
       />
-      <div className="machine-node">
-        <Machine
-          key={machine.id}
-          machine={machine}
+      <div>
+        <TaskList
+          machine={batchQ}
+          isBatchQueue={true}
           setSelectedTask={setSelectedTask}
-          setSelectedMachine={setSelectedMachine}
-          onTaskClicked={() => openSidebar("task")}
-          onClicked={() => openSidebar("machine")}
+          onClicked={() => openSidebar("task")}
+          registerSlotRef={registerBatchSlotRef}
         />
       </div>
       <Handle
@@ -46,5 +43,3 @@ const MachineNode = memo(({ data, isConnectable }) => {
     </>
   );
 });
-
-export default MachineNode;

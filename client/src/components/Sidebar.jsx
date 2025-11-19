@@ -1,6 +1,7 @@
 import { useDraggable } from "@neodrag/react";
 import { useReactFlow } from "@xyflow/react";
 import { useCallback, useRef, useState } from "react";
+import { useGlobalState } from "../context/GlobalStates";
 
 // Simple ID generator for nodes
 let id = 0;
@@ -21,10 +22,16 @@ function DraggableNode({ className, children, nodeType, onDrop }) {
       });
     },
     onDragEnd: ({ event }) => {
+      const rect = draggableRef.current.getBoundingClientRect();
+      const centerX = rect.width / 2;
+      const centerY = rect.height / 2;
+
       setPosition({ x: 0, y: 0 });
+
+      // Shift drop coordinates by the center
       onDrop(nodeType, {
-        x: event.clientX,
-        y: event.clientY,
+        x: event.clientX - centerX,
+        y: event.clientY - centerY,
       });
     },
   });
@@ -37,6 +44,7 @@ function DraggableNode({ className, children, nodeType, onDrop }) {
 }
 
 export default function Sidebar() {
+  const { setMachines, setIot } = useGlobalState();
   const { setNodes, screenToFlowPosition } = useReactFlow();
 
   const handleNodeDrop = useCallback(
@@ -51,30 +59,39 @@ export default function Sidebar() {
         screenPosition.y >= flowRect.top &&
         screenPosition.y <= flowRect.bottom;
 
-      if (isInFlow) {
-        const position = screenToFlowPosition(screenPosition);
-        if (nodeType == "edgeLockedNode") {
-          const newNode = {
-            id: getId(),
-            type: nodeType,
-            position,
-            data: { machine: machine, iot: iot },
-            extent: "parent",
-            parentId: "edgeType",
-          };
-          setNodes((nds) => nds.concat(newNode));
-        } else {
-          const newNode = {
-            id: getId(),
-            type: nodeType,
-            position,
-            data: { machine: machine, iot: iot },
-          };
-          setNodes((nds) => nds.concat(newNode));
-        }
+      if (!isInFlow) return;
+
+      const position = screenToFlowPosition(screenPosition);
+
+      if (nodeType === "machineNode") {
+        const newMachine = {
+          id: Date.now(), // unique ID
+          name: `Machine ${Date.now().toString().slice(-4)}`,
+          queue: [],
+          position,
+        };
+
+        setMachines((prev) => [...prev, newMachine]);
+      } else if (nodeType === "iotNode") {
+        const newIot = {
+          id: Date.now(), // unique ID
+          name: `IOT ${Date.now().toString().slice(-4)}`,
+          properties: [],
+          position,
+        };
+
+        setIot((prev) => [...prev, newIot]);
+      } else {
+        const newNode = {
+          id: getId(),
+          type: nodeType,
+          position,
+          data: {},
+        };
+        setNodes((nds) => nds.concat(newNode));
       }
     },
-    [setNodes, screenToFlowPosition]
+    [setNodes, screenToFlowPosition, setMachines]
   );
 
   return (
@@ -116,6 +133,27 @@ export default function Sidebar() {
         onDrop={handleNodeDrop}
       >
         Edge Locked Node
+      </DraggableNode>
+      <DraggableNode
+        className="dndnode iot"
+        nodeType="workloadNode"
+        onDrop={handleNodeDrop}
+      >
+        workload Node
+      </DraggableNode>
+      <DraggableNode
+        className="dndnode iot"
+        nodeType="LBNode"
+        onDrop={handleNodeDrop}
+      >
+        Load Balancer Node
+      </DraggableNode>
+      <DraggableNode
+        className="dndnode iot"
+        nodeType="QueueNode"
+        onDrop={handleNodeDrop}
+      >
+        Queue Node
       </DraggableNode>
     </aside>
   );
