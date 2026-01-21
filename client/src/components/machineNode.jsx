@@ -1,4 +1,3 @@
-// machineNode.jsx
 import React, { memo } from "react";
 import { Handle, Position } from "@xyflow/react";
 import { Machine } from "./Machine";
@@ -19,25 +18,35 @@ const MachineNode = memo(({ data, isConnectable }) => {
     setSubmissionStatus("");
   };
 
+  // Get the single machine and its index from data
   const machine = data.machine;
+  const machineIndex = data.machineIndex || 0;
 
   return (
     <>
       <Handle
         type="target"
         position={Position.Left}
+        onConnect={(params) => console.log("handle onConnect", params)}
         isConnectable={isConnectable}
       />
+
       <div className="machine-node">
-        <Machine
-          key={machine.id}
-          machine={machine}
-          setSelectedTask={setSelectedTask}
-          setSelectedMachine={setSelectedMachine}
-          onTaskClicked={() => openSidebar("task")}
-          onClicked={() => openSidebar("machine")}
-        />
+        {machine ? (
+          <Machine
+            key={machine.id}
+            machine={machine}
+            machineIndex={machineIndex}
+            setSelectedTask={setSelectedTask}
+            setSelectedMachine={setSelectedMachine}
+            onTaskClicked={() => openSidebar("task")}
+            onClicked={() => openSidebar("machine")}
+          />
+        ) : (
+          <div className="text-gray-500 text-sm p-4">No machine data</div>
+        )}
       </div>
+
       <Handle
         type="source"
         position={Position.Right}

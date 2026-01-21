@@ -7,6 +7,7 @@ import TaskList from "./components/TaskList";
 import { WorkloadSidebar } from "./components/SidebarContent";
 import AdmissionsOverlay from "./components/AdmissionsOverlay";
 import EditMachineProperties from "./components/EditMachineProperties";
+import SimulationReport from "./components/SimulationReport";
 
 // Drag and drop imports and requirements
 
@@ -177,6 +178,9 @@ const SimDashboard = () => {
   const [missedTasks, setMissedTasks] = useState([]);
 
   const [animatedTaskIds, setAnimatedTaskIds] = useState([]);
+
+  // Add state for resizable report
+  const [showReport, setShowReport] = useState(false);
 
   const registerBatchSlotRef = (idx, el) => {
     batchSlotsRef.current[idx] = el || null;
@@ -607,6 +611,7 @@ const SimDashboard = () => {
 
       const { results, simulationTime, machine_stats } = response.data;
       setDataResults(results);
+      setShowReport(true); // Show the report when results are ready
 
       const admissionEvents = [...results]
         .filter((task) => task.start != null)
@@ -663,8 +668,35 @@ const SimDashboard = () => {
         return machine;
       });
 
+      // Update all machine states
+      setMachines(updatedMachines);
       setAnimatedMachines(updatedMachines);
       machinesRef.current = updatedMachines;
+
+      // If a machine is currently selected, update it with new data
+      if (selectedMachine && selectedMachine.id !== undefined) {
+        const updatedSelectedMachine = updatedMachines.find(
+          m => m.id === selectedMachine.id
+        );
+        if (updatedSelectedMachine) {
+          setSelectedMachine(updatedSelectedMachine);
+          
+          // Also update performance params
+          setPerformanceParams({
+            id: updatedSelectedMachine.id,
+            name: updatedSelectedMachine.name,
+            queue: updatedSelectedMachine.queue,
+            power: updatedSelectedMachine.power,
+            idle_power: updatedSelectedMachine.idle_power,
+            replicas: updatedSelectedMachine.replicas,
+            price: updatedSelectedMachine.price,
+            cost: updatedSelectedMachine.cost,
+            utilization_time: updatedSelectedMachine.utilization_time,
+            total_cost: updatedSelectedMachine.total_cost,
+            total_tasks: updatedSelectedMachine.total_tasks,
+          });
+        }
+      }
 
       // Identify missed tasks: status === "CANCELLED" or (end == null && start == null) or end > deadline
       const missed = results.filter(
@@ -675,26 +707,31 @@ const SimDashboard = () => {
       );
       setMissedTasks(missed);
 
-      alert("Simulation completed successfully!");
       console.log("Simulation results:", results);
     } catch (error) {
       console.error("Error running simulation:", error);
       alert("Failed to run simulation.");
     }
   };
-  // Update React Flow Machines
+
+  // Update React Flow Machines - create individual nodes for each machine
   useEffect(() => {
     setNodes((prevNodes) => {
       // Remove all existing machineNodes
       const otherNodes = prevNodes.filter((n) => n.type !== "machineNode");
 
-      // Map each machine to its own node
-      const machineNodes = machines.map((m, index) => ({
-        id: `machine-${m.id}`,
-        type: "machineNode",
-        data: { machine: m },
-        position: m.position ?? { x: 725, y: 70 + index * 150 }, // stacked vertically
-      }));
+      // Map each machine to its own separate node with machineIndex for color
+      const machineNodes = machines
+        .filter(m => m.id !== -1) // Exclude empty placeholder machines
+        .map((machine, index) => ({
+          id: `machine-${machine.id}`,
+          type: "machineNode",
+          data: { 
+            machine: machine,
+            machineIndex: index  // Pass the index for color consistency
+          },
+          position: machine.position ?? { x: 725, y: 70 + index * 200 }, // Stack vertically
+        }));
 
       return [...otherNodes, ...machineNodes];
     });
@@ -744,9 +781,9 @@ const SimDashboard = () => {
     <div className="bg-[#d9d9d9] max-w-screen min-w-screen min-h-screen flex flex-col relative">
       {/* DND */}
       <ReactFlowProvider>
-        <div className=" p-8 bg-gray-100 size-dvw max-w-screen max-h-screen min-w-screen min-h-screen">
+        <div className="p-8 bg-gray-100 size-dvw max-w-screen max-h-screen min-w-screen min-h-screen relative">
           <div className="dndflow">
-            <div className="reactflow-wrapper " ref={reactFlowWrapper}>
+            <div className="reactflow-wrapper" ref={reactFlowWrapper}>
               <ReactFlow
                 nodes={nodes}
                 edges={edges}
@@ -778,153 +815,87 @@ const SimDashboard = () => {
                     </button>
                   </div>
                 </Panel>
+
+                {/* View Report Button - Top Right */}
+                {dataResults.length > 0 && (
+                  <Panel position="top-right">
+                    <button
+                      onClick={() => setShowReport(!showReport)}
+                      className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg shadow-lg font-semibold transition"
+                    >
+                      {showReport ? "Hide Report" : "View Report"}
+                    </button>
+                  </Panel>
+                )}
+
+                {/* Cancelled Tasks Panel - Bottom Left */}
+                <Panel position="bottom-left">
+                  <div
+                    className="flex flex-col items-center cursor-pointer hover:scale-105 transition bg-white rounded-lg shadow-lg p-4"
+                    onClick={() => openSidebar("cancelledTasks")}
+                  >
+                    <TrashIcon className="w-10 h-10 text-red-600" />
+                    <span className="text-gray-800 text-sm font-semibold mt-2">
+                      Cancelled Tasks
+                    </span>
+                  </div>
+                </Panel>
+
+                {/* Missed Tasks Panel - Bottom Right */}
+                <Panel position="bottom-right">
+                  <div
+                    className="flex flex-col items-center cursor-pointer hover:scale-105 transition bg-white rounded-lg shadow-lg p-4"
+                    onClick={() => openSidebar("missedTasks")}
+                  >
+                    <TrashIcon className="w-10 h-10 text-orange-600" />
+                    <span className="text-gray-800 text-sm font-semibold mt-2">
+                      Missed Tasks
+                    </span>
+                  </div>
+                </Panel>
               </ReactFlow>
             </div>
             <Sidebar setNodes={setNodes} />
           </div>
+
+          {/* Simulation Report Component */}
+          {showReport && dataResults.length > 0 && (
+            <SimulationReport
+              dataResults={dataResults}
+              simulationTime={simulationTime}
+              missedTasks={missedTasks}
+              onClose={() => {
+                setDataResults([]);
+                setShowReport(false);
+              }}
+              onMinimize={() => setShowReport(false)}
+              onRunSimulation={runDataSimulation}
+            />
+          )}
+
+          {/* Play Button Overlay - Bottom Center (when no report) */}
+          {!showReport && (
+            <div className="absolute bottom-8 left-1/2 transform -translate-x-1/2 z-10">
+              <div className="flex space-x-4 bg-white rounded-full shadow-lg px-6 py-3">
+                <button className="bg-gray-400 hover:bg-gray-500 text-white rounded-full w-12 h-12 flex items-center justify-center transition">
+                  ⟲
+                </button>
+                <button
+                  onClick={runDataSimulation}
+                  className="bg-green-600 hover:bg-green-700 text-white rounded-full w-12 h-12 flex items-center justify-center transition shadow-md"
+                >
+                  ▶
+                </button>
+                <button className="bg-gray-400 hover:bg-gray-500 text-white rounded-full w-12 h-12 flex items-center justify-center transition">
+                  ⏸
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       </ReactFlowProvider>
-      {/* Main Simulation Area */}
-
-      {dataResults.length > 0 && (
-        <div className="px-10 py-4">
-          <h2 className="text-lg font-semibold mb-2">Results</h2>
-          <table className="table-auto border-collapse border border-gray-400 w-full text-sm bg-white">
-            <thead>
-              <tr className="bg-gray-200">
-                <th className="border px-2 py-1">Task ID</th>
-                <th className="border px-2 py-1">Task Type</th>
-                <th className="border px-2 py-1">Machine ID</th>
-                <th className="border px-2 py-1">Assigned Machine</th>
-                <th className="border px-2 py-1">Arrival Time</th>
-                <th className="border px-2 py-1">Start</th>
-                <th className="border px-2 py-1">End</th>
-                <th className="border px-2 py-1">Status</th>
-              </tr>
-            </thead>
-            <tbody>
-              {dataResults.map((task) => (
-                <tr key={task.taskId}>
-                  <td className="border px-2 py-1">{task.taskId}</td>
-                  <td className="border px-2 py-1">{task.task_type}</td>
-                  <td className="border px-2 py-1">
-                    {task.machineId ?? "N/A"}
-                  </td>
-                  <td className="border px-2 py-1">
-                    {task.assigned_machine ?? "N/A"}
-                  </td>{" "}
-                  {/* Display Machine Type */}
-                  <td className="border px-2 py-1">{task.arrival_time}</td>
-                  <td className="border px-2 py-1">{task.start}</td>
-                  <td className="border px-2 py-1">{task.end}</td>
-                  <td className="border px-2 py-1">{task.status}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-          <div className="text-center mb-4">
-            <h2 className="text-lg font-semibold">
-              Simulation Time: {simulationTime} seconds{" "}
-            </h2>
-          </div>
-        </div>
-      )}
-      <div className="flex justify-center items-center space-x-12">
-        {/* Left Side */}
-        <div className="flex flex-col items-center space-y-8 mt-8">
-          <div className="flex items-center space-x-12">
-            {/* Workload Button */}
-            <div
-              onClick={() => openSidebar("workload")}
-              className="bg-gray-800 text-white text-sm font-semibold w-20 h-20 flex items-center justify-center rounded-full cursor-pointer hover:scale-105 transition"
-            >
-              Workload
-            </div>
-
-            {/* Task Slots */}
-            <div className="flex space-x-2 px-3 py-2 border-4 border-black rounded-xl bg-white">
-              <TaskList
-                machine={batchQ}
-                isBatchQueue={true}
-                setSelectedTask={setSelectedTask}
-                onClicked={() => openSidebar("task")}
-                registerSlotRef={registerBatchSlotRef}
-              />
-            </div>
-
-            {/* Load Balancer Button */}
-            <div
-              ref={loadBalancerRef}
-              onClick={() => openSidebar("loadBalancer")}
-              className="bg-gray-800 text-white text-lg font-semibold w-30 h-30 flex items-center justify-center rounded-full cursor-pointer hover:scale-110 transition text-center px-2"
-            >
-              Load
-              <br />
-              Balancer
-            </div>
-          </div>
-
-          {/* Cancelled Tasks */}
-          <div
-            className="flex flex-col items-center cursor-pointer hover:scale-105 transition"
-            onClick={() => openSidebar("cancelledTasks")}
-          >
-            <TrashIcon className="w-10 h-10 text-gray-800" />
-            <span className="text-gray-800 text-sm font-semibold mt-1">
-              Cancelled Tasks
-            </span>
-          </div>
-        </div>
-
-        {/* Right Side */}
-        <div className="flex flex-col items-center space-y-8 mt-8">
-          <MachineList
-            machs={animatedMachines}
-            setSelectedMachine={setSelectedMachine}
-            setSelectedTask={setSelectedTask}
-            onClicked={() => openSidebar("machine")}
-            onTaskClicked={() => openSidebar("task")}
-            registerMachineSlotRef={registerMachineSlotRef}
-          />
-
-          {/* Missed Tasks */}
-          <div
-            className="flex flex-col items-center cursor-pointer hover:scale-105 transition"
-            onClick={() => openSidebar("missedTasks")}
-          >
-            <TrashIcon className="w-10 h-10 text-gray-800" />
-            <span className="text-gray-800 text-sm font-semibold mt-1">
-              Missed Tasks
-            </span>
-          </div>
-        </div>
-      </div>
-
-      {/* Footer */}
-      <div className="bg-[#eeeeee] border-t border-gray-400 p-4 flex flex-col items-center space-y-4">
-        <div className="flex justify-center items-center space-x-10">
-          {/* Img go here */}
-        </div>
-
-        <div className="flex space-x-6">
-          <button className="bg-gray-400 rounded-xl w-16 h-10">⟲</button>
-          <button
-            onClick={runDataSimulation}
-            className="bg-green-600 hover:bg-green-700 text-white rounded-xl w-16 h-10"
-          >
-            {" "}
-            ▶
-          </button>
-          <button className="bg-gray-400 rounded-xl w-16 h-10">⏸</button>
-        </div>
-        <div className="w-full max-w-md flex justify-between items-center px-4">
-          <span className="text-sm text-gray-700">progress</span>
-          <span className="text-sm text-gray-700">speed</span>
-        </div>
-      </div>
 
       {/* Sidebar */}
-
       <AnimatePresence>
         {showSidebar && (
           <motion.div
@@ -973,9 +944,7 @@ const SimDashboard = () => {
                 handleProfilingUpload={handleProfilingUpload}
                 handleWorkloadUpload={handleWorkloadUpload}
                 handleConfigUpload={handleConfigUpload}
-                handleSubmitWorkloadAndProfiling={
-                  handleSubmitWorkloadAndProfiling
-                }
+                handleSubmitWorkloadAndProfiling={handleSubmitWorkloadAndProfiling}
                 handleResetWorkload={handleResetWorkload}
                 workloadSubmissionStatus={workloadSubmissionStatus}
                 setProfilingFileName={setProfilingFileName}
@@ -1132,15 +1101,9 @@ const SimDashboard = () => {
                             {performanceParams.queue.map((task, idx) => (
                               <tr key={idx}>
                                 <td className="px-2 py-1 border">{task.id}</td>
-                                <td className="px-2 py-1 border">
-                                  {task.task_type}
-                                </td>
-                                <td className="px-2 py-1 border">
-                                  {task.status}
-                                </td>
-                                <td className="px-2 py-1 border">
-                                  {task.arrival_time}
-                                </td>
+                                <td className="px-2 py-1 border">{task.task_type}</td>
+                                <td className="px-2 py-1 border">{task.status}</td>
+                                <td className="px-2 py-1 border">{task.arrival_time}</td>
                               </tr>
                             ))}
                           </tbody>
