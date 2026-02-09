@@ -102,7 +102,7 @@ const TaskTypesTab = ({ taskTypes, setTaskTypes, setActiveTab }) => {
               </tr>
             ) : (
               taskTypes.map((type, idx) => (
-                <tr key={idx}>
+                <tr key={`task-type-${idx}-${type.name || idx}`}>
                   <td className="border px-2 py-1">{idx + 1}</td>
                   {editIdx === idx ? (
                     <>

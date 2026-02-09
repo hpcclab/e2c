@@ -136,7 +136,7 @@ const MachineTypesTab = ({ machineTypes, setMachineTypes, setActiveTab, taskType
               </tr>
             ) : (
               machineTypes.map((type, idx) => (
-                <tr key={idx}>
+                <tr key={`machine-type-${idx}-${type.name || idx}`}>
                   {editIdx === idx ? (
                     <>
                       <td className="border px-2 py-1">

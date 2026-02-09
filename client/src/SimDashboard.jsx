@@ -8,6 +8,7 @@ import { WorkloadSidebar } from "./components/SidebarContent";
 import AdmissionsOverlay from "./components/AdmissionsOverlay";
 import EditMachineProperties from "./components/EditMachineProperties";
 import SimulationReport from "./components/SimulationReport";
+import AnimatedTaskEdge from "./components/AnimatedTaskEdge";
 
 // Drag and drop imports and requirements
 
@@ -52,6 +53,10 @@ const nodeTypes = {
   QueueNode: QueueNode,
 };
 
+const edgeTypes = {
+  animatedTask: AnimatedTaskEdge,
+};
+
 // End Drag and Drop Requirements and Imports
 
 const SimDashboard = () => {
@@ -92,6 +97,8 @@ const SimDashboard = () => {
     machineSlotsRef,
     batchSlotsRef,
     loadBalancerRef,
+    edgeAnimations,
+    setEdgeAnimations,
   } = useGlobalState();
   // End Global States
   // DND
@@ -545,6 +552,15 @@ const SimDashboard = () => {
           const targetMachineId = event.machineId;
           const nextSlotIndex = currentQueues[targetMachineId] || 0;
 
+          // Trigger edge animation - use correct node IDs
+          const sourceNodeId = 'lb'; // Load Balancer node ID
+          const targetNodeId = `machine-${targetMachineId}`;
+          
+          console.log(`Animating task ${event.taskId} from ${sourceNodeId} to ${targetNodeId}`);
+          
+          // Trigger the edge animation
+          animateTaskOnEdge(sourceNodeId, targetNodeId, event.taskId);
+
           const fromEl = loadBalancerRef.current;
           const toEl = (machineSlotsRef.current[targetMachineId] || [])[
             nextSlotIndex
@@ -714,6 +730,31 @@ const SimDashboard = () => {
     }
   };
 
+  // Function to trigger edge animation when a task is sent
+  const animateTaskOnEdge = (sourceNodeId, targetNodeId, taskId) => {
+    const edgeId = `xy-edge__${sourceNodeId}-${targetNodeId}`;
+    
+    console.log(`Adding animation for edge ${edgeId}, task ${taskId}`);
+    
+    // Add task to animating list
+    setEdgeAnimations(prev => {
+      const updated = {
+        ...prev,
+        [edgeId]: [...(prev[edgeId] || []), { taskId, timestamp: Date.now() }]
+      };
+      console.log('Updated edge animations:', updated);
+      return updated;
+    });
+    
+    // Remove task after animation completes
+    setTimeout(() => {
+      setEdgeAnimations(prev => ({
+        ...prev,
+        [edgeId]: (prev[edgeId] || []).filter(t => t.taskId !== taskId)
+      }));
+    }, 1500); // Match animation duration
+  };
+
   // Update React Flow Machines - create individual nodes for each machine
   useEffect(() => {
     setNodes((prevNodes) => {
@@ -777,6 +818,19 @@ const SimDashboard = () => {
     }
   };
 
+  // Update edges with animation data - add safety checks
+  const animatedEdges = edges.map(edge => {
+    const edgeId = edge.id || `${edge.source}-${edge.target}`;
+    return {
+      ...edge,
+      type: 'animatedTask',
+      data: {
+        ...edge.data,
+        animatingTasks: edgeAnimations?.[edgeId] || []
+      }
+    };
+  });
+
   return (
     <div className="bg-[#d9d9d9] max-w-screen min-w-screen min-h-screen flex flex-col relative">
       {/* DND */}
@@ -786,8 +840,9 @@ const SimDashboard = () => {
             <div className="reactflow-wrapper" ref={reactFlowWrapper}>
               <ReactFlow
                 nodes={nodes}
-                edges={edges}
+                edges={animatedEdges}
                 nodeTypes={nodeTypes}
+                edgeTypes={edgeTypes}
                 onNodesChange={onNodesChange}
                 onNodeDragStop={onDragStop}
                 onEdgesChange={onEdgesChange}
@@ -864,6 +919,7 @@ const SimDashboard = () => {
               dataResults={dataResults}
               simulationTime={simulationTime}
               missedTasks={missedTasks}
+              machines={machines}
               onClose={() => {
                 setDataResults([]);
                 setShowReport(false);
@@ -1154,9 +1210,9 @@ const SimDashboard = () => {
                         "arrival_time",
                         "start",
                         "missed_time",
-                      ].map((key) => (
+                      ].map((key, index) => (
                         <td
-                          key={key}
+                          key={`task-param-${key}-${index}`}
                           className=" w-full border px-4 py-2 text-sm rounded bg-gray-100"
                         >
                           {taskParams[key.toLowerCase()] || "N/A"}
@@ -1317,22 +1373,14 @@ const SimDashboard = () => {
                         </td>
                       </tr>
                     ) : (
-                      missedTasks.map((task) => (
-                        <tr key={task.taskId}>
+                      missedTasks.map((task, index) => (
+                        <tr key={`missed-task-${task.taskId}-${index}`}>
                           <td className="px-4 py-2 border">{task.taskId}</td>
                           <td className="px-4 py-2 border">{task.task_type}</td>
-                          <td className="px-4 py-2 border">
-                            {task.assigned_machine ?? "N/A"}
-                          </td>
-                          <td className="px-4 py-2 border">
-                            {task.arrival_time}
-                          </td>
-                          <td className="px-4 py-2 border">
-                            {task.start ?? "N/A"}
-                          </td>
-                          <td className="px-4 py-2 border">
-                            {task.deadline ?? "N/A"}
-                          </td>
+                          <td className="px-4 py-2 border">{task.assigned_machine ?? "N/A"}</td>
+                          <td className="px-4 py-2 border">{task.arrival_time}</td>
+                          <td className="px-4 py-2 border">{task.start ?? "N/A"}</td>
+                          <td className="px-4 py-2 border">{task.deadline ?? "N/A"}</td>
                           <td className="px-4 py-2 border">{task.status}</td>
                         </tr>
                       ))

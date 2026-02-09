@@ -112,9 +112,9 @@ export const WorkloadSidebar = ({
               </thead>
               <tbody>
                 {profilingTableData.map((row, index) => (
-                  <tr key={index}>
+                  <tr key={`profiling-row-${index}`}>
                     {Object.values(row).map((value, idx) => (
-                      <td key={idx} className="border border-gray-300 px-4 py-2">
+                      <td key={`profiling-cell-${index}-${idx}`} className="border border-gray-300 px-4 py-2">
                         {value}
                       </td>
                     ))}
@@ -173,9 +173,9 @@ export const WorkloadSidebar = ({
               </thead>
               <tbody>
                 {workloadTableData.map((row, index) => (
-                  <tr key={index}>
+                  <tr key={`workload-row-${index}`}>
                     {Object.values(row).map((value, idx) => (
-                      <td key={idx} className="border border-gray-300 px-4 py-2">
+                      <td key={`workload-cell-${index}-${idx}`} className="border border-gray-300 px-4 py-2">
                         {value}
                       </td>
                     ))}
