@@ -8,8 +8,6 @@ import { WorkloadSidebar } from "./components/SidebarContent";
 import AdmissionsOverlay from "./components/AdmissionsOverlay";
 import EditMachineProperties from "./components/EditMachineProperties";
 import SimulationReport from "./components/SimulationReport";
-import AnimatedTaskEdge from "./components/AnimatedTaskEdge";
-
 // Drag and drop imports and requirements
 
 import {
@@ -53,10 +51,6 @@ const nodeTypes = {
   QueueNode: QueueNode,
 };
 
-const edgeTypes = {
-  animatedTask: AnimatedTaskEdge,
-};
-
 // End Drag and Drop Requirements and Imports
 
 const SimDashboard = () => {
@@ -97,8 +91,6 @@ const SimDashboard = () => {
     machineSlotsRef,
     batchSlotsRef,
     loadBalancerRef,
-    edgeAnimations,
-    setEdgeAnimations,
   } = useGlobalState();
   // End Global States
   // DND
@@ -552,15 +544,6 @@ const SimDashboard = () => {
           const targetMachineId = event.machineId;
           const nextSlotIndex = currentQueues[targetMachineId] || 0;
 
-          // Trigger edge animation - use correct node IDs
-          const sourceNodeId = 'lb'; // Load Balancer node ID
-          const targetNodeId = `machine-${targetMachineId}`;
-          
-          console.log(`Animating task ${event.taskId} from ${sourceNodeId} to ${targetNodeId}`);
-          
-          // Trigger the edge animation
-          animateTaskOnEdge(sourceNodeId, targetNodeId, event.taskId);
-
           const fromEl = loadBalancerRef.current;
           const toEl = (machineSlotsRef.current[targetMachineId] || [])[
             nextSlotIndex
@@ -730,31 +713,6 @@ const SimDashboard = () => {
     }
   };
 
-  // Function to trigger edge animation when a task is sent
-  const animateTaskOnEdge = (sourceNodeId, targetNodeId, taskId) => {
-    const edgeId = `xy-edge__${sourceNodeId}-${targetNodeId}`;
-    
-    console.log(`Adding animation for edge ${edgeId}, task ${taskId}`);
-    
-    // Add task to animating list
-    setEdgeAnimations(prev => {
-      const updated = {
-        ...prev,
-        [edgeId]: [...(prev[edgeId] || []), { taskId, timestamp: Date.now() }]
-      };
-      console.log('Updated edge animations:', updated);
-      return updated;
-    });
-    
-    // Remove task after animation completes
-    setTimeout(() => {
-      setEdgeAnimations(prev => ({
-        ...prev,
-        [edgeId]: (prev[edgeId] || []).filter(t => t.taskId !== taskId)
-      }));
-    }, 1500); // Match animation duration
-  };
-
   // Update React Flow Machines - create individual nodes for each machine
   useEffect(() => {
     setNodes((prevNodes) => {
@@ -818,19 +776,6 @@ const SimDashboard = () => {
     }
   };
 
-  // Update edges with animation data - add safety checks
-  const animatedEdges = edges.map(edge => {
-    const edgeId = edge.id || `${edge.source}-${edge.target}`;
-    return {
-      ...edge,
-      type: 'animatedTask',
-      data: {
-        ...edge.data,
-        animatingTasks: edgeAnimations?.[edgeId] || []
-      }
-    };
-  });
-
   return (
     <div className="bg-[#d9d9d9] max-w-screen min-w-screen min-h-screen flex flex-col relative">
       {/* DND */}
@@ -840,9 +785,8 @@ const SimDashboard = () => {
             <div className="reactflow-wrapper" ref={reactFlowWrapper}>
               <ReactFlow
                 nodes={nodes}
-                edges={animatedEdges}
+                edges={edges}
                 nodeTypes={nodeTypes}
-                edgeTypes={edgeTypes}
                 onNodesChange={onNodesChange}
                 onNodeDragStop={onDragStop}
                 onEdgesChange={onEdgesChange}

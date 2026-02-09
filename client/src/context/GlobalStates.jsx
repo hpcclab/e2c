@@ -108,42 +108,11 @@ export const GlobalProvider = ({ children }) => {
   */
   const [submissionStatus, setSubmissionStatus] = useState(""); // Track submission status
   const [workloadSubmissionStatus, setWorkloadSubmissionStatus] = useState(""); // Track workload submission status
-  const [edgeAnimations, setEdgeAnimations] = useState({});
   const machinesRef = useRef([]);
   const batchSlotsRef = useRef([]);
   const machineSlotsRef = useRef({});
   const loadBalancerRef = useRef(null);
   // End Define States
-
-  // Update edges when machines change to connect LB to all machines
-  const updateMachineEdges = (machines) => {
-    const machineEdges = machines
-      .filter(m => m.id !== -1)
-      .map(machine => ({
-        id: `xy-edge__lb-machine-${machine.id}`,
-        source: 'lb',
-        target: `machine-${machine.id}`,
-        type: 'animatedTask',
-        animated: false,
-      }));
-    
-    setEdges(machineEdges);
-  };
-
-  // Watch for machine changes and update edges
-  const setMachinesWithEdges = (newMachines) => {
-    setMachines(newMachines);
-    if (typeof newMachines === 'function') {
-      // If it's a function, we need to handle it differently
-      setMachines(prev => {
-        const updated = typeof newMachines === 'function' ? newMachines(prev) : newMachines;
-        updateMachineEdges(updated);
-        return updated;
-      });
-    } else {
-      updateMachineEdges(newMachines);
-    }
-  };
 
   const value = {
     selectedMachine,
@@ -155,7 +124,7 @@ export const GlobalProvider = ({ children }) => {
     selectedTask,
     setSelectedTask,
     machines,
-    setMachines: setMachinesWithEdges,
+    setMachines,
     iot,
     onDragStop,
     setIot,
@@ -177,8 +146,6 @@ export const GlobalProvider = ({ children }) => {
     setSubmissionStatus,
     workloadSubmissionStatus,
     setWorkloadSubmissionStatus,
-    edgeAnimations,
-    setEdgeAnimations,
     machinesRef,
     machineSlotsRef,
     batchSlotsRef,
