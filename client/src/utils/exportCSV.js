@@ -240,3 +240,174 @@ export const exportToCSV = (data, filename = 'report.csv') => {
     }];
     exportToCSV(summaryData, `simulation_summary_${timestamp}.csv`);
   };
+
+   /**
+    EET Table Processing     
+    **/
+    class EETTable {
+    constructor() {
+      this.table = {};  // { machineName: { taskType: eet } }
+    }
+  
+    /**
+     * Parse CSV where rows are task types and columns are machines
+     */
+    loadFromCSV(csvString) {
+      this.table = {};
+      
+      const lines = csvString.trim().split('\n');
+      if (lines.length < 2) {
+        throw new Error('CSV must have headers and at least one data row');
+      }
+  
+      // task_type, m1, m2, m3 --> headers 
+      const headers = lines[0].split(',').map(h => h.trim());
+      const machineNames = headers.slice(1);
+  
+      // Initialize machines
+      machineNames.forEach(machine => {
+        this.table[machine] = {};
+      });
+  
+      // Parse rows 
+      for (let i = 1; i < lines.length; i++) {
+        const values = lines[i].split(',').map(v => v.trim());
+        if (values.length < 2) continue;
+  
+        const taskType = values[0];
+        
+        machineNames.forEach((machine, idx) => {
+          const eet = parseFloat(values[idx + 1]);
+          if (!isNaN(eet)) {
+            this.table[machine][taskType] = eet;
+          }
+        });
+      }
+  
+      console.log('EET Table loaded:', this.table);
+      return this;
+    }
+  
+    /**
+     * Get EET
+     */
+    get(machineName, taskType) {
+      return this.table[machineName]?.[taskType] ?? null;
+    }
+  
+    /**
+     * if (simulationTime >= taskStartTime + EET) dequeue
+     */
+    shouldDequeue(simulationTime, machineName, taskType, taskStartTime = 0) {
+      const eet = this.get(machineName, taskType);
+      if (eet === null) {
+        console.warn(`No EET found for [${machineName}][${taskType}]`);
+        return false;
+      }
+      return simulationTime >= (taskStartTime + eet);
+    }
+  
+    getMachines() {
+      return Object.keys(this.table);
+    }
+  
+    getTaskTypes() {
+      const types = new Set();
+      Object.values(this.table).forEach(machine => {
+        Object.keys(machine).forEach(t => types.add(t));
+      });
+      return Array.from(types);
+    }
+  
+    /**
+     * For UI
+     */
+    toMatrix() {
+      const machines = this.getMachines();
+      const taskTypes = this.getTaskTypes();
+      
+      return {
+        headers: ['Task Type', ...machines],
+        rows: taskTypes.map(type => [
+          type,
+          ...machines.map(m => this.get(m, type) ?? '-')
+        ])
+      };
+    }
+  
+    isEmpty() {
+      return Object.keys(this.table).length === 0;
+    }
+  }
+  
+  // Singleton instance
+  export const eetTable = new EETTable();
+  
+  /**
+   * Parse EET CSV file upload
+   */
+  export const parseEETCSV = (file) => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        try {
+          eetTable.loadFromCSV(e.target.result);
+          resolve(eetTable);
+        } catch (err) {
+          reject(err);
+        }
+      };
+      reader.onerror = () => reject(new Error('Failed to read file'));
+      reader.readAsText(file);
+    });
+  };
+  
+  /**
+   * Load EET from string (if embedded in config)
+   */
+  export const loadEETFromString = (csvString) => {
+    eetTable.loadFromCSV(csvString);
+    return eetTable;
+  };
+  
+  export default eetTable;
+
+  /**
+ * Import EET CSV and return parsed table
+ */
+export const importEETCSV = (file) => {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    
+    reader.onload = (event) => {
+      try {
+        const csvString = event.target.result;
+        const lines = csvString.trim().split('\n');
+        const headers = lines[0].split(',').map(h => h.trim());
+        const machineNames = headers.slice(1);
+        
+        const table = {};
+        machineNames.forEach(m => { table[m] = {}; });
+        
+        for (let i = 1; i < lines.length; i++) {
+          const values = lines[i].split(',').map(v => v.trim());
+          const taskType = values[0];
+          
+          machineNames.forEach((machine, idx) => {
+            const eet = parseFloat(values[idx + 1]);
+            if (!isNaN(eet)) {
+              table[machine][taskType] = eet;
+            }
+          });
+        }
+        
+        resolve(table);
+      } catch (error) {
+        reject(error);
+      }
+    };
+    
+    reader.onerror = () => reject(new Error('Failed to read EET file'));
+    reader.readAsText(file);
+  });
+};

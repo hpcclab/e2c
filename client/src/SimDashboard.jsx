@@ -8,6 +8,9 @@ import { WorkloadSidebar } from "./components/SidebarContent";
 import AdmissionsOverlay from "./components/AdmissionsOverlay";
 import EditMachineProperties from "./components/EditMachineProperties";
 import SimulationReport from "./components/SimulationReport";
+import { processDequeue, autoMapMachineNames } from './utils/dequeueProcess';
+import { eetTable } from './utils/exportCSV';
+
 // Drag and drop imports and requirements
 
 import {
@@ -122,6 +125,11 @@ const SimDashboard = () => {
   const onPaneClick = useCallback(() => setMenu(null), [setMenu]);
   // END DND
 
+  //EET Parse
+  const [eetLoaded, setEetLoaded] = useState(false);
+  const [completedTasks, setCompletedTasks] = useState([]);  
+  // End EET Parse
+
   const [scheduling, setScheduling] = useState("immediate");
   const [policy, setPolicy] = useState("FirstCome-FirstServe");
   const [queueSize, setQueueSize] = useState("unlimited");
@@ -155,6 +163,7 @@ const SimDashboard = () => {
   const [machineTab, setMachineTab] = useState("details");
   const [IOTTab, setIOTTab] = useState("details");
 
+  const simulationIntervalRef = useRef(null);
   const [profilingFileName, setProfilingFileName] = useState("");
   const [profilingFileUploaded, setProfilingFileUploaded] = useState(false);
   const [profilingFileContents, setProfilingFileContents] = useState("");
@@ -176,7 +185,7 @@ const SimDashboard = () => {
 
   const [missedTasks, setMissedTasks] = useState([]);
 
-  const [animatedTaskIds, setAnimatedTaskIds] = useState([]);
+  const [animatedTaskIds, setAnimatedTaskIds] = useState([]);  
 
   // Add state for resizable report
   const [showReport, setShowReport] = useState(false);
@@ -272,7 +281,16 @@ const SimDashboard = () => {
     reader.onload = (event) => {
       const content = event.target.result;
       setProfilingTableData(parseCSV(content)); // Parse CSV into table data
-    }; // <-- Make sure this semicolon is present
+
+       // load into EET table for dequeue logic
+       try {
+        eetTable.loadFromCSV(content);
+        setEetLoaded(true);
+        console.log('EET Table loaded:', eetTable.toMatrix());
+      } catch (err) {
+        console.error('Failed to parse EET table:', err);
+      }
+    };
     reader.readAsText(file);
 
     const formData = new FormData();
@@ -526,6 +544,15 @@ const SimDashboard = () => {
         return;
       }
 
+      // Clear any existing simulation interval
+      if (simulationIntervalRef.current) {
+        clearInterval(simulationIntervalRef.current);
+      }
+
+      // Auto-map machine names (EET CSV machines to config machines by order)
+      const configMachines = machinesRef.current.filter((m) => m.id !== -1);
+      autoMapMachineNames(configMachines);
+
       // Prepare data for the simulation
       const simulationData = {
         schedulingPolicy: policy, // Load balancing policy type
@@ -608,7 +635,7 @@ const SimDashboard = () => {
         simulationData
       );
 
-      const { results, simulationTime, machine_stats } = response.data;
+      const { results, simulationTime: totalSimTime, machine_stats } = response.data;
       setDataResults(results);
       setShowReport(true); // Show the report when results are ready
 
@@ -620,11 +647,39 @@ const SimDashboard = () => {
 
       animateAdmissions(admissionEvents, baseMachines);
 
+      // Simulation loop with EET-based dequeue
       let current = 0;
       const step = 0.01;
       const intervalMs = 10;
 
       setSimulationTime(0);
+      setCompletedTasks([]);
+
+      simulationIntervalRef.current = setInterval(() => {
+        current = parseFloat((current + step).toFixed(3));
+        setSimulationTime(current);
+
+        // Process dequeue based on EET if loaded
+        if (eetLoaded) {
+          setAnimatedMachines((prevMachines) => {
+            const { machines: updated, completed } = processDequeue(prevMachines, current);
+            
+            if (completed.length > 0) {
+              setCompletedTasks((prev) => [...prev, ...completed]);
+              console.log(`Completed ${completed.length} task(s) at t=${current.toFixed(3)}`);
+            }
+            
+            return updated;
+          });
+        }
+
+        if (current >= totalSimTime) {
+          setSimulationTime(Number(totalSimTime));
+          clearInterval(simulationIntervalRef.current);
+          simulationIntervalRef.current = null;
+          console.log('Simulation complete!');
+        }
+      }, intervalMs);
 
       const timer = setInterval(() => {
         current = parseFloat((current + step).toFixed(2));
@@ -713,6 +768,15 @@ const SimDashboard = () => {
     }
   };
 
+  // Cleanup interval on unmount
+  useEffect(() => {
+    return () => {
+      if (simulationIntervalRef.current) {
+        clearInterval(simulationIntervalRef.current);
+      }
+    };
+  }, []);
+  
   // Update React Flow Machines - create individual nodes for each machine
   useEffect(() => {
     setNodes((prevNodes) => {
