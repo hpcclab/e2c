@@ -193,7 +193,7 @@ const ScenarioTab = ({
               </tr>
             ) : (
               scenarioRows.map((row, idx) => (
-                <tr key={idx}>
+                <tr key={`scenario-row-${idx}-${row.taskType}-${row.startTime}`}>
                   {editIdx === idx ? (
                     <>
                       <td className="border px-2 py-1">

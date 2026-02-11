@@ -118,10 +118,10 @@ export const WorkloadSidebar = ({
               </thead>
               <tbody>
                 {profilingTableData.map((row, index) => (
-                  <tr key={index}>
+                  <tr key={`profiling-row-${index}`}>
                     {Object.values(row).map((value, idx) => (
                       <td
-                        key={idx}
+                        key={`profiling-cell-${index}-${idx}`}
                         className="border border-gray-300 px-4 py-2"
                       >
                         {value}
@@ -171,38 +171,48 @@ export const WorkloadSidebar = ({
               <TrashIcon className="w-5 h-5" />
             </button>
           </div>
-          <div className="overflow-scroll h-128">
-            {workloadTableData.length > 0 && (
-              <table className="table-auto border-collapse border border-gray-300 w-full text-sm ">
-                <thead>
-                  <tr>
-                    {Object.keys(workloadTableData[0]).map((header) => (
-                      <th
-                        key={header}
-                        className="border border-gray-300 px-4 py-2 bg-gray-100"
+          {workloadTableData.length > 0 && (
+            <table className="table-auto border-collapse border border-gray-300 w-full text-sm">
+              <thead>
+                <tr>
+                  {Object.keys(workloadTableData[0]).map((header) => (
+                    <th
+                      key={header}
+                      className="border border-gray-300 px-4 py-2 bg-gray-100"
+                    >
+                      {header}
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {workloadTableData.map((row, index) => (
+                  <tr key={`workload-row-${index}`}>
+                    {Object.values(row).map((value, idx) => (
+                      <td
+                        key={`workload-cell-${index}-${idx}`}
+                        className="border border-gray-300 px-4 py-2"
                       >
-                        {header}
-                      </th>
+                        {value}
+                      </td>
                     ))}
                   </tr>
-                </thead>
-                <tbody>
-                  {workloadTableData.map((row, index) => (
-                    <tr key={index}>
-                      {Object.values(row).map((value, idx) => (
-                        <td
-                          key={idx}
-                          className="border border-gray-300 px-4 py-2"
-                        >
-                          {value}
-                        </td>
-                      ))}
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            )}
-          </div>
+                ))}
+                {workloadTableData.map((row, index) => (
+                  <tr key={index}>
+                    {Object.values(row).map((value, idx) => (
+                      <td
+                        key={idx}
+                        className="border border-gray-300 px-4 py-2"
+                      >
+                        {value}
+                      </td>
+                    ))}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
         </div>
       )}
     </div>

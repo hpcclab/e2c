@@ -113,8 +113,11 @@ body {
   border: 2px solid #fff;
 }
 
-/* Optional: make hover area bigger for easier clicking */
 .react-flow__handle:after {
   width: 24px;
   height: 24px;
+}
+.animated-edge-particle {
+  offset-path: path(var(--edge-path));
+  animation: flowParticle 1.5s ease-in-out forwards;
 }

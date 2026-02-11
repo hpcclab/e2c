@@ -7,6 +7,9 @@ import TaskList from "./components/TaskList";
 import { WorkloadSidebar } from "./components/SidebarContent";
 import AdmissionsOverlay from "./components/AdmissionsOverlay";
 import EditMachineProperties from "./components/EditMachineProperties";
+import SimulationReport from "./components/SimulationReport";
+import { processDequeue, autoMapMachineNames } from "./utils/dequeueProcess";
+import { eetTable } from "./utils/exportCSV";
 
 // Drag and drop imports and requirements
 import {
@@ -168,17 +171,14 @@ const SimDashboard = () => {
 
   // State assignments and functions
   // - Load balancer handlers
+  //EET Parse
+  const [eetLoaded, setEetLoaded] = useState(false);
+  const [completedTasks, setCompletedTasks] = useState([]);
+  // End EET Parse
+
   const [scheduling, setScheduling] = useState("immediate");
   const [policy, setPolicy] = useState("FirstCome-FirstServe");
   const [queueSize, setQueueSize] = useState("unlimited");
-  const handleSchedulingChange = (type) => {
-    setScheduling(type);
-    if (type === "immediate") {
-      setQueueSize("unlimited"); // Set queue size to "unlimited" for immediate scheduling
-    } else if (type === "batch") {
-      setQueueSize(""); // Set queue size to "0" for batch scheduling
-    }
-  };
   // - Data parameter handlers
   const [runtimeModel, setRuntimeModel] = useState("Constant");
   const [performanceParams, setPerformanceParams] = useState({
@@ -226,36 +226,7 @@ const SimDashboard = () => {
   const [profilingTableData, setProfilingTableData] = useState([]);
   const [profilingSubmissionStatus, setProfilingSubmissionStatus] =
     useState(""); // Track profiling submission status
-  const handleProfilingUpload = async (e) => {
-    const file = e.target.files[0];
-    if (!file || !file.name.endsWith(".eet")) {
-      alert("Only .eet files are allowed for profiling.");
-      return;
-    }
-    setProfilingFileName(file.name); // Set the profiling file name
-    setProfilingFileUploaded(true); // Mark profiling file as uploaded
-    const reader = new FileReader();
-    reader.onload = (event) => {
-      const content = event.target.result;
-      setProfilingTableData(parseCSV(content)); // Parse CSV into table data
-    };
-    reader.readAsText(file);
-    const formData = new FormData();
-    formData.append("file", file);
-    try {
-      const res = await axios.post(
-        "http://localhost:5001/api/workload/upload",
-        formData,
-        {
-          headers: { "Content-Type": "multipart/form-data" },
-        },
-      );
-      console.log("Profiling upload success:", res.data);
-    } catch (err) {
-      console.error("Profiling upload error:", err);
-      alert("Failed to upload profiling file.");
-    }
-  };
+
   // -- Workload handlers
   const [workloadFileName, setWorkloadFileName] = useState("");
   const [workloadFileUploaded, setWorkloadFileUploaded] = useState(false);
@@ -267,99 +238,6 @@ const SimDashboard = () => {
     setSidebarMode(mode);
     setShowSidebar(true);
     setSubmissionStatus(""); // Reset submission status when opening the sidebar
-  };
-
-  const handleWorkloadUpload = async (e) => {
-    const file = e.target.files[0];
-    if (!file || !file.name.toLowerCase().endsWith(".wkl")) {
-      alert("Only .wkl files are allowed for workload.");
-      return;
-    }
-
-    setWorkloadFileName(file.name);
-    setWorkloadFileUploaded(true);
-
-    const reader = new FileReader();
-    reader.onload = async (event) => {
-      const content = event.target.result;
-      const parsedCSV = parseCSV(content);
-      setBatchQ({ id: -2, name: "Batch Queue", queue: parsedCSV });
-      setWorkloadTableData(parsedCSV);
-
-      // Group tasks by task_type
-      const taskTypeMap = [];
-      parsedCSV.forEach((row) => {
-        const type = row.task_type;
-        if (type != "" && type != null) {
-          if (!taskTypeMap[type]) taskTypeMap[type] = [];
-          taskTypeMap[type].push(row);
-        }
-      });
-
-      // Existing IoTs and nodes
-      const existingIoTs = [...(iot || [])];
-      const existingNodes = [...(nodes || [])];
-      const newIoTs = [];
-      const newIoTNodes = [];
-
-      // Layout settings
-      const horizontalSpacing = 250;
-      const verticalSpacing = 150;
-      const maxPerRow = 5; // max nodes in one row before wrapping
-      let row = 0;
-      let col = existingNodes.length % maxPerRow;
-
-      Object.keys(taskTypeMap).forEach((taskType) => {
-        // Skip if IoT with same taskType already exists
-        if (existingIoTs.some((iotObj) => iotObj.id === taskType)) return;
-
-        const iotObj = {
-          id: taskType,
-          name: taskType,
-          queue: taskTypeMap[taskType],
-          properties: {},
-        };
-        newIoTs.push(iotObj);
-
-        const iotNode = {
-          id: `node-${taskType}`,
-          type: "iotNode",
-          position: {
-            x: col * horizontalSpacing,
-            y: row * verticalSpacing + 100,
-          },
-          data: { iot: iotObj },
-        };
-        newIoTNodes.push(iotNode);
-
-        col++;
-        if (col >= maxPerRow) {
-          col = 0;
-          row++;
-        }
-      });
-
-      // Update global states
-      setIot((prevIot) => [...prevIot, ...newIoTs]);
-    };
-
-    reader.readAsText(file);
-
-    // Upload the file to server
-    const formData = new FormData();
-    formData.append("file", file);
-    try {
-      const res = await axios.post(
-        "http://localhost:5001/api/workload/upload",
-        formData,
-      );
-      console.log("Workload upload success:", res.data);
-      setWorkloadSubmissionStatus("success");
-    } catch (err) {
-      console.error("Workload upload error:", err);
-      alert("Failed to upload workload file.");
-      setWorkloadSubmissionStatus("error");
-    }
   };
 
   const filesReady =
@@ -455,6 +333,97 @@ const SimDashboard = () => {
     }));
   }, [selectedTask]);
 
+  const handleSchedulingChange = (type) => {
+    setScheduling(type);
+    if (type === "immediate") {
+      setQueueSize("unlimited"); // Set queue size to "unlimited" for immediate scheduling
+    } else if (type === "batch") {
+      setQueueSize(""); // Set queue size to "0" for batch scheduling
+    }
+  };
+
+  const handleProfilingUpload = async (e) => {
+    const file = e.target.files[0];
+    if (!file || !file.name.endsWith(".eet")) {
+      alert("Only .eet files are allowed for profiling.");
+      return;
+    }
+
+    setProfilingFileName(file.name); // Set the profiling file name
+    setProfilingFileUploaded(true); // Mark profiling file as uploaded
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const content = event.target.result;
+      setProfilingTableData(parseCSV(content)); // Parse CSV into table data
+
+      // load into EET table for dequeue logic
+      try {
+        eetTable.loadFromCSV(content);
+        setEetLoaded(true);
+        console.log("EET Table loaded:", eetTable.toMatrix());
+      } catch (err) {
+        console.error("Failed to parse EET table:", err);
+      }
+    };
+    reader.readAsText(file);
+
+    const formData = new FormData();
+    formData.append("file", file);
+
+    try {
+      const res = await axios.post(
+        "http://localhost:5001/api/workload/upload",
+        formData,
+        {
+          headers: { "Content-Type": "multipart/form-data" },
+        },
+      );
+      console.log("Profiling upload success:", res.data);
+    } catch (err) {
+      console.error("Profiling upload error:", err);
+      alert("Failed to upload profiling file.");
+    }
+  };
+
+  const handleWorkloadUpload = async (e) => {
+    const file = e.target.files[0];
+    if (!file || !file.name.endsWith(".wkl")) {
+      alert("Only .wkl files are allowed for workload.");
+      return;
+    }
+
+    setWorkloadFileName(file.name); // Set the workload file name
+    setWorkloadFileUploaded(true); // Mark workload file as uploaded
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const content = event.target.result;
+      setBatchQ({ id: -2, name: "Batch Queue", queue: parseCSV(content) });
+
+      console.log("raw content:", batchQ);
+      setWorkloadTableData(parseCSV(content)); // Parse CSV into table data
+    };
+    reader.readAsText(file);
+
+    const formData = new FormData();
+    formData.append("file", file);
+
+    try {
+      const res = await axios.post(
+        "http://localhost:5001/api/workload/upload",
+        formData,
+        {
+          headers: { "Content-Type": "multipart/form-data" },
+        },
+      );
+      console.log("Workload upload success:", res.data);
+    } catch (err) {
+      console.error("Workload upload error:", err);
+      alert("Failed to upload workload file.");
+    }
+  };
+
   const handleConfigUpload = async (e) => {
     const file = e.target.files[0];
     if (!file || !file.name.endsWith(".json")) {
@@ -503,6 +472,62 @@ const SimDashboard = () => {
       setMachines(machinesWithIds);
       setAnimatedMachines(machinesWithIds);
       machinesRef.current = machinesWithIds;
+
+      // Group tasks by task_type
+      const taskTypeMap = [];
+      parsedCSV.forEach((row) => {
+        const type = row.task_type;
+        if (type != "" && type != null) {
+          if (!taskTypeMap[type]) taskTypeMap[type] = [];
+          taskTypeMap[type].push(row);
+        }
+      });
+
+      // Existing IoTs and nodes
+      const existingIoTs = [...(iot || [])];
+      const existingNodes = [...(nodes || [])];
+      const newIoTs = [];
+      const newIoTNodes = [];
+
+      // Layout settings
+      const horizontalSpacing = 250;
+      const verticalSpacing = 150;
+      const maxPerRow = 5; // max nodes in one row before wrapping
+      let row = 0;
+      let col = existingNodes.length % maxPerRow;
+
+      Object.keys(taskTypeMap).forEach((taskType) => {
+        // Skip if IoT with same taskType already exists
+        if (existingIoTs.some((iotObj) => iotObj.id === taskType)) return;
+
+        const iotObj = {
+          id: taskType,
+          name: taskType,
+          queue: taskTypeMap[taskType],
+          properties: {},
+        };
+        newIoTs.push(iotObj);
+
+        const iotNode = {
+          id: `node-${taskType}`,
+          type: "iotNode",
+          position: {
+            x: col * horizontalSpacing,
+            y: row * verticalSpacing + 100,
+          },
+          data: { iot: iotObj },
+        };
+        newIoTNodes.push(iotNode);
+
+        col++;
+        if (col >= maxPerRow) {
+          col = 0;
+          row++;
+        }
+      });
+
+      // Update global states
+      setIot((prevIot) => [...prevIot, ...newIoTs]);
     } catch (err) {
       console.error("Config upload error:", err);
       alert("Failed to upload configuration file.");
@@ -630,6 +655,16 @@ const SimDashboard = () => {
         );
         return;
       }
+
+      // Clear any existing simulation interval
+      if (simulationIntervalRef.current) {
+        clearInterval(simulationIntervalRef.current);
+      }
+
+      // Auto-map machine names (EET CSV machines to config machines by order)
+      const configMachines = machinesRef.current.filter((m) => m.id !== -1);
+      autoMapMachineNames(configMachines);
+
       // Prepare data for the simulation
       const simulationData = {
         schedulingPolicy: policy, // Load balancing policy type
@@ -643,10 +678,137 @@ const SimDashboard = () => {
         simulationData,
       );
 
-      const { results, machine_stats } = response.data;
+      const {
+        results,
+        simulationTime: totalSimTime,
+        machine_stats,
+      } = response.data;
       setDataResults(results);
+      setShowReport(true); // Show the report when results are ready
 
-      alert("Simulation completed successfully!");
+      const admissionEvents = [...results]
+        .filter((task) => task.start != null)
+        .sort((a, b) => a.start - b.start);
+
+      const baseMachines = machinesRef.current.filter((m) => m.id !== -1);
+
+      animateAdmissions(admissionEvents, baseMachines);
+
+      // Simulation loop with EET-based dequeue
+      let current = 0;
+      const step = 0.01;
+      const intervalMs = 10;
+
+      setSimulationTime(0);
+      setCompletedTasks([]);
+
+      simulationIntervalRef.current = setInterval(() => {
+        current = parseFloat((current + step).toFixed(3));
+        setSimulationTime(current);
+
+        // Process dequeue based on EET if loaded
+        if (eetLoaded) {
+          setAnimatedMachines((prevMachines) => {
+            const { machines: updated, completed } = processDequeue(
+              prevMachines,
+              current,
+            );
+
+            if (completed.length > 0) {
+              setCompletedTasks((prev) => [...prev, ...completed]);
+              console.log(
+                `Completed ${completed.length} task(s) at t=${current.toFixed(3)}`,
+              );
+            }
+
+            return updated;
+          });
+        }
+
+        if (current >= totalSimTime) {
+          setSimulationTime(Number(totalSimTime));
+          clearInterval(simulationIntervalRef.current);
+          simulationIntervalRef.current = null;
+          console.log("Simulation complete!");
+        }
+      }, intervalMs);
+
+      const timer = setInterval(() => {
+        current = parseFloat((current + step).toFixed(2));
+        setSimulationTime(current);
+        if (current >= simulationTime) {
+          setSimulationTime(Number(simulationTime)); // Ensure exact match at end
+          clearInterval(timer);
+        }
+      }, intervalMs);
+
+      // Update machines with stats from simulation
+      const updatedMachines = machines.map((machine) => {
+        const stats = machine_stats?.find((s) => s.base_name === machine.name);
+
+        if (stats) {
+          const totalUtilization = stats.replicas.reduce(
+            (sum, r) => sum + r.utilization_hours,
+            0,
+          );
+          const totalCost = stats.replicas.reduce((sum, r) => sum + r.cost, 0);
+          const totalTasks = stats.replicas.reduce(
+            (sum, r) => sum + r.tasks_completed,
+            0,
+          );
+
+          return {
+            ...machine,
+            utilization_time: totalUtilization,
+            total_cost: totalCost,
+            total_tasks: totalTasks,
+            replica_stats: stats.replicas,
+          };
+        }
+
+        return machine;
+      });
+
+      // Update all machine states
+      setMachines(updatedMachines);
+      setAnimatedMachines(updatedMachines);
+      machinesRef.current = updatedMachines;
+
+      // If a machine is currently selected, update it with new data
+      if (selectedMachine && selectedMachine.id !== undefined) {
+        const updatedSelectedMachine = updatedMachines.find(
+          (m) => m.id === selectedMachine.id,
+        );
+        if (updatedSelectedMachine) {
+          setSelectedMachine(updatedSelectedMachine);
+
+          // Also update performance params
+          setPerformanceParams({
+            id: updatedSelectedMachine.id,
+            name: updatedSelectedMachine.name,
+            queue: updatedSelectedMachine.queue,
+            power: updatedSelectedMachine.power,
+            idle_power: updatedSelectedMachine.idle_power,
+            replicas: updatedSelectedMachine.replicas,
+            price: updatedSelectedMachine.price,
+            cost: updatedSelectedMachine.cost,
+            utilization_time: updatedSelectedMachine.utilization_time,
+            total_cost: updatedSelectedMachine.total_cost,
+            total_tasks: updatedSelectedMachine.total_tasks,
+          });
+        }
+      }
+
+      // Identify missed tasks: status === "CANCELLED" or (end == null && start == null) or end > deadline
+      const missed = results.filter(
+        (t) =>
+          t.status === "CANCELLED" ||
+          t.start == null ||
+          (t.deadline && t.end > t.deadline),
+      );
+      setMissedTasks(missed);
+
+      console.log("Simulation results:", results);
     } catch (error) {
       console.error("Error running simulation:", error);
       alert("Failed to run simulation.");
@@ -774,7 +936,35 @@ const SimDashboard = () => {
     },
     [setEdges, setMachines],
   );
+  // Cleanup interval on unmount
+  useEffect(() => {
+    return () => {
+      if (simulationIntervalRef.current) {
+        clearInterval(simulationIntervalRef.current);
+      }
+    };
+  }, []);
 
+  // Update React Flow Machines - create individual nodes for each machine
+  useEffect(() => {
+    setNodes((prevNodes) => {
+      // Remove all existing machineNodes
+      const otherNodes = prevNodes.filter((n) => n.type !== "machineNode");
+
+      // Map each machine to its own separate node with machineIndex for color
+      const machineNodes = machines
+        .filter((m) => m.id !== -1) // Exclude empty placeholder machines
+        .map((machine, index) => ({
+          id: `machine-${machine.id}`,
+          type: "machineNode",
+          data: {
+            machine: machine,
+            machineIndex: index, // Pass the index for color consistency
+          },
+          position: machine.position ?? { x: 725, y: 70 + index * 200 }, // Stack vertically
+        }));
+    });
+  }, [setEdges, setMachines]);
   useEffect(() => {
     // TODO get policy
     // based on batch Q run policy
@@ -889,9 +1079,9 @@ const SimDashboard = () => {
     <div className=" bg-[#d9d9d9] max-w-screen min-w-screen min-h-screen flex flex-col relative ">
       {/* DND */}
       <ReactFlowProvider>
-        <div className=" p-8 bg-gray-100 size-dvw max-w-screen max-h-screen min-w-screen min-h-screen">
+        <div className="p-8 bg-gray-100 size-dvw max-w-screen max-h-screen min-w-screen min-h-screen relative">
           <div className="dndflow">
-            <div className="reactflow-wrapper " ref={reactFlowWrapper}>
+            <div className="reactflow-wrapper" ref={reactFlowWrapper}>
               <ReactFlow
                 nodes={nodes}
                 edges={edges}
@@ -909,10 +1099,100 @@ const SimDashboard = () => {
                 <Background />
                 {menu && <ContextMenu onClick={onPaneClick} {...menu} />}
                 <SaveLoadPanel />
+                <Panel position="top-left">
+                  <div className="xy-theme__button-group">
+                    <button
+                      className={`xy-theme__button ${""}`}
+                      onClick={() => {}}
+                    >
+                      View Mode
+                    </button>
+                    <button
+                      className={`xy-theme__button ${""}`}
+                      onClick={() => {}}
+                    >
+                      Wire Mode
+                    </button>
+                  </div>
+                </Panel>
+
+                {/* View Report Button - Top Right */}
+                {dataResults.length > 0 && (
+                  <Panel position="top-right">
+                    <button
+                      onClick={() => setShowReport(!showReport)}
+                      className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg shadow-lg font-semibold transition"
+                    >
+                      {showReport ? "Hide Report" : "View Report"}
+                    </button>
+                  </Panel>
+                )}
+
+                {/* Cancelled Tasks Panel - Bottom Left */}
+                <Panel position="bottom-left">
+                  <div
+                    className="flex flex-col items-center cursor-pointer hover:scale-105 transition bg-white rounded-lg shadow-lg p-4"
+                    onClick={() => openSidebar("cancelledTasks")}
+                  >
+                    <TrashIcon className="w-10 h-10 text-red-600" />
+                    <span className="text-gray-800 text-sm font-semibold mt-2">
+                      Cancelled Tasks
+                    </span>
+                  </div>
+                </Panel>
+
+                {/* Missed Tasks Panel - Bottom Right */}
+                <Panel position="bottom-right">
+                  <div
+                    className="flex flex-col items-center cursor-pointer hover:scale-105 transition bg-white rounded-lg shadow-lg p-4"
+                    onClick={() => openSidebar("missedTasks")}
+                  >
+                    <TrashIcon className="w-10 h-10 text-orange-600" />
+                    <span className="text-gray-800 text-sm font-semibold mt-2">
+                      Missed Tasks
+                    </span>
+                  </div>
+                </Panel>
               </ReactFlow>
             </div>
             <Sidebar setNodes={setNodes} />
           </div>
+
+          {/* Simulation Report Component */}
+          {showReport && dataResults.length > 0 && (
+            <SimulationReport
+              dataResults={dataResults}
+              simulationTime={simulationTime}
+              missedTasks={missedTasks}
+              machines={machines}
+              onClose={() => {
+                setDataResults([]);
+                setShowReport(false);
+              }}
+              onMinimize={() => setShowReport(false)}
+              onRunSimulation={runDataSimulation}
+            />
+          )}
+
+          {/* Play Button Overlay - Bottom Center (when no report) */}
+          {!showReport && (
+            <div className="absolute bottom-8 left-1/2 transform -translate-x-1/2 z-10">
+              <div className="flex space-x-4 bg-white rounded-full shadow-lg px-6 py-3">
+                <button className="bg-gray-400 hover:bg-gray-500 text-white rounded-full w-12 h-12 flex items-center justify-center transition">
+                  ⟲
+                </button>
+                <button
+                  onClick={runDataSimulation}
+                  className="bg-green-600 hover:bg-green-700 text-white rounded-full w-12 h-12 flex items-center justify-center transition shadow-md"
+                >
+                  ▶
+                </button>
+                <button className="bg-gray-400 hover:bg-gray-500 text-white rounded-full w-12 h-12 flex items-center justify-center transition">
+                  ⏸
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       </ReactFlowProvider>
       {/* Main Simulation Area */}
@@ -1005,7 +1285,6 @@ const SimDashboard = () => {
       </div>
 
       {/* Sidebar */}
-
       <AnimatePresence>
         {showSidebar && (
           <motion.div
@@ -1272,9 +1551,9 @@ const SimDashboard = () => {
                         "arrival_time",
                         "start",
                         "missed_time",
-                      ].map((key) => (
+                      ].map((key, index) => (
                         <td
-                          key={key}
+                          key={`task-param-${key}-${index}`}
                           className=" w-full border px-4 py-2 text-sm rounded bg-gray-100"
                         >
                           {taskParams[key.toLowerCase()] || "N/A"}
@@ -1435,8 +1714,8 @@ const SimDashboard = () => {
                         </td>
                       </tr>
                     ) : (
-                      missedTasks.map((task) => (
-                        <tr key={task.taskId}>
+                      missedTasks.map((task, index) => (
+                        <tr key={`missed-task-${task.taskId}-${index}`}>
                           <td className="px-4 py-2 border">{task.taskId}</td>
                           <td className="px-4 py-2 border">{task.task_type}</td>
                           <td className="px-4 py-2 border">

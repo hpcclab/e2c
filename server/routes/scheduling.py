@@ -80,6 +80,8 @@ def run_sim():
             "arrival_time": task.arrival_time,
             "start": task.start_time,
             "end": task.end_time,
+            "execution_time": task.execution_time,  
+            "deadline": task.deadline,              
             "status": task.status.name,
             "data_size": getattr(task, "data_size", 0),  # Use getattr with default value
         })

@@ -10,6 +10,7 @@ const EditMachineProperties = ({
   const [editedMachine, setEditedMachine] = useState({});
 
   useEffect(() => {
+    console.log("EditMachineProperties - selectedMachine updated:", selectedMachine);
     setEditedMachine({
       id: selectedMachine.id,
       name: selectedMachine.name || "",
@@ -18,6 +19,9 @@ const EditMachineProperties = ({
       replicas: selectedMachine.replicas || 1,
       price: selectedMachine.price || 0,
       cost: selectedMachine.cost || 0,
+      utilization_time: selectedMachine.utilization_time || 0,
+      total_cost: selectedMachine.total_cost || 0,
+      total_tasks: selectedMachine.total_tasks || 0,
     });
   }, [selectedMachine]);
 
@@ -189,7 +193,7 @@ const EditMachineProperties = ({
         <div>
           <label className="block text-sm font-semibold text-gray-700 mb-1">($) Price / hr</label>
           <div className="w-full border px-3 py-2 text-sm rounded bg-gray-100">
-            {selectedMachine.price !== undefined ? `$${selectedMachine.price}` : "-"}
+            ${selectedMachine.price !== undefined ? Number(selectedMachine.price).toFixed(2) : "0.00"}
           </div>
         </div>
 
@@ -200,40 +204,33 @@ const EditMachineProperties = ({
           <div className="grid grid-cols-2 gap-2 text-xs">
             <div>
               <span className="font-medium text-gray-600">Tasks Completed:</span>
-              <div className="bg-blue-50 px-2 py-1 rounded">
+              <div className="bg-blue-50 font-bold px-2 py-1 rounded">
                 {selectedMachine.total_tasks || 0}
               </div>
             </div>
             
             <div>
               <span className="font-medium text-gray-600">Utilization Hours:</span>
-              <div className="bg-green-50 px-2 py-1 rounded">
-                {selectedMachine.utilization_time ? selectedMachine.utilization_time.toFixed(3) : "0.000"}h
+              <div className="bg-green-50 font-bold px-2 py-1 rounded">
+                {selectedMachine.utilization_time ? Number(selectedMachine.utilization_time).toFixed(3) : "0.000"}h
               </div>
             </div>
             
             <div>
               <span className="font-medium text-gray-600">Total Cost:</span>
-              <div className="bg-yellow-50 px-2 py-1 rounded font-semibold">
-                ${selectedMachine.total_cost ? selectedMachine.total_cost.toFixed(2) : "0.00"}
+              <div className="bg-yellow-50 font-bold px-2 py-1 rounded">
+                ${selectedMachine.total_cost ? Number(selectedMachine.total_cost).toFixed(2) : "0.00"}
               </div>
             </div>
             
             <div>
               <span className="font-medium text-gray-600">Cost/Task:</span>
-              <div className="bg-purple-50 px-2 py-1 rounded">
+              <div className="bg-purple-50 font-bold px-2 py-1 rounded">
                 ${selectedMachine.total_tasks && selectedMachine.total_cost 
-                  ? (selectedMachine.total_cost / selectedMachine.total_tasks).toFixed(2) 
+                  ? (Number(selectedMachine.total_cost) / Number(selectedMachine.total_tasks)).toFixed(2) 
                   : "0.00"}
               </div>
             </div>
-          </div>
-        </div>
-
-        <div>
-          <label className="block text-sm font-semibold text-gray-700 mb-1">($) Cost</label>
-          <div className="w-full border px-3 py-2 text-sm rounded bg-gray-100">
-            {selectedMachine.cost !== undefined ? selectedMachine.cost : "-"}
           </div>
         </div>
       </div>

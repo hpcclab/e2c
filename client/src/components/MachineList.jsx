@@ -60,7 +60,7 @@ export default function MachineList({machs, onClicked, onTaskClicked, setSelecte
         const totalTasks = machine.total_tasks || 0;
         
         return (
-          <div key={machine.id}>
+          <div key={`machine-${machine.id}`}>
             {/* Main Machine Row */}
             <div className="bg-white border-4 p-4 rounded-lg shadow-md flex items-center space-x-4">
               {/* Expand/Collapse Button */}
@@ -130,7 +130,7 @@ export default function MachineList({machs, onClicked, onTaskClicked, setSelecte
                   
                   return (
                     <div
-                      key={replica.id}
+                      key={`replica-${replica.originalId}-${replica.replicaNumber}`}
                       className="bg-gray-50 border-2 border-gray-300 p-3 rounded-lg shadow-sm flex items-center space-x-4"
                     >
                       <div className="flex space-x-2 flex-1">
