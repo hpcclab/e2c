@@ -5,13 +5,12 @@ import DNDApp from "./DNDAppTEST";
 import "./assets/index.css";
 import WorkloadGenerator from "./WorkloadGenerator";
 
-
 const App = () => {
   return (
     <Router>
-      <div className="min-h-screen bg-gray-50">
+      <div className="min-h-screen bg-gray-50 overflow-hidden">
         <header className="bg-blue-500 text-white p-6 shadow-md">
-          <nav className="max-w-7xl mx-auto flex justify-between items-center">
+          <nav className="max-w-7xl mx-auto flex justify-between items-center ">
             <h1 className="text-3xl font-bold">E2C</h1>
             <ul className="flex space-x-6 text-lg">
               <li>
@@ -30,19 +29,21 @@ const App = () => {
                 </Link>
               </li>
               <li>
-                <Link to="/e2c/generate" className="hover:underline">Workload Generator</Link>
+                <Link to="/e2c/generate" className="hover:underline">
+                  Workload Generator
+                </Link>
               </li>
             </ul>
           </nav>
         </header>
 
-        <main className="p-6">
-            <Routes>
-              <Route path="/e2c" element={<Home />} />
-              <Route path="/e2c/simulate" element={<SimDashboard />} />
-              <Route path="/e2c/dndtest" element={<DNDApp />} />
-               <Route path="/e2c/generate" element={<WorkloadGenerator />} /> 
-            </Routes>
+        <main className="p-0 overflow-hidden">
+          <Routes>
+            <Route path="/e2c" element={<Home />} />
+            <Route path="/e2c/simulate" element={<SimDashboard />} />
+            <Route path="/e2c/dndtest" element={<DNDApp />} />
+            <Route path="/e2c/generate" element={<WorkloadGenerator />} />
+          </Routes>
         </main>
       </div>
     </Router>

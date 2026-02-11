@@ -104,3 +104,17 @@ body {
     max-width: 250px;
   }
 }
+
+.react-flow__handle {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background-color: #45a1ec;
+  border: 2px solid #fff;
+}
+
+/* Optional: make hover area bigger for easier clicking */
+.react-flow__handle:after {
+  width: 24px;
+  height: 24px;
+}

@@ -1,0 +1,163 @@
+{
+  "nodes": [
+    {
+      "id": "dndnode_0",
+      "type": "edgeLockedNode",
+      "position": {
+        "x": 490.70584757636266,
+        "y": -14.073440697393231
+      },
+      "data": {},
+      "measured": {
+        "width": 92,
+        "height": 40
+      },
+      "selected": false,
+      "dragging": false
+    },
+    {
+      "id": "dndnode_1",
+      "type": "workloadNode",
+      "position": {
+        "x": 964.8128756549272,
+        "y": 238.66816805692815
+      },
+      "data": {},
+      "measured": {
+        "width": 122,
+        "height": 122
+      }
+    },
+    {
+      "id": "IOT-1764752080811",
+      "type": "iotNode",
+      "data": {
+        "iot": {
+          "id": 1764752080811,
+          "name": "IOT 0811",
+          "properties": [],
+          "position": {
+            "x": 878.4170313638346,
+            "y": -58.412278979109786
+          }
+        }
+      },
+      "position": {
+        "x": 878.4170313638346,
+        "y": -58.412278979109786
+      },
+      "measured": {
+        "width": 126,
+        "height": 102
+      }
+    },
+    {
+      "id": "dndnode_2",
+      "type": "workloadNode",
+      "position": {
+        "x": 1199.7489434640388,
+        "y": -31.12938078192265
+      },
+      "data": {},
+      "measured": {
+        "width": 122,
+        "height": 122
+      },
+      "selected": false,
+      "dragging": false
+    },
+    {
+      "id": "dndnode_3",
+      "type": "LBNode",
+      "position": {
+        "x": 443.4063767753505,
+        "y": 185.61808822906426
+      },
+      "data": {},
+      "measured": {
+        "width": 122,
+        "height": 122
+      },
+      "selected": false,
+      "dragging": false
+    },
+    {
+      "id": "dndnode_4",
+      "type": "QueueNode",
+      "position": {
+        "x": 1066.365885611124,
+        "y": 132.56800840120033
+      },
+      "data": {},
+      "measured": {
+        "width": 302,
+        "height": 62
+      },
+      "selected": true,
+      "dragging": false
+    },
+    {
+      "id": "machine-1764752093852",
+      "type": "machineNode",
+      "data": {
+        "machine": {
+          "id": 1764752093852,
+          "name": "Machine 3852",
+          "queue": [],
+          "position": {
+            "x": 1220.9689753951845,
+            "y": -202.40535279759757
+          }
+        }
+      },
+      "position": {
+        "x": 1220.9689753951845,
+        "y": -202.40535279759757
+      },
+      "measured": {
+        "width": 438,
+        "height": 102
+      }
+    },
+    {
+      "id": "dndnode_5",
+      "type": "cloudSpace",
+      "position": {
+        "x": 1324.0377019178916,
+        "y": 303.84398041687524
+      },
+      "data": {},
+      "measured": {
+        "width": 302,
+        "height": 272
+      }
+    }
+  ],
+  "edges": [
+    {
+      "id": "xy-edge__IOT-1764751924617-machine-1764751923688",
+      "source": "IOT-1764751924617",
+      "target": "machine-1764751923688"
+    },
+    {
+      "id": "xy-edge__dndnode_0-IOT-1764751924617",
+      "source": "dndnode_0",
+      "target": "IOT-1764751924617"
+    },
+    {
+      "id": "xy-edge__IOT-1764751924617-dndnode_1",
+      "source": "IOT-1764751924617",
+      "target": "dndnode_1"
+    },
+    {
+      "id": "xy-edge__dndnode_1-machine-1764751921983",
+      "source": "dndnode_1",
+      "target": "machine-1764751921983"
+    },
+    {
+      "id": "xy-edge__dndnode_0-IOT-1764751968783",
+      "source": "dndnode_0",
+      "target": "IOT-1764751968783"
+    }
+  ]
+}

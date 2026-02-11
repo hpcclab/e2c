@@ -16,6 +16,7 @@ export const GlobalProvider = ({ children }) => {
     id: -3,
     name: "empty iot",
     properties: [],
+    queue: [],
   });
   const [simulationTime, setSimulationTime] = useState(0); //TIME
 
@@ -30,10 +31,8 @@ export const GlobalProvider = ({ children }) => {
     end: "",
     status: "",
   });
-  const [machines, setMachines] = useState([
-    { id: -1, name: "empty", queue: [] },
-  ]);
-  const [iot, setIot] = useState([{ id: -3, name: "empty", properties: {} }]);
+  const [machines, setMachines] = useState([]);
+  const [iot, setIot] = useState([]);
   const [batchQ, setBatchQ] = useState({
     id: -2,
     name: "Batch Queue",
@@ -49,40 +48,40 @@ export const GlobalProvider = ({ children }) => {
         prev.map((m) =>
           `machine-${m.id}` === node.id
             ? { ...m, position: node.position } // update position in state
-            : m
-        )
+            : m,
+        ),
       );
-    } else if (node.type === "iotNode") {
+    }
+    if (node.type === "iotNode") {
       setIot((prev) =>
-        prev.map((i) =>
-          `IOT-${i.id}` === node.id
-            ? { ...i, position: node.position } // update position in state
-            : i
-        )
+        prev.map((m) =>
+          `IOT-${m.id}` === node.id
+            ? { ...m, position: node.position } // update position in state
+            : m,
+        ),
       );
     }
   };
 
   const [nodes, setNodes, onNodesChange] = useNodesState([
-    {
-      id: "lb",
-      type: "LBNode",
-      data: { machine: machines },
-      position: { x: 520, y: 60 },
-    },
-
-    {
-      id: "wl",
-      type: "workloadNode",
-      data: { machine: machines },
-      position: { x: 0, y: 60 },
-    },
-    {
-      id: "bq",
-      type: "QueueNode",
-      data: { machine: machines },
-      position: { x: 160, y: 90 },
-    },
+    // {
+    //   id: "lb",
+    //   type: "LBNode",
+    //   data: { machine: machines },
+    //   position: { x: 520, y: 60 },
+    // },
+    // {
+    //   id: "wl",
+    //   type: "workloadNode",
+    //   data: { machine: machines },
+    //   position: { x: 0, y: 60 },
+    // },
+    // {
+    //   id: "bq",
+    //   type: "QueueNode",
+    //   data: { machine: machines },
+    //   position: { x: 160, y: 90 },
+    // },
   ]);
   /* future Node reference
 {

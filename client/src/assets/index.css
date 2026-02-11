@@ -4,6 +4,7 @@
 html,
 body {
   margin: 0;
+
   font-family: sans-serif;
   box-sizing: border-box;
   /* Prevent zoom on mobile when tapping */

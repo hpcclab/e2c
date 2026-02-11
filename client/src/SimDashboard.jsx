@@ -9,7 +9,6 @@ import AdmissionsOverlay from "./components/AdmissionsOverlay";
 import EditMachineProperties from "./components/EditMachineProperties";
 
 // Drag and drop imports and requirements
-
 import {
   Background,
   Controls,
@@ -34,12 +33,11 @@ import "./assets/index.css";
 import { useGlobalState } from "./context/GlobalStates";
 import LBNode from "./components/LBNode";
 import QueueNode from "./components/QueueNode";
-
-// import TemplatesContainer from "./components/TemplatesContainer";
-// import DropZone from "./components/DropZone";
-// import DragOverlayComponent from "./components/DragOverlay";
-// import SidebarTemplates from "./components/SidebarTemplates";
-
+import SaveLoadPanel from "./components/SaveLoadPanel";
+import AnimatedEdge from "./components/AnimatedEdge";
+const edgeTypes = {
+  packet: AnimatedEdge,
+};
 const nodeTypes = {
   machineNode: machineNode,
   iotNode: iotNode,
@@ -50,7 +48,6 @@ const nodeTypes = {
   LBNode: LBNode,
   QueueNode: QueueNode,
 };
-
 // End Drag and Drop Requirements and Imports
 
 const SimDashboard = () => {
@@ -93,12 +90,31 @@ const SimDashboard = () => {
     loadBalancerRef,
   } = useGlobalState();
   // End Global States
+
   // DND
   const reactFlowWrapper = useRef(null);
   const onConnect = useCallback(
-    (params) => setEdges((eds) => addEdge(params, eds)),
-    [setEdges]
+    (params) => {
+      const edgeId = `e-${params.source}-${params.target}`;
+      setEdges((eds) =>
+        addEdge(
+          {
+            ...params,
+            id: edgeId,
+            type: "packet",
+            data: {
+              animate: false,
+              onAnimationEnd: (edgeId) => stopAnimation(edgeId),
+              jobsInTransit: [],
+            },
+          },
+          eds,
+        ),
+      );
+    },
+    [setEdges],
   );
+
   const onNodeContextMenu = useCallback(
     (event, node) => {
       event.preventDefault();
@@ -116,16 +132,54 @@ const SimDashboard = () => {
             : null,
       });
     },
-    [setMenu]
+    [setMenu],
   );
-  // Close the context menu if it's open whenever the window is clicked.
-  const onPaneClick = useCallback(() => setMenu(null), [setMenu]);
+  const onPaneClick = useCallback(() => setMenu(null), [setMenu]); // Close the context menu if it's open whenever the window is clicked.
+
+  const stopAnimation = (edgeId) => {
+    setEdges((eds) =>
+      eds.map((edge) =>
+        edge.id === edgeId
+          ? { ...edge, data: { ...edge.data, animate: false } }
+          : edge,
+      ),
+    );
+  };
+
+  const startAnimation = (edgeId, duration = 1500) => {
+    setEdges((eds) =>
+      eds.map((edge) =>
+        edge.id === edgeId
+          ? {
+              ...edge,
+              data: { ...edge.data, animate: true },
+            }
+          : edge,
+      ),
+    );
+    return new Promise((resolve) =>
+      setTimeout(() => {
+        stopAnimation(edgeId);
+        resolve(true);
+      }, duration),
+    );
+  };
   // END DND
 
+  // State assignments and functions
+  // - Load balancer handlers
   const [scheduling, setScheduling] = useState("immediate");
   const [policy, setPolicy] = useState("FirstCome-FirstServe");
   const [queueSize, setQueueSize] = useState("unlimited");
-
+  const handleSchedulingChange = (type) => {
+    setScheduling(type);
+    if (type === "immediate") {
+      setQueueSize("unlimited"); // Set queue size to "unlimited" for immediate scheduling
+    } else if (type === "batch") {
+      setQueueSize(""); // Set queue size to "0" for batch scheduling
+    }
+  };
+  // - Data parameter handlers
   const [runtimeModel, setRuntimeModel] = useState("Constant");
   const [performanceParams, setPerformanceParams] = useState({
     id: "",
@@ -151,49 +205,6 @@ const SimDashboard = () => {
     mean2: "",
     std2: "",
   });
-
-  const [machineTab, setMachineTab] = useState("details");
-  const [IOTTab, setIOTTab] = useState("details");
-
-  const [profilingFileName, setProfilingFileName] = useState("");
-  const [profilingFileUploaded, setProfilingFileUploaded] = useState(false);
-  const [profilingFileContents, setProfilingFileContents] = useState("");
-  const [profilingTableData, setProfilingTableData] = useState([]);
-  const [profilingSubmissionStatus, setProfilingSubmissionStatus] =
-    useState(""); // Track profiling submission status
-
-  const [workloadFileName, setWorkloadFileName] = useState("");
-  const [workloadFileUploaded, setWorkloadFileUploaded] = useState(false);
-  const [workloadFileContents, setWorkloadFileContents] = useState("");
-  const [workloadTableData, setWorkloadTableData] = useState([]);
-
-  const [configFileName, setConfigFileName] = useState("");
-  const [configFileUploaded, setConfigFileUploaded] = useState(false);
-
-  const [dataResults, setDataResults] = useState([]);
-  const [animatedMachines, setAnimatedMachines] = useState(machines); // ANIMATION
-  const [flyers, setFlyers] = useState([]);
-
-  const [missedTasks, setMissedTasks] = useState([]);
-
-  const [animatedTaskIds, setAnimatedTaskIds] = useState([]);
-
-  const registerBatchSlotRef = (idx, el) => {
-    batchSlotsRef.current[idx] = el || null;
-  };
-
-  const registerMachineSlotRef = (machineId, idx, el) => {
-    if (!machineSlotsRef.current[machineId])
-      machineSlotsRef.current[machineId] = [];
-    machineSlotsRef.current[machineId][idx] = el || null;
-  };
-
-  const getCenter = (el) => {
-    if (!el) return null;
-    const r = el.getBoundingClientRect();
-    return { x: r.left + r.width / 2, y: r.top + r.height / 2 };
-  };
-
   const parseCSV = (csvContent) => {
     const rows = csvContent.split("\n").map((row) => row.split(","));
     const headers = rows[0];
@@ -201,22 +212,206 @@ const SimDashboard = () => {
       row.reduce((acc, value, index) => {
         acc[headers[index]] = value;
         return acc;
-      }, {})
+      }, {}),
     );
     return data;
   };
 
+  // - Sidebar tab handlers
+  const [machineTab, setMachineTab] = useState("details");
+  const [IOTTab, setIOTTab] = useState("details");
+  const [profilingFileName, setProfilingFileName] = useState("");
+  const [profilingFileUploaded, setProfilingFileUploaded] = useState(false);
+  const [profilingFileContents, setProfilingFileContents] = useState("");
+  const [profilingTableData, setProfilingTableData] = useState([]);
+  const [profilingSubmissionStatus, setProfilingSubmissionStatus] =
+    useState(""); // Track profiling submission status
+  const handleProfilingUpload = async (e) => {
+    const file = e.target.files[0];
+    if (!file || !file.name.endsWith(".eet")) {
+      alert("Only .eet files are allowed for profiling.");
+      return;
+    }
+    setProfilingFileName(file.name); // Set the profiling file name
+    setProfilingFileUploaded(true); // Mark profiling file as uploaded
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const content = event.target.result;
+      setProfilingTableData(parseCSV(content)); // Parse CSV into table data
+    };
+    reader.readAsText(file);
+    const formData = new FormData();
+    formData.append("file", file);
+    try {
+      const res = await axios.post(
+        "http://localhost:5001/api/workload/upload",
+        formData,
+        {
+          headers: { "Content-Type": "multipart/form-data" },
+        },
+      );
+      console.log("Profiling upload success:", res.data);
+    } catch (err) {
+      console.error("Profiling upload error:", err);
+      alert("Failed to upload profiling file.");
+    }
+  };
+  // -- Workload handlers
+  const [workloadFileName, setWorkloadFileName] = useState("");
+  const [workloadFileUploaded, setWorkloadFileUploaded] = useState(false);
+  const [workloadFileContents, setWorkloadFileContents] = useState("");
+  const [workloadTableData, setWorkloadTableData] = useState([]);
+  const [configFileName, setConfigFileName] = useState("");
+  const [configFileUploaded, setConfigFileUploaded] = useState(false);
   const openSidebar = (mode) => {
     setSidebarMode(mode);
     setShowSidebar(true);
     setSubmissionStatus(""); // Reset submission status when opening the sidebar
   };
 
-  //  update machine params
+  const handleWorkloadUpload = async (e) => {
+    const file = e.target.files[0];
+    if (!file || !file.name.toLowerCase().endsWith(".wkl")) {
+      alert("Only .wkl files are allowed for workload.");
+      return;
+    }
+
+    setWorkloadFileName(file.name);
+    setWorkloadFileUploaded(true);
+
+    const reader = new FileReader();
+    reader.onload = async (event) => {
+      const content = event.target.result;
+      const parsedCSV = parseCSV(content);
+      setBatchQ({ id: -2, name: "Batch Queue", queue: parsedCSV });
+      setWorkloadTableData(parsedCSV);
+
+      // Group tasks by task_type
+      const taskTypeMap = [];
+      parsedCSV.forEach((row) => {
+        const type = row.task_type;
+        if (type != "" && type != null) {
+          if (!taskTypeMap[type]) taskTypeMap[type] = [];
+          taskTypeMap[type].push(row);
+        }
+      });
+
+      // Existing IoTs and nodes
+      const existingIoTs = [...(iot || [])];
+      const existingNodes = [...(nodes || [])];
+      const newIoTs = [];
+      const newIoTNodes = [];
+
+      // Layout settings
+      const horizontalSpacing = 250;
+      const verticalSpacing = 150;
+      const maxPerRow = 5; // max nodes in one row before wrapping
+      let row = 0;
+      let col = existingNodes.length % maxPerRow;
+
+      Object.keys(taskTypeMap).forEach((taskType) => {
+        // Skip if IoT with same taskType already exists
+        if (existingIoTs.some((iotObj) => iotObj.id === taskType)) return;
+
+        const iotObj = {
+          id: taskType,
+          name: taskType,
+          queue: taskTypeMap[taskType],
+          properties: {},
+        };
+        newIoTs.push(iotObj);
+
+        const iotNode = {
+          id: `node-${taskType}`,
+          type: "iotNode",
+          position: {
+            x: col * horizontalSpacing,
+            y: row * verticalSpacing + 100,
+          },
+          data: { iot: iotObj },
+        };
+        newIoTNodes.push(iotNode);
+
+        col++;
+        if (col >= maxPerRow) {
+          col = 0;
+          row++;
+        }
+      });
+
+      // Update global states
+      setIot((prevIot) => [...prevIot, ...newIoTs]);
+    };
+
+    reader.readAsText(file);
+
+    // Upload the file to server
+    const formData = new FormData();
+    formData.append("file", file);
+    try {
+      const res = await axios.post(
+        "http://localhost:5001/api/workload/upload",
+        formData,
+      );
+      console.log("Workload upload success:", res.data);
+      setWorkloadSubmissionStatus("success");
+    } catch (err) {
+      console.error("Workload upload error:", err);
+      alert("Failed to upload workload file.");
+      setWorkloadSubmissionStatus("error");
+    }
+  };
+
+  const filesReady =
+    workloadFileUploaded && profilingFileUploaded && configFileUploaded;
+
+  // - Sim results handlers
+  const [dataResults, setDataResults] = useState([]);
+  const [animatedMachines, setAnimatedMachines] = useState(machines); // ANIMATION
+  const [flyers, setFlyers] = useState([]);
+  const [missedTasks, setMissedTasks] = useState([]);
+  const [animatedTaskIds, setAnimatedTaskIds] = useState([]);
+  const [isRunning, setIsRunning] = useState(false);
+  const [machine_index, setMachine_index] = useState(0);
+  const [prev_machine_index, setPrev_machine_index] = useState(-1);
+  const [iot_index, setIot_index] = useState(0);
+  const [task_counter, setTask_counter] = useState(0);
+  const [taskLoaded, setTaskLoaded] = useState(false);
+  const [task, setTask] = useState({
+    id: -1,
+    task_type: "empty",
+    data_size: "",
+    arrival_time: 999999999999,
+    deadline: "",
+  });
+  let machine_count;
+  let mecha;
+  let source;
+  let LB_ID = "LBNode_1";
+  // End State assignments
+
+  // Animation references and creation
+  const registerBatchSlotRef = (idx, el) => {
+    batchSlotsRef.current[idx] = el || null;
+  };
+  const registerMachineSlotRef = (machineId, idx, el) => {
+    if (!machineSlotsRef.current[machineId])
+      machineSlotsRef.current[machineId] = [];
+    machineSlotsRef.current[machineId][idx] = el || null;
+  };
+  const getCenter = (el) => {
+    if (!el) return null;
+    const r = el.getBoundingClientRect();
+    return { x: r.left + r.width / 2, y: r.top + r.height / 2 };
+  };
+  // End Animation references and creation
+
+  // Data Update handlers
+  // - Update machine params
   useEffect(() => {
     console.log(
       "Updating performance params with selected machine:",
-      selectedMachine
+      selectedMachine,
     );
     setPerformanceParams({
       id: selectedMachine.id,
@@ -230,7 +425,21 @@ const SimDashboard = () => {
     });
   }, [selectedMachine]);
 
-  //  update task params
+  // - Update task params
+  const uploadTasks = async (file) => {
+    const formData = new FormData();
+    formData.append("file", file);
+
+    const res = await fetch("http://localhost:5001/api/iot_sim/upload_tasks", {
+      method: "POST",
+      body: formData,
+    });
+    const data = await res.json();
+    if (data.iot_nodes) {
+      setIot(data.iot_nodes);
+    }
+  };
+
   useEffect(() => {
     setTaskParams((prev) => ({
       ...prev,
@@ -246,116 +455,29 @@ const SimDashboard = () => {
     }));
   }, [selectedTask]);
 
-  const handleSchedulingChange = (type) => {
-    setScheduling(type);
-    if (type === "immediate") {
-      setQueueSize("unlimited"); // Set queue size to "unlimited" for immediate scheduling
-    } else if (type === "batch") {
-      setQueueSize(""); // Set queue size to "0" for batch scheduling
-    }
-  };
-
-  const handleProfilingUpload = async (e) => {
-    const file = e.target.files[0];
-    if (!file || !file.name.endsWith(".eet")) {
-      alert("Only .eet files are allowed for profiling.");
-      return;
-    }
-
-    setProfilingFileName(file.name); // Set the profiling file name
-    setProfilingFileUploaded(true); // Mark profiling file as uploaded
-
-    const reader = new FileReader();
-    reader.onload = (event) => {
-      const content = event.target.result;
-      setProfilingTableData(parseCSV(content)); // Parse CSV into table data
-    }; // <-- Make sure this semicolon is present
-    reader.readAsText(file);
-
-    const formData = new FormData();
-    formData.append("file", file);
-
-    try {
-      const res = await axios.post(
-        "http://localhost:5001/api/workload/upload",
-        formData,
-        {
-          headers: { "Content-Type": "multipart/form-data" },
-        }
-      );
-      console.log("Profiling upload success:", res.data);
-    } catch (err) {
-      console.error("Profiling upload error:", err);
-      alert("Failed to upload profiling file.");
-    }
-  };
-
-  const handleWorkloadUpload = async (e) => {
-    const file = e.target.files[0];
-    if (!file || !file.name.endsWith(".wkl")) {
-      alert("Only .wkl files are allowed for workload.");
-      return;
-    }
-
-    setWorkloadFileName(file.name); // Set the workload file name
-    setWorkloadFileUploaded(true); // Mark workload file as uploaded
-
-    const reader = new FileReader();
-    reader.onload = (event) => {
-      const content = event.target.result;
-      setBatchQ({ id: -2, name: "Batch Queue", queue: parseCSV(content) });
-
-      console.log("raw content:", batchQ);
-      setWorkloadTableData(parseCSV(content)); // Parse CSV into table data
-    };
-    reader.readAsText(file);
-
-    const formData = new FormData();
-    formData.append("file", file);
-
-    try {
-      const res = await axios.post(
-        "http://localhost:5001/api/workload/upload",
-        formData,
-        {
-          headers: { "Content-Type": "multipart/form-data" },
-        }
-      );
-      console.log("Workload upload success:", res.data);
-    } catch (err) {
-      console.error("Workload upload error:", err);
-      alert("Failed to upload workload file.");
-    }
-  };
-
   const handleConfigUpload = async (e) => {
     const file = e.target.files[0];
     if (!file || !file.name.endsWith(".json")) {
       alert("Only .json files are allowed for configuration.");
       return;
     }
-
     setConfigFileName(file.name);
     setConfigFileUploaded(true);
-
     const formData = new FormData();
     formData.append("file", file);
-
     try {
       const res = await axios.post(
         "http://localhost:5001/api/workload/upload/config",
         formData,
         {
           headers: { "Content-Type": "multipart/form-data" },
-        }
+        },
       );
       console.log("Config upload success:", res.data);
-
       // Group machines by base name and track replicas
       const machineMap = {};
       res.data.machines.forEach((machine) => {
         const baseName = machine.base_name || machine.name;
-
         if (!machineMap[baseName]) {
           machineMap[baseName] = {
             id: machine.id,
@@ -369,7 +491,6 @@ const SimDashboard = () => {
             replica_instances: [],
           };
         }
-
         // Add this specific replica instance
         machineMap[baseName].replica_instances.push({
           id: machine.id,
@@ -377,11 +498,8 @@ const SimDashboard = () => {
           queue: machine.queue || [],
         });
       });
-
       const machinesWithIds = Object.values(machineMap);
-
       console.log("Processed machines with replicas:", machinesWithIds);
-
       setMachines(machinesWithIds);
       setAnimatedMachines(machinesWithIds);
       machinesRef.current = machinesWithIds;
@@ -398,7 +516,7 @@ const SimDashboard = () => {
       !configFileUploaded
     ) {
       alert(
-        "Please upload the workload (.wkl), profiling table (.eet), and configuration (.json) files before submitting."
+        "Please upload the workload (.wkl), profiling table (.eet), and configuration (.json) files before submitting.",
       );
       return;
     }
@@ -423,32 +541,26 @@ const SimDashboard = () => {
     setProfilingTableData([]);
     setConfigFileName("");
     setConfigFileUploaded(false);
-
     // Clear the batch queue visually
     setBatchQ({ id: -2, name: "Batch Queue", queue: [] });
     setMachines([{ id: -1, name: "empty", queue: [] }]);
-
+    setIot([{ id: -3, name: "empty", queue: [] }]);
     // Clear results if needed
     setDataResults([]);
-
     // Clear status message
     setWorkloadSubmissionStatus("");
-
     setFlyers([]);
   };
   // Add function to handle machine property updates
   const handleMachinePropertySave = async (updatedMachine) => {
     try {
       console.log("Saving machine properties:", updatedMachine);
-
       // Update the machines ref
       machinesRef.current = machinesRef.current.map((machine) =>
-        machine.id === updatedMachine.id ? updatedMachine : machine
+        machine.id === updatedMachine.id ? updatedMachine : machine,
       );
-
       // Generate updated config - make sure all machines are included
       const allMachines = machinesRef.current.filter((m) => m.id !== -1);
-
       const updatedConfig = {
         parameters: [
           {
@@ -483,31 +595,27 @@ const SimDashboard = () => {
           },
         ],
       };
-
       console.log("Sending config update:", updatedConfig);
-
       // Send updated config to backend
       const response = await axios.post(
         "http://localhost:5001/api/config/update",
-        updatedConfig
+        updatedConfig,
       );
       console.log("Config update response:", response.data);
-
       console.log("Machine properties updated successfully");
     } catch (error) {
       console.error("Failed to update machine properties:", error);
       console.error("Error details:", error.response?.data);
-
       // Show more specific error message
       const errorMessage =
         error.response?.data?.error ||
         error.message ||
         "Unknown error occurred";
       alert(`Failed to update machine properties: ${errorMessage}`);
-
       throw error;
     }
   };
+  // End Data Update handlers
 
   const runDataSimulation = async () => {
     try {
@@ -518,11 +626,10 @@ const SimDashboard = () => {
         !configFileUploaded
       ) {
         alert(
-          "Please upload the workload (.wkl), profiling table (.eet), and configuration (.json) files before running the simulation."
+          "Please upload the workload (.wkl), profiling table (.eet), and configuration (.json) files before running the simulation.",
         );
         return;
       }
-
       // Prepare data for the simulation
       const simulationData = {
         schedulingPolicy: policy, // Load balancing policy type
@@ -531,192 +638,230 @@ const SimDashboard = () => {
         tasks: workloadTableData, // Tasks parsed from the .wkl file
       };
 
-      const animateAdmissions = (admissionEvents, baseMachines) => {
-        setAnimatedMachines(baseMachines.map((m) => ({ ...m, queue: [] }))); // Reset queues
-
-        const play = (idx, currentQueues) => {
-          if (idx >= admissionEvents.length) return;
-
-          const event = admissionEvents[idx];
-          const targetMachineId = event.machineId;
-          const nextSlotIndex = currentQueues[targetMachineId] || 0;
-
-          const fromEl = loadBalancerRef.current;
-          const toEl = (machineSlotsRef.current[targetMachineId] || [])[
-            nextSlotIndex
-          ];
-
-          const from = getCenter(fromEl);
-          const to = getCenter(toEl);
-
-          if (!from || !to) {
-            setAnimatedMachines((prev) =>
-              prev.map((machine) =>
-                machine.id === targetMachineId
-                  ? { ...machine, queue: [...machine.queue, event] }
-                  : machine
-              )
-            );
-            const updated = {
-              ...currentQueues,
-              [targetMachineId]: nextSlotIndex + 1,
-            };
-            setTimeout(() => play(idx + 1, updated), 50);
-            return;
-          }
-
-          const flyerKey = `${event.taskId}-${idx}-${Date.now()}`;
-          const flyer = {
-            key: flyerKey,
-            from,
-            to,
-            label: event.taskId,
-            onComplete: () => {
-              setFlyers((fs) => fs.filter((f) => f.key !== flyerKey));
-              setAnimatedMachines((prev) =>
-                prev.map((machine) =>
-                  machine.id === targetMachineId
-                    ? { ...machine, queue: [...machine.queue, event] }
-                    : machine
-                )
-              );
-              const updated = {
-                ...currentQueues,
-                [targetMachineId]: nextSlotIndex + 1,
-              };
-              setTimeout(() => play(idx + 1, updated), 50);
-            },
-          };
-
-          setFlyers((fs) => [...fs, flyer]);
-        };
-
-        setTimeout(() => {
-          const initialQueues = {};
-          baseMachines.forEach((m) => {
-            initialQueues[m.id] = 0;
-          });
-          play(0, initialQueues);
-        }, 100);
-      };
-
       const response = await axios.post(
         "http://localhost:5001/api/workload/simulate/data",
-        simulationData
+        simulationData,
       );
 
-      const { results, simulationTime, machine_stats } = response.data;
+      const { results, machine_stats } = response.data;
       setDataResults(results);
 
-      const admissionEvents = [...results]
-        .filter((task) => task.start != null)
-        .sort((a, b) => a.start - b.start);
-
-      const baseMachines = machinesRef.current.filter((m) => m.id !== -1);
-
-      animateAdmissions(admissionEvents, baseMachines);
-
-      let current = 0;
-      const step = 0.01;
-      const intervalMs = 10;
-
-      setSimulationTime(0);
-
-      const timer = setInterval(() => {
-        current = parseFloat((current + step).toFixed(2));
-        setSimulationTime(current);
-        if (current >= simulationTime) {
-          setSimulationTime(Number(simulationTime)); // Ensure exact match at end
-          clearInterval(timer);
-        }
-      }, intervalMs);
-
-      // Update machines with stats from simulation
-      const updatedMachines = machines.map((machine) => {
-        const stats = machine_stats?.find(
-          (s) => s.base_name === machine.name
-        );
-
-        if (stats) {
-          const totalUtilization = stats.replicas.reduce(
-            (sum, r) => sum + r.utilization_hours,
-            0
-          );
-          const totalCost = stats.replicas.reduce(
-            (sum, r) => sum + r.cost,
-            0
-          );
-          const totalTasks = stats.replicas.reduce(
-            (sum, r) => sum + r.tasks_completed,
-            0
-          );
-
-          return {
-            ...machine,
-            utilization_time: totalUtilization,
-            total_cost: totalCost,
-            total_tasks: totalTasks,
-            replica_stats: stats.replicas,
-          };
-        }
-
-        return machine;
-      });
-
-      setAnimatedMachines(updatedMachines);
-      machinesRef.current = updatedMachines;
-
-      // Identify missed tasks: status === "CANCELLED" or (end == null && start == null) or end > deadline
-      const missed = results.filter(
-        (t) =>
-          t.status === "CANCELLED" ||
-          t.start == null ||
-          (t.deadline && t.end > t.deadline)
-      );
-      setMissedTasks(missed);
-
       alert("Simulation completed successfully!");
-      console.log("Simulation results:", results);
     } catch (error) {
       console.error("Error running simulation:", error);
       alert("Failed to run simulation.");
     }
   };
-  // Update React Flow Machines
-  useEffect(() => {
-    setNodes((prevNodes) => {
-      // Remove all existing machineNodes
-      const otherNodes = prevNodes.filter((n) => n.type !== "machineNode");
 
-      // Map each machine to its own node
+  /* -------------------- PLAY LOOP -------------------- */
+  const runSim = useCallback(() => {
+    if (!filesReady) return;
+
+    runtime();
+    runDataSimulation();
+  }, [isRunning]);
+
+  const runtime = useCallback(() => {
+    let timer = 0;
+    let current = 0;
+    let timeframe;
+    setSimulationTime(0);
+    let lastTime = Date.now();
+
+    const tick = () => {
+      const now = Date.now();
+      const delta = now - lastTime;
+      lastTime = now;
+      if (isRunning) {
+        timer += delta;
+        current = parseFloat((timer / 1000).toFixed(3));
+        setSimulationTime(current);
+        timeframe = requestAnimationFrame(tick);
+      } else {
+        cancelAnimationFrame(timeframe);
+      }
+    };
+    if (isRunning) tick();
+  }, [isRunning]);
+
+  /* -------------------- PACKET EDGE EMISSION -------------------- */
+
+  /*queue fn */
+  const enqueue = useCallback(
+    (targetId, source, LB = false, LB_ID = "LBNode_1") => {
+      // TODO fix hard coded LB id
+      let edgeId;
+      const job = source.queue.shift();
+      if (!job) return;
+      // setTask_counter(task_counter + 1);
+      job.id = job.arrival_time; // unique id for tracking animation
+
+      // Determine edge id
+      if (LB) {
+        // if using load balancer pass animation through lb otherwise dont
+        // Push job into edge jobsInTransit to start animation
+        edgeId = `e-${source.id}-${LB_ID}`;
+        setEdges((eds) =>
+          eds.map((edge) => {
+            if (edge.id === edgeId) {
+              const newJobs = [...(edge.data.jobsInTransit || []), job];
+              return {
+                ...edge,
+                data: { ...edge.data, jobsInTransit: newJobs },
+              };
+            }
+            return edge;
+          }),
+        );
+
+        edgeId = `e-${LB_ID}-${targetId}`;
+        setEdges((eds) =>
+          eds.map((edge) => {
+            if (edge.id === edgeId) {
+              const newJobs = [...(edge.data.jobsInTransit || []), job];
+              return {
+                ...edge,
+                data: { ...edge.data, jobsInTransit: newJobs },
+              };
+            }
+            return edge;
+          }),
+        );
+      } else {
+        edgeId = `e-${source.id}-${targetId}`;
+        // Push job into edge jobsInTransit to start animation
+        setEdges((eds) =>
+          eds.map((edge) => {
+            if (edge.id === edgeId) {
+              const newJobs = [...(edge.data.jobsInTransit || []), job];
+              return {
+                ...edge,
+                data: { ...edge.data, jobsInTransit: newJobs },
+              };
+            }
+            return edge;
+          }),
+        );
+      }
+
+      // Start the animation timeout
+      setTimeout(() => {
+        // Remove job from edge
+        setEdges((eds) =>
+          eds.map((edge) => {
+            if (edge.id === edgeId) {
+              const remainingJobs = (edge.data.jobsInTransit || []).filter(
+                (j) => j.id !== job.id,
+              );
+              return {
+                ...edge,
+                data: { ...edge.data, jobsInTransit: remainingJobs },
+              };
+            }
+            return edge;
+          }),
+        );
+
+        // Finally, update the target machine queue
+        setMachines((prevMachines) =>
+          prevMachines.map((machine) =>
+            machine.id === targetId
+              ? { ...machine, queue: [...(machine.queue || []), job] }
+              : machine,
+          ),
+        );
+      }, 250); // duration of animation
+    },
+    [setEdges, setMachines],
+  );
+
+  useEffect(() => {
+    // TODO get policy
+    // based on batch Q run policy
+    // for example first-come-first-served hard coded. FIXME
+    if (!isRunning) {
+      setTask_counter(0);
+      setMachine_index(0);
+      setIot_index(0);
+    }
+
+    if (!batchQ.queue.length) return;
+    if (!taskLoaded) {
+      setTask(batchQ.queue.shift());
+      setTaskLoaded(true);
+      machine_count = machines.length;
+      setMachine_index((prev_machine_index + 1) % machine_count);
+      setPrev_machine_index(machine_index);
+      if (iot.length !== 0) {
+        for (let i = 0; i < iot.length; i = i + 1) {
+          if (iot[i].id == task.task_type) {
+            setIot_index(i);
+            break;
+          }
+        }
+      }
+    }
+    mecha = machines[machine_index];
+    source = iot[iot_index];
+
+    if (taskLoaded && simulationTime >= task.arrival_time) {
+      // startAnimation(`e-${source.id}-${mecha.id}`, 500).then(() => {
+      // });
+      setTaskLoaded(false);
+      enqueue(mecha.id, source, true, LB_ID);
+    }
+
+    // machines.forEach((m) => {
+    //   // if (!m.queue.length) return;
+    //   if (simulationTime % 2 == 0) dequeue(m.id);
+    // });
+  }, [simulationTime]);
+  const dequeue = useCallback(
+    (machineId) => {
+      setMachines((prevMachines) =>
+        prevMachines.map((machine) =>
+          machine.id === machineId
+            ? {
+                ...machine,
+                queue: (machine.queue || []).slice(1),
+              }
+            : machine,
+        ),
+      );
+    },
+    [setMachines],
+  );
+  /* -------------------- MACHINE NODES -------------------- */
+  useEffect(() => {
+    setNodes((prev) => {
+      const other = prev.filter((n) => n.type !== "machineNode");
+
       const machineNodes = machines.map((m, index) => ({
-        id: `machine-${m.id}`,
+        id: `${m.id}`,
         type: "machineNode",
         data: { machine: m },
-        position: m.position ?? { x: 725, y: 70 + index * 150 }, // stacked vertically
+        position: m.position ?? { x: 600, y: 80 + index * 150 },
       }));
 
-      return [...otherNodes, ...machineNodes];
+      return [...other, ...machineNodes];
     });
-  }, [machines, setNodes]);
+  }, [setNodes, machines]);
 
-  // Update React Flow IOT
+  /* -------------------- IOT NODES -------------------- */
   useEffect(() => {
-    setNodes((prevNodes) => {
-      // Remove all existing iotNode
-      const otherNodes = prevNodes.filter((n) => n.type !== "iotNode");
+    setNodes((prev) => {
+      const other = prev.filter((n) => n.type !== "iotNode");
 
-      // Map each machine to its own node
       const iotNodes = iot.map((m, index) => ({
-        id: `IOT-${m.id}`,
+        id: `${m.id}`,
         type: "iotNode",
         data: { iot: m },
-        position: m.position ?? { x: -200, y: 70 + index * 150 }, // stacked vertically
+        position: m.position ?? { x: 0, y: 80 + index * 150 },
       }));
 
-      return [...otherNodes, ...iotNodes];
+      return [...other, ...iotNodes];
     });
-  }, [iot, setNodes]);
+  }, [setNodes, iot]);
 
   const handleSubmitLoadBalancer = async () => {
     try {
@@ -741,7 +886,7 @@ const SimDashboard = () => {
   };
 
   return (
-    <div className="bg-[#d9d9d9] max-w-screen min-w-screen min-h-screen flex flex-col relative">
+    <div className=" bg-[#d9d9d9] max-w-screen min-w-screen min-h-screen flex flex-col relative ">
       {/* DND */}
       <ReactFlowProvider>
         <div className=" p-8 bg-gray-100 size-dvw max-w-screen max-h-screen min-w-screen min-h-screen">
@@ -751,6 +896,7 @@ const SimDashboard = () => {
                 nodes={nodes}
                 edges={edges}
                 nodeTypes={nodeTypes}
+                edgeTypes={edgeTypes}
                 onNodesChange={onNodesChange}
                 onNodeDragStop={onDragStop}
                 onEdgesChange={onEdgesChange}
@@ -762,22 +908,7 @@ const SimDashboard = () => {
                 <Controls />
                 <Background />
                 {menu && <ContextMenu onClick={onPaneClick} {...menu} />}
-                <Panel position="top-left">
-                  <div className="xy-theme__button-group">
-                    <button
-                      className={`xy-theme__button ${""}`}
-                      onClick={() => {}}
-                    >
-                      View Mode
-                    </button>
-                    <button
-                      className={`xy-theme__button ${""}`}
-                      onClick={() => {}}
-                    >
-                      Wire Mode
-                    </button>
-                  </div>
-                </Panel>
+                <SaveLoadPanel />
               </ReactFlow>
             </div>
             <Sidebar setNodes={setNodes} />
@@ -829,76 +960,6 @@ const SimDashboard = () => {
           </div>
         </div>
       )}
-      <div className="flex justify-center items-center space-x-12">
-        {/* Left Side */}
-        <div className="flex flex-col items-center space-y-8 mt-8">
-          <div className="flex items-center space-x-12">
-            {/* Workload Button */}
-            <div
-              onClick={() => openSidebar("workload")}
-              className="bg-gray-800 text-white text-sm font-semibold w-20 h-20 flex items-center justify-center rounded-full cursor-pointer hover:scale-105 transition"
-            >
-              Workload
-            </div>
-
-            {/* Task Slots */}
-            <div className="flex space-x-2 px-3 py-2 border-4 border-black rounded-xl bg-white">
-              <TaskList
-                machine={batchQ}
-                isBatchQueue={true}
-                setSelectedTask={setSelectedTask}
-                onClicked={() => openSidebar("task")}
-                registerSlotRef={registerBatchSlotRef}
-              />
-            </div>
-
-            {/* Load Balancer Button */}
-            <div
-              ref={loadBalancerRef}
-              onClick={() => openSidebar("loadBalancer")}
-              className="bg-gray-800 text-white text-lg font-semibold w-30 h-30 flex items-center justify-center rounded-full cursor-pointer hover:scale-110 transition text-center px-2"
-            >
-              Load
-              <br />
-              Balancer
-            </div>
-          </div>
-
-          {/* Cancelled Tasks */}
-          <div
-            className="flex flex-col items-center cursor-pointer hover:scale-105 transition"
-            onClick={() => openSidebar("cancelledTasks")}
-          >
-            <TrashIcon className="w-10 h-10 text-gray-800" />
-            <span className="text-gray-800 text-sm font-semibold mt-1">
-              Cancelled Tasks
-            </span>
-          </div>
-        </div>
-
-        {/* Right Side */}
-        <div className="flex flex-col items-center space-y-8 mt-8">
-          <MachineList
-            machs={animatedMachines}
-            setSelectedMachine={setSelectedMachine}
-            setSelectedTask={setSelectedTask}
-            onClicked={() => openSidebar("machine")}
-            onTaskClicked={() => openSidebar("task")}
-            registerMachineSlotRef={registerMachineSlotRef}
-          />
-
-          {/* Missed Tasks */}
-          <div
-            className="flex flex-col items-center cursor-pointer hover:scale-105 transition"
-            onClick={() => openSidebar("missedTasks")}
-          >
-            <TrashIcon className="w-10 h-10 text-gray-800" />
-            <span className="text-gray-800 text-sm font-semibold mt-1">
-              Missed Tasks
-            </span>
-          </div>
-        </div>
-      </div>
 
       {/* Footer */}
       <div className="bg-[#eeeeee] border-t border-gray-400 p-4 flex flex-col items-center space-y-4">
@@ -907,15 +968,35 @@ const SimDashboard = () => {
         </div>
 
         <div className="flex space-x-6">
-          <button className="bg-gray-400 rounded-xl w-16 h-10">⟲</button>
           <button
-            onClick={runDataSimulation}
+            onClick={() => {
+              setSimulationTime(0);
+              runDataSimulation();
+            }}
+            className="bg-gray-400 rounded-xl w-16 h-10"
+          >
+            ⟲
+          </button>
+          <button
+            onClick={() => {
+              setIsRunning(true);
+              runSim();
+            }}
             className="bg-green-600 hover:bg-green-700 text-white rounded-xl w-16 h-10"
           >
             {" "}
             ▶
           </button>
-          <button className="bg-gray-400 rounded-xl w-16 h-10">⏸</button>
+
+          <button
+            onClick={() => {
+              setIsRunning(false);
+              runtime();
+            }}
+            className="bg-gray-400 rounded-xl w-16 h-10"
+          >
+            ⏸
+          </button>
         </div>
         <div className="w-full max-w-md flex justify-between items-center px-4">
           <span className="text-sm text-gray-700">progress</span>
@@ -939,18 +1020,18 @@ const SimDashboard = () => {
                 {sidebarMode === "workload"
                   ? "Workload & Profiling Table"
                   : sidebarMode === "loadBalancer"
-                  ? "Load Balancer"
-                  : sidebarMode === "cancelledTasks"
-                  ? "Cancelled Tasks"
-                  : sidebarMode === "missedTasks"
-                  ? "Missed Tasks"
-                  : sidebarMode === "task"
-                  ? `Task: ${String(selectedTask.id)}`
-                  : sidebarMode === "machine"
-                  ? `Machine: ${selectedMachine.name?.toUpperCase()}`
-                  : sidebarMode === "IOT"
-                  ? `IOT: ${selectedIOT.name?.toUpperCase()}`
-                  : "Drag and Drop Templates"}
+                    ? "Load Balancer"
+                    : sidebarMode === "cancelledTasks"
+                      ? "Cancelled Tasks"
+                      : sidebarMode === "missedTasks"
+                        ? "Missed Tasks"
+                        : sidebarMode === "task"
+                          ? `Task: ${String(selectedTask.id)}`
+                          : sidebarMode === "machine"
+                            ? `Machine: ${selectedMachine.name?.toUpperCase()}`
+                            : sidebarMode === "IOT"
+                              ? `IOT: ${selectedIOT.name?.toUpperCase()}`
+                              : "Drag and Drop Templates"}
               </h2>
               <button
                 onClick={() => setShowSidebar(false)}
@@ -1047,7 +1128,7 @@ const SimDashboard = () => {
                     */}
                   </div>
                 </div>
-                
+
                 {/*
                 <div>
                   <label className="block text-sm font-semibold text-gray-700 mb-1">

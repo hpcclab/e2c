@@ -5,7 +5,7 @@ import { useGlobalState } from "../context/GlobalStates";
 
 // Simple ID generator for nodes
 let id = 0;
-const getId = () => `dndnode_${id++}`;
+const getId = (type) => `${type}_${id++}`;
 const machine = { id: -1, name: "empty machine", queue: [] };
 const iot = { id: -2, name: "empty iot", queue: [] };
 
@@ -77,13 +77,14 @@ export default function Sidebar() {
           id: Date.now(), // unique ID
           name: `IOT ${Date.now().toString().slice(-4)}`,
           properties: [],
+          queue: [],
           position,
         };
 
         setIot((prev) => [...prev, newIot]);
       } else {
         const newNode = {
-          id: getId(),
+          id: getId(nodeType),
           type: nodeType,
           position,
           data: {},
@@ -91,7 +92,7 @@ export default function Sidebar() {
         setNodes((nds) => nds.concat(newNode));
       }
     },
-    [setNodes, screenToFlowPosition, setMachines]
+    [setNodes, screenToFlowPosition, setMachines],
   );
 
   return (
