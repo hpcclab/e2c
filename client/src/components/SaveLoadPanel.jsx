@@ -104,7 +104,7 @@ export default function FlowSaveLoadPanel() {
 
         // Separate other nodes (non-machine / non-iot)
         const otherNodes = loadedNodes.filter(
-          (n) => n.type !== "machineNode" && n.type !== "iotNode"
+          (n) => n.type !== "machineNode" && n.type !== "iotNode",
         );
 
         // Map machines to React Flow nodes
@@ -165,7 +165,7 @@ export default function FlowSaveLoadPanel() {
 
           const otherNodes =
             data.nodes?.filter(
-              (n) => n.type !== "machineNode" && n.type !== "iotNode"
+              (n) => n.type !== "machineNode" && n.type !== "iotNode",
             ) || [];
 
           setNodes([...otherNodes, ...machineNodes, ...iotNodes]);

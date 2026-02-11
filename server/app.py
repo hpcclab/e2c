@@ -2,9 +2,9 @@ import os
 
 from flask import Flask
 from flask_cors import CORS
+
 from server.routes.config import config_bp
 from server.routes.flow_state_bp import flow_state_bp
-from server.routes.iot_simulation_bp import iot_sim_bp
 from server.routes.scheduling import scheduling_bp
 from server.routes.workload import workload_bp
 
@@ -39,7 +39,6 @@ app.register_blueprint(scheduling_bp, url_prefix="/api/workload/simulate")
 app.register_blueprint(workload_bp, url_prefix="/api/workload")
 app.register_blueprint(config_bp, url_prefix="/api/config")
 app.register_blueprint(flow_state_bp, url_prefix="/flow")
-app.register_blueprint(iot_sim_bp, url_prefix="/api/iot_sim")
 
 
 @app.route("/")

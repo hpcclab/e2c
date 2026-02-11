@@ -155,7 +155,7 @@ export const WorkloadSidebar = ({
         </button>
       )}
       {workloadFileName && (
-        <div className="flex flex-col space-y-2 mt-2">
+        <div className="flex overflow-scroll h-120 flex-col space-y-2 mt-2">
           <div className="flex items-center space-x-2">
             <p className="text-sm text-gray-600">
               Uploaded File: {workloadFileName}
@@ -172,7 +172,7 @@ export const WorkloadSidebar = ({
             </button>
           </div>
           {workloadTableData.length > 0 && (
-            <table className="table-auto border-collapse border border-gray-300 w-full text-sm">
+            <table className="table-auto overflow-scroll border-collapse border border-gray-300 w-full text-sm">
               <thead>
                 <tr>
                   {Object.keys(workloadTableData[0]).map((header) => (

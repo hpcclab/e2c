@@ -98,7 +98,7 @@ const SimDashboard = () => {
   const reactFlowWrapper = useRef(null);
   const onConnect = useCallback(
     (params) => {
-      const edgeId = `e-${params.source}-${params.target}`;
+      const edgeId = `e-${params.sender}-${params.target}`;
       setEdges((eds) =>
         addEdge(
           {
@@ -244,6 +244,7 @@ const SimDashboard = () => {
     workloadFileUploaded && profilingFileUploaded && configFileUploaded;
 
   // - Sim results handlers
+  const simulationIntervalRef = useRef(null);
   const [dataResults, setDataResults] = useState([]);
   const [animatedMachines, setAnimatedMachines] = useState(machines); // ANIMATION
   const [flyers, setFlyers] = useState([]);
@@ -255,6 +256,8 @@ const SimDashboard = () => {
   const [iot_index, setIot_index] = useState(0);
   const [task_counter, setTask_counter] = useState(0);
   const [taskLoaded, setTaskLoaded] = useState(false);
+  const [showReport, setShowReport] = useState(false);
+
   const [task, setTask] = useState({
     id: -1,
     task_type: "empty",
@@ -263,8 +266,6 @@ const SimDashboard = () => {
     deadline: "",
   });
   let machine_count;
-  let mecha;
-  let source;
   let LB_ID = "LBNode_1";
   // End State assignments
 
@@ -361,6 +362,7 @@ const SimDashboard = () => {
       try {
         eetTable.loadFromCSV(content);
         setEetLoaded(true);
+
         console.log("EET Table loaded:", eetTable.toMatrix());
       } catch (err) {
         console.error("Failed to parse EET table:", err);
@@ -385,7 +387,9 @@ const SimDashboard = () => {
       alert("Failed to upload profiling file.");
     }
   };
-
+  // console.log(machinesRef);
+  // console.log(machines);
+  // console.log(iot);
   const handleWorkloadUpload = async (e) => {
     const file = e.target.files[0];
     if (!file || !file.name.endsWith(".wkl")) {
@@ -399,81 +403,11 @@ const SimDashboard = () => {
     const reader = new FileReader();
     reader.onload = (event) => {
       const content = event.target.result;
+      const parsedCSV = parseCSV(content);
       setBatchQ({ id: -2, name: "Batch Queue", queue: parseCSV(content) });
 
       console.log("raw content:", batchQ);
       setWorkloadTableData(parseCSV(content)); // Parse CSV into table data
-    };
-    reader.readAsText(file);
-
-    const formData = new FormData();
-    formData.append("file", file);
-
-    try {
-      const res = await axios.post(
-        "http://localhost:5001/api/workload/upload",
-        formData,
-        {
-          headers: { "Content-Type": "multipart/form-data" },
-        },
-      );
-      console.log("Workload upload success:", res.data);
-    } catch (err) {
-      console.error("Workload upload error:", err);
-      alert("Failed to upload workload file.");
-    }
-  };
-
-  const handleConfigUpload = async (e) => {
-    const file = e.target.files[0];
-    if (!file || !file.name.endsWith(".json")) {
-      alert("Only .json files are allowed for configuration.");
-      return;
-    }
-    setConfigFileName(file.name);
-    setConfigFileUploaded(true);
-    const formData = new FormData();
-    formData.append("file", file);
-    try {
-      const res = await axios.post(
-        "http://localhost:5001/api/workload/upload/config",
-        formData,
-        {
-          headers: { "Content-Type": "multipart/form-data" },
-        },
-      );
-      console.log("Config upload success:", res.data);
-      // Group machines by base name and track replicas
-      const machineMap = {};
-      res.data.machines.forEach((machine) => {
-        const baseName = machine.base_name || machine.name;
-        if (!machineMap[baseName]) {
-          machineMap[baseName] = {
-            id: machine.id,
-            name: baseName,
-            power: machine.power || 0,
-            idle_power: machine.idle_power || 0,
-            replicas: machine.replicas || 1,
-            price: machine.price || 0,
-            cost: machine.cost || 0,
-            queue: machine.queue || [],
-            replica_instances: [],
-          };
-        }
-        // Add this specific replica instance
-        machineMap[baseName].replica_instances.push({
-          id: machine.id,
-          replica_number: machine.replica_number,
-          queue: machine.queue || [],
-        });
-      });
-      const machinesWithIds = Object.values(machineMap);
-      console.log("Processed machines with replicas:", machinesWithIds);
-      setMachines(machinesWithIds);
-      setAnimatedMachines(machinesWithIds);
-      machinesRef.current = machinesWithIds;
-
-      // Group tasks by task_type
       const taskTypeMap = [];
       parsedCSV.forEach((row) => {
         const type = row.task_type;
@@ -528,6 +462,76 @@ const SimDashboard = () => {
 
       // Update global states
       setIot((prevIot) => [...prevIot, ...newIoTs]);
+    };
+
+    reader.readAsText(file);
+
+    const formData = new FormData();
+    formData.append("file", file);
+    try {
+      const res = await axios.post(
+        "http://localhost:5001/api/workload/upload",
+        formData,
+        {
+          headers: { "Content-Type": "multipart/form-data" },
+        },
+      );
+      console.log("Workload upload success:", res.data);
+      // Group tasks by task_type
+    } catch (err) {
+      console.error("Workload upload error:", err);
+      alert("Failed to upload workload file.");
+    }
+  };
+
+  const handleConfigUpload = async (e) => {
+    const file = e.target.files[0];
+    if (!file || !file.name.endsWith(".json")) {
+      alert("Only .json files are allowed for configuration.");
+      return;
+    }
+    setConfigFileName(file.name);
+    setConfigFileUploaded(true);
+    const formData = new FormData();
+    formData.append("file", file);
+    try {
+      const res = await axios.post(
+        "http://localhost:5001/api/workload/upload/config",
+        formData,
+        {
+          headers: { "Content-Type": "multipart/form-data" },
+        },
+      );
+      console.log("Config upload success:", res.data);
+      // Group machines by base name and track replicas
+      const machineMap = {};
+      res.data.machines.forEach((machine) => {
+        const baseName = machine.base_name || machine.name;
+        if (!machineMap[baseName]) {
+          machineMap[baseName] = {
+            id: machine.id,
+            name: baseName,
+            power: machine.power || 0,
+            idle_power: machine.idle_power || 0,
+            replicas: machine.replicas || 1,
+            price: machine.price || 0,
+            cost: machine.cost || 0,
+            queue: machine.queue || [],
+            replica_instances: [],
+          };
+        }
+        // Add this specific replica instance
+        machineMap[baseName].replica_instances.push({
+          id: machine.id,
+          replica_number: machine.replica_number,
+          queue: machine.queue || [],
+        });
+      });
+      const machinesWithIds = Object.values(machineMap);
+      console.log("Processed machines with replicas:", machinesWithIds);
+      setMachines(machinesWithIds);
+      setAnimatedMachines(machinesWithIds);
+      machinesRef.current = machinesWithIds;
     } catch (err) {
       console.error("Config upload error:", err);
       alert("Failed to upload configuration file.");
@@ -543,6 +547,7 @@ const SimDashboard = () => {
       alert(
         "Please upload the workload (.wkl), profiling table (.eet), and configuration (.json) files before submitting.",
       );
+
       return;
     }
 
@@ -660,6 +665,7 @@ const SimDashboard = () => {
       if (simulationIntervalRef.current) {
         clearInterval(simulationIntervalRef.current);
       }
+      setIsRunning(true);
 
       // Auto-map machine names (EET CSV machines to config machines by order)
       const configMachines = machinesRef.current.filter((m) => m.id !== -1);
@@ -671,6 +677,75 @@ const SimDashboard = () => {
         configFilename: configFileName, // Configuration file name
         profilingData: profilingTableData, // Profiling data parsed from the .eet file
         tasks: workloadTableData, // Tasks parsed from the .wkl file
+      };
+
+      const animateAdmissions = (admissionEvents, baseMachines) => {
+        setAnimatedMachines(baseMachines.map((m) => ({ ...m, queue: [] }))); // Reset queues
+
+        const play = (idx, currentQueues) => {
+          if (idx >= admissionEvents.length) return;
+
+          const event = admissionEvents[idx];
+          const targetMachineId = event.machineId;
+          const nextSlotIndex = currentQueues[targetMachineId] || 0;
+
+          const fromEl = loadBalancerRef.current;
+          const toEl = (machineSlotsRef.current[targetMachineId] || [])[
+            nextSlotIndex
+          ];
+
+          const from = getCenter(fromEl);
+          const to = getCenter(toEl);
+
+          if (!from || !to) {
+            setAnimatedMachines((prev) =>
+              prev.map((machine) =>
+                machine.id === targetMachineId
+                  ? { ...machine, queue: [...machine.queue, event] }
+                  : machine,
+              ),
+            );
+            const updated = {
+              ...currentQueues,
+              [targetMachineId]: nextSlotIndex + 1,
+            };
+            setTimeout(() => play(idx + 1, updated), 50);
+            return;
+          }
+
+          const flyerKey = `${event.taskId}-${idx}-${Date.now()}`;
+          const flyer = {
+            key: flyerKey,
+            from,
+            to,
+            label: event.taskId,
+            onComplete: () => {
+              setFlyers((fs) => fs.filter((f) => f.key !== flyerKey));
+              setAnimatedMachines((prev) =>
+                prev.map((machine) =>
+                  machine.id === targetMachineId
+                    ? { ...machine, queue: [...machine.queue, event] }
+                    : machine,
+                ),
+              );
+              const updated = {
+                ...currentQueues,
+                [targetMachineId]: nextSlotIndex + 1,
+              };
+              setTimeout(() => play(idx + 1, updated), 50);
+            },
+          };
+
+          setFlyers((fs) => [...fs, flyer]);
+        };
+
+        setTimeout(() => {
+          const initialQueues = {};
+          baseMachines.forEach((m) => {
+            initialQueues[m.id] = 0;
+          });
+          play(0, initialQueues);
+        }, 100);
       };
 
       const response = await axios.post(
@@ -786,7 +861,7 @@ const SimDashboard = () => {
           setPerformanceParams({
             id: updatedSelectedMachine.id,
             name: updatedSelectedMachine.name,
-            queue: updatedSelectedMachine.queue,
+            // queue: updatedSelectedMachine.queue,
             power: updatedSelectedMachine.power,
             idle_power: updatedSelectedMachine.idle_power,
             replicas: updatedSelectedMachine.replicas,
@@ -815,124 +890,93 @@ const SimDashboard = () => {
     }
   };
 
-  /* -------------------- PLAY LOOP -------------------- */
-  const runSim = useCallback(() => {
-    if (!filesReady) return;
-
-    runtime();
-    runDataSimulation();
-  }, [isRunning]);
-
-  const runtime = useCallback(() => {
-    let timer = 0;
-    let current = 0;
-    let timeframe;
-    setSimulationTime(0);
-    let lastTime = Date.now();
-
-    const tick = () => {
-      const now = Date.now();
-      const delta = now - lastTime;
-      lastTime = now;
-      if (isRunning) {
-        timer += delta;
-        current = parseFloat((timer / 1000).toFixed(3));
-        setSimulationTime(current);
-        timeframe = requestAnimationFrame(tick);
-      } else {
-        cancelAnimationFrame(timeframe);
-      }
-    };
-    if (isRunning) tick();
-  }, [isRunning]);
-
-  /* -------------------- PACKET EDGE EMISSION -------------------- */
-
-  /*queue fn */
+  /*queue fns */
   const enqueue = useCallback(
-    (targetId, source, LB = false, LB_ID = "LBNode_1") => {
+    (targetId, sender, LB = false, LB_ID = "LBNode_1") => {
       // TODO fix hard coded LB id
       let edgeId;
-      const job = source.queue.shift();
+      const job = sender.queue.shift();
       if (!job) return;
       // setTask_counter(task_counter + 1);
       job.id = job.arrival_time; // unique id for tracking animation
+      console.log("New task");
+      console.log(job);
+      // // Determine edge id
+      // if (LB) {
+      //   // if using load balancer pass animation through lb otherwise dont
+      //   // Push job into edge jobsInTransit to start animation
+      //   edgeId = `e-${sender.id}-${LB_ID}`;
+      //   setEdges((eds) =>
+      //     eds.map((edge) => {
+      //       if (edge.id === edgeId) {
+      //         const newJobs = [...(edge.data.jobsInTransit || []), job];
+      //         return {
+      //           ...edge,
+      //           data: { ...edge.data, jobsInTransit: newJobs },
+      //         };
+      //       }
+      //       return edge;
+      //     }),
+      //   );
 
-      // Determine edge id
-      if (LB) {
-        // if using load balancer pass animation through lb otherwise dont
-        // Push job into edge jobsInTransit to start animation
-        edgeId = `e-${source.id}-${LB_ID}`;
-        setEdges((eds) =>
-          eds.map((edge) => {
-            if (edge.id === edgeId) {
-              const newJobs = [...(edge.data.jobsInTransit || []), job];
-              return {
-                ...edge,
-                data: { ...edge.data, jobsInTransit: newJobs },
-              };
-            }
-            return edge;
-          }),
-        );
+      //   edgeId = `e-${LB_ID}-${targetId}`;
+      //   setEdges((eds) =>
+      //     eds.map((edge) => {
+      //       if (edge.id === edgeId) {
+      //         const newJobs = [...(edge.data.jobsInTransit || []), job];
+      //         return {
+      //           ...edge,
+      //           data: { ...edge.data, jobsInTransit: newJobs },
+      //         };
+      //       }
+      //       return edge;
+      //     }),
+      //   );
+      // } else {
+      //   edgeId = `e-${sender.id}-${targetId}`;
+      //   // Push job into edge jobsInTransit to start animation
+      //   setEdges((eds) =>
+      //     eds.map((edge) => {
+      //       if (edge.id === edgeId) {
+      //         const newJobs = [...(edge.data.jobsInTransit || []), job];
+      //         return {
+      //           ...edge,
+      //           data: { ...edge.data, jobsInTransit: newJobs },
+      //         };
+      //       }
+      //       return edge;
+      //     }),
+      //   );
+      // }
 
-        edgeId = `e-${LB_ID}-${targetId}`;
-        setEdges((eds) =>
-          eds.map((edge) => {
-            if (edge.id === edgeId) {
-              const newJobs = [...(edge.data.jobsInTransit || []), job];
-              return {
-                ...edge,
-                data: { ...edge.data, jobsInTransit: newJobs },
-              };
-            }
-            return edge;
-          }),
-        );
-      } else {
-        edgeId = `e-${source.id}-${targetId}`;
-        // Push job into edge jobsInTransit to start animation
-        setEdges((eds) =>
-          eds.map((edge) => {
-            if (edge.id === edgeId) {
-              const newJobs = [...(edge.data.jobsInTransit || []), job];
-              return {
-                ...edge,
-                data: { ...edge.data, jobsInTransit: newJobs },
-              };
-            }
-            return edge;
-          }),
-        );
-      }
+      // // Start the animation timeout
+      // setTimeout(() => {
+      //   // Remove job from edge
+      //   setEdges((eds) =>
+      //     eds.map((edge) => {
+      //       if (edge.id === edgeId) {
+      //         const remainingJobs = (edge.data.jobsInTransit || []).filter(
+      //           (j) => j.id !== job.id,
+      //         );
+      //         return {
+      //           ...edge,
+      //           data: { ...edge.data, jobsInTransit: remainingJobs },
+      //         };
+      //       }
+      //       return edge;
+      //     }),
+      //   );
 
-      // Start the animation timeout
-      setTimeout(() => {
-        // Remove job from edge
-        setEdges((eds) =>
-          eds.map((edge) => {
-            if (edge.id === edgeId) {
-              const remainingJobs = (edge.data.jobsInTransit || []).filter(
-                (j) => j.id !== job.id,
-              );
-              return {
-                ...edge,
-                data: { ...edge.data, jobsInTransit: remainingJobs },
-              };
-            }
-            return edge;
-          }),
-        );
-
-        // Finally, update the target machine queue
-        setMachines((prevMachines) =>
-          prevMachines.map((machine) =>
-            machine.id === targetId
-              ? { ...machine, queue: [...(machine.queue || []), job] }
-              : machine,
-          ),
-        );
-      }, 250); // duration of animation
+      // Finally, update the target machine queue
+      // }, 250); // duration of animation
+      setMachines((prevMachines) =>
+        prevMachines.map((machine) =>
+          machine.id === targetId
+            ? { ...machine, queue: [...(machine.queue || []), job] }
+            : machine,
+        ),
+      );
+      return;
     },
     [setEdges, setMachines],
   );
@@ -945,26 +989,7 @@ const SimDashboard = () => {
     };
   }, []);
 
-  // Update React Flow Machines - create individual nodes for each machine
-  useEffect(() => {
-    setNodes((prevNodes) => {
-      // Remove all existing machineNodes
-      const otherNodes = prevNodes.filter((n) => n.type !== "machineNode");
-
-      // Map each machine to its own separate node with machineIndex for color
-      const machineNodes = machines
-        .filter((m) => m.id !== -1) // Exclude empty placeholder machines
-        .map((machine, index) => ({
-          id: `machine-${machine.id}`,
-          type: "machineNode",
-          data: {
-            machine: machine,
-            machineIndex: index, // Pass the index for color consistency
-          },
-          position: machine.position ?? { x: 725, y: 70 + index * 200 }, // Stack vertically
-        }));
-    });
-  }, [setEdges, setMachines]);
+  // Update Machines
   useEffect(() => {
     // TODO get policy
     // based on batch Q run policy
@@ -973,39 +998,35 @@ const SimDashboard = () => {
       setTask_counter(0);
       setMachine_index(0);
       setIot_index(0);
+      return;
     }
 
     if (!batchQ.queue.length) return;
     if (!taskLoaded) {
       setTask(batchQ.queue.shift());
       setTaskLoaded(true);
+    }
+
+    if (taskLoaded && simulationTime >= task.arrival_time) {
+      // startAnimation(`e-${sender.id}-${mecha.id}`, 500).then(() => {
+      // });
       machine_count = machines.length;
       setMachine_index((prev_machine_index + 1) % machine_count);
       setPrev_machine_index(machine_index);
-      if (iot.length !== 0) {
-        for (let i = 0; i < iot.length; i = i + 1) {
-          if (iot[i].id == task.task_type) {
-            setIot_index(i);
-            break;
-          }
-        }
-      }
-    }
-    mecha = machines[machine_index];
-    source = iot[iot_index];
-
-    if (taskLoaded && simulationTime >= task.arrival_time) {
-      // startAnimation(`e-${source.id}-${mecha.id}`, 500).then(() => {
-      // });
+      setIot_index(iot.findIndex((m) => m.id == task.task_type));
       setTaskLoaded(false);
-      enqueue(mecha.id, source, true, LB_ID);
+      let mecha = machines[machine_index].id;
+      let sender = iot[iot_index];
+      enqueue(mecha, sender, true, LB_ID);
     }
 
-    // machines.forEach((m) => {
-    //   // if (!m.queue.length) return;
-    //   if (simulationTime % 2 == 0) dequeue(m.id);
-    // });
-  }, [simulationTime]);
+    machines.forEach((m) => {
+      if (!m.queue.length) return;
+      let task_life = simulationTime - m.queue[0].arrival_time;
+      if (task_life >= eetTable.get(m.name, m.queue[0].task_type))
+        dequeue(m.id);
+    });
+  }, [simulationTime, isRunning]);
   const dequeue = useCallback(
     (machineId) => {
       setMachines((prevMachines) =>
@@ -1021,21 +1042,25 @@ const SimDashboard = () => {
     },
     [setMachines],
   );
-  /* -------------------- MACHINE NODES -------------------- */
+  // /* -------------------- MACHINE NODES -------------------- */
   useEffect(() => {
     setNodes((prev) => {
       const other = prev.filter((n) => n.type !== "machineNode");
-
-      const machineNodes = machines.map((m, index) => ({
-        id: `${m.id}`,
-        type: "machineNode",
-        data: { machine: m },
-        position: m.position ?? { x: 600, y: 80 + index * 150 },
-      }));
+      const machineNodes = machines
+        .filter((m) => m.id !== -1) // Exclude empty placeholder machines
+        .map((machine, index) => ({
+          id: `${machine.id}`,
+          type: "machineNode",
+          data: {
+            machine: machine,
+            machineIndex: index, // Pass the index for color consistency
+          },
+          position: machine.position ?? { x: 600, y: 80 + index * 150 }, // Stack vertically
+        }));
 
       return [...other, ...machineNodes];
     });
-  }, [setNodes, machines]);
+  }, [machines, setNodes]);
 
   /* -------------------- IOT NODES -------------------- */
   useEffect(() => {
@@ -1051,7 +1076,7 @@ const SimDashboard = () => {
 
       return [...other, ...iotNodes];
     });
-  }, [setNodes, iot]);
+  }, [iot, setNodes]);
 
   const handleSubmitLoadBalancer = async () => {
     try {
@@ -1095,27 +1120,10 @@ const SimDashboard = () => {
                 onNodeContextMenu={onNodeContextMenu}
                 fitView
               >
-                <Controls />
+                <Controls position="center-left" />
                 <Background />
                 {menu && <ContextMenu onClick={onPaneClick} {...menu} />}
                 <SaveLoadPanel />
-                <Panel position="top-left">
-                  <div className="xy-theme__button-group">
-                    <button
-                      className={`xy-theme__button ${""}`}
-                      onClick={() => {}}
-                    >
-                      View Mode
-                    </button>
-                    <button
-                      className={`xy-theme__button ${""}`}
-                      onClick={() => {}}
-                    >
-                      Wire Mode
-                    </button>
-                  </div>
-                </Panel>
-
                 {/* View Report Button - Top Right */}
                 {dataResults.length > 0 && (
                   <Panel position="top-right">
@@ -1240,50 +1248,6 @@ const SimDashboard = () => {
           </div>
         </div>
       )}
-
-      {/* Footer */}
-      <div className="bg-[#eeeeee] border-t border-gray-400 p-4 flex flex-col items-center space-y-4">
-        <div className="flex justify-center items-center space-x-10">
-          {/* Img go here */}
-        </div>
-
-        <div className="flex space-x-6">
-          <button
-            onClick={() => {
-              setSimulationTime(0);
-              runDataSimulation();
-            }}
-            className="bg-gray-400 rounded-xl w-16 h-10"
-          >
-            ⟲
-          </button>
-          <button
-            onClick={() => {
-              setIsRunning(true);
-              runSim();
-            }}
-            className="bg-green-600 hover:bg-green-700 text-white rounded-xl w-16 h-10"
-          >
-            {" "}
-            ▶
-          </button>
-
-          <button
-            onClick={() => {
-              setIsRunning(false);
-              runtime();
-            }}
-            className="bg-gray-400 rounded-xl w-16 h-10"
-          >
-            ⏸
-          </button>
-        </div>
-        <div className="w-full max-w-md flex justify-between items-center px-4">
-          <span className="text-sm text-gray-700">progress</span>
-          <span className="text-sm text-gray-700">speed</span>
-        </div>
-      </div>
-
       {/* Sidebar */}
       <AnimatePresence>
         {showSidebar && (
@@ -1378,7 +1342,7 @@ const SimDashboard = () => {
                       <option>Min-Expected-Execution-Time</option>
                       <option>Weighted-Round-Robin</option>
                       <option>Random</option>
-                      <option>Uniform-Resource-Identifier</option>
+                      <option>Uniform-Resender-Identifier</option>
                       <option>Least-Connection</option>
                     </select>
 
