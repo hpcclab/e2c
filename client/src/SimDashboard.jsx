@@ -205,56 +205,6 @@ const SimDashboard = () => {
     mean2: "",
     std2: "",
   });
-
-  const [machineTab, setMachineTab] = useState("details");
-  const [IOTTab, setIOTTab] = useState("details");
-
-  const simulationIntervalRef = useRef(null);
-  const pendingMissedRef = useRef([]);
-  const animatedMachinesRef = useRef([]);
-  const [profilingFileName, setProfilingFileName] = useState("");
-  const [profilingFileUploaded, setProfilingFileUploaded] = useState(false);
-  const [profilingFileContents, setProfilingFileContents] = useState("");
-  const [profilingTableData, setProfilingTableData] = useState([]);
-  const [profilingSubmissionStatus, setProfilingSubmissionStatus] =
-    useState(""); // Track profiling submission status
-
-  const [workloadFileName, setWorkloadFileName] = useState("");
-  const [workloadFileUploaded, setWorkloadFileUploaded] = useState(false);
-  const [workloadFileContents, setWorkloadFileContents] = useState("");
-  const [workloadTableData, setWorkloadTableData] = useState([]);
-
-  const [configFileName, setConfigFileName] = useState("");
-  const [configFileUploaded, setConfigFileUploaded] = useState(false);
-
-  const [dataResults, setDataResults] = useState([]);
-  const [animatedMachines, setAnimatedMachines] = useState(machines); // ANIMATION
-  const [flyers, setFlyers] = useState([]);
-
-  const [missedTasks, setMissedTasks] = useState([]);
-  const [unassignedTasks, setUnassignedTasks] = useState([]);
-
-  const [animatedTaskIds, setAnimatedTaskIds] = useState([]);
-
-  // Add state for resizable report
-  const [showReport, setShowReport] = useState(false);
-
-  const registerBatchSlotRef = (idx, el) => {
-    batchSlotsRef.current[idx] = el || null;
-  };
-
-  const registerMachineSlotRef = (machineId, idx, el) => {
-    if (!machineSlotsRef.current[machineId])
-      machineSlotsRef.current[machineId] = [];
-    machineSlotsRef.current[machineId][idx] = el || null;
-  };
-
-  const getCenter = (el) => {
-    if (!el) return null;
-    const r = el.getBoundingClientRect();
-    return { x: r.left + r.width / 2, y: r.top + r.height / 2 };
-  };
-
   const parseCSV = (csvContent) => {
     const rows = csvContent.split("\n").map((row) => row.split(","));
     const headers = rows[0];
@@ -267,6 +217,25 @@ const SimDashboard = () => {
     return data;
   };
 
+  // - Sidebar tab handlers
+  const [machineTab, setMachineTab] = useState("details");
+  const [IOTTab, setIOTTab] = useState("details");
+  const pendingMissedRef = useRef([]);
+  const animatedMachinesRef = useRef([]);
+  const [profilingFileName, setProfilingFileName] = useState("");
+  const [profilingFileUploaded, setProfilingFileUploaded] = useState(false);
+  const [profilingFileContents, setProfilingFileContents] = useState("");
+  const [profilingTableData, setProfilingTableData] = useState([]);
+  const [profilingSubmissionStatus, setProfilingSubmissionStatus] =
+    useState(""); // Track profiling submission status
+
+  // -- Workload handlers
+  const [workloadFileName, setWorkloadFileName] = useState("");
+  const [workloadFileUploaded, setWorkloadFileUploaded] = useState(false);
+  const [workloadFileContents, setWorkloadFileContents] = useState("");
+  const [workloadTableData, setWorkloadTableData] = useState([]);
+  const [configFileName, setConfigFileName] = useState("");
+  const [configFileUploaded, setConfigFileUploaded] = useState(false);
   const openSidebar = (mode) => {
     setSidebarMode(mode);
     setShowSidebar(true);
@@ -276,12 +245,21 @@ const SimDashboard = () => {
   const filesReady =
     workloadFileUploaded && profilingFileUploaded && configFileUploaded;
 
+  // - Sim results handlers
+  const simulationIntervalRef = useRef(null);
+  const [dataResults, setDataResults] = useState([]);
+  const [animatedMachines, setAnimatedMachines] = useState(machines); // ANIMATION
+  const [flyers, setFlyers] = useState([]);
+  const [missedTasks, setMissedTasks] = useState([]);
+  const [unassignedTasks, setUnassignedTasks] = useState([]);
+  const [animatedTaskIds, setAnimatedTaskIds] = useState([]);
   const [isRunning, setIsRunning] = useState(false);
   const [machine_index, setMachine_index] = useState(0);
   const [prev_machine_index, setPrev_machine_index] = useState(-1);
   const [iot_index, setIot_index] = useState(0);
   const [task_counter, setTask_counter] = useState(0);
   const [taskLoaded, setTaskLoaded] = useState(false);
+  const [showReport, setShowReport] = useState(false);
 
   const [task, setTask] = useState({
     id: -1,
@@ -292,6 +270,23 @@ const SimDashboard = () => {
   });
   let machine_count;
   let LB_ID = "LBNode_1";
+  // End State assignments
+
+  // Animation references and creation
+  const registerBatchSlotRef = (idx, el) => {
+    batchSlotsRef.current[idx] = el || null;
+  };
+  const registerMachineSlotRef = (machineId, idx, el) => {
+    if (!machineSlotsRef.current[machineId])
+      machineSlotsRef.current[machineId] = [];
+    machineSlotsRef.current[machineId][idx] = el || null;
+  };
+  const getCenter = (el) => {
+    if (!el) return null;
+    const r = el.getBoundingClientRect();
+    return { x: r.left + r.width / 2, y: r.top + r.height / 2 };
+  };
+  // End Animation references and creation
 
   // Data Update handlers
   // - Update machine params
@@ -688,7 +683,11 @@ const SimDashboard = () => {
       };
 
       const animateAdmissions = (admissionEvents, baseMachines) => {
-        const resetMachines = baseMachines.map((m) => ({ ...m, queue: [] }));
+        const resetMachines = baseMachines.map((m) => ({
+          ...m,
+          queue: [],
+          replica_instances: m.replica_instances?.map((r) => ({ ...r, queue: [] })) ?? [],
+        }));
         animatedMachinesRef.current = resetMachines;
         setAnimatedMachines(resetMachines); // Reset queues
 
@@ -934,7 +933,7 @@ const SimDashboard = () => {
       job.id = job.arrival_time; // unique id for tracking animation
       console.log("New task");
       console.log(job);
-      // // Determine edge id
+      // Determine edge id
       // if (LB) {
       //   // if using load balancer pass animation through lb otherwise dont
       //   // Push job into edge jobsInTransit to start animation
@@ -1239,49 +1238,7 @@ const SimDashboard = () => {
         </div>
       </ReactFlowProvider>
       {/* Main Simulation Area */}
-
-      {dataResults.length > 0 && (
-        <div className="px-10 py-4">
-          <h2 className="text-lg font-semibold mb-2">Results</h2>
-          <table className="table-auto border-collapse border border-gray-400 w-full text-sm bg-white">
-            <thead>
-              <tr className="bg-gray-200">
-                <th className="border px-2 py-1">Task ID</th>
-                <th className="border px-2 py-1">Task Type</th>
-                <th className="border px-2 py-1">Machine ID</th>
-                <th className="border px-2 py-1">Assigned Machine</th>
-                <th className="border px-2 py-1">Arrival Time</th>
-                <th className="border px-2 py-1">Start</th>
-                <th className="border px-2 py-1">End</th>
-                <th className="border px-2 py-1">Status</th>
-              </tr>
-            </thead>
-            <tbody>
-              {dataResults.map((task) => (
-                <tr key={task.taskId}>
-                  <td className="border px-2 py-1">{task.taskId}</td>
-                  <td className="border px-2 py-1">{task.task_type}</td>
-                  <td className="border px-2 py-1">
-                    {task.machineId ?? "N/A"}
-                  </td>
-                  <td className="border px-2 py-1">
-                    {task.assigned_machine ?? "N/A"}
-                  </td>
-                  <td className="border px-2 py-1">{task.arrival_time}</td>
-                  <td className="border px-2 py-1">{task.start}</td>
-                  <td className="border px-2 py-1">{task.end}</td>
-                  <td className="border px-2 py-1">{task.status}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-          <div className="text-center mb-4">
-            <h2 className="text-lg font-semibold">
-              Simulation Time: {simulationTime} seconds{" "}
-            </h2>
-          </div>
-        </div>
-      )}
+      
       {/* Sidebar */}
       <AnimatePresence>
         {showSidebar && (

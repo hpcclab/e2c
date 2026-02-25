@@ -69,7 +69,7 @@ def run_sim():
                 "replica_number": task.assigned_machine.replica_number,
                 "display_name": task.assigned_machine.infoAsDict()["name"],
             }
-
+        
         results.append({
             "id": tid,
             "taskId": tid,
@@ -82,16 +82,16 @@ def run_sim():
             "arrival_time": task.arrival_time,
             "start": task.start_time,
             "end": task.end_time,
-            "execution_time": task.execution_time,
-            "deadline": task.deadline,
+            "execution_time": task.execution_time,  
+            "deadline": task.deadline,              
             "status": (
                 "DEADLINE_MISSED"
                 if task.end_time and task.deadline and task.deadline > 0 and task.end_time > task.deadline
                 else task.status.name
             ),
-            "data_size": getattr(task, "data_size", 0),
+            "data_size": getattr(task, "data_size", 0),  # Use getattr with default value
         })
-
+    
     # Calculate the actual simulation time as the max end time
     simulation_time = max(
         (task.end_time for task in tasks if task.end_time is not None),
