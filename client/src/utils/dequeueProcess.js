@@ -39,41 +39,72 @@ export const clearMachineNameMap = () => {
  * Process dequeue for all machines based on EET lookup
  * @param {Array} machines - Array of machine objects
  * @param {number} simulationTime - Current simulation time
- * @returns {Object} - { machines: updated array, completed: dequeued tasks }
+ * @returns {Object} - { machines: updated array, completed: dequeued tasks, deadlineMissed: late completions }
  */
 export const processDequeue = (machines, simulationTime) => {
   const completed = [];
+  const deadlineMissed = [];
+
+  const classifyDone = (done, simulationTime) => {
+    done.end_time = simulationTime;
+    if (done.deadline && done.deadline > 0 && simulationTime > done.deadline) {
+      done.status = 'DEADLINE_MISSED';
+      deadlineMissed.push(done);
+    } else {
+      done.status = 'COMPLETED';
+      completed.push(done);
+    }
+  };
 
   const updatedMachines = machines.map(machine => {
-    const machineName = machine.name || machine.base_name;
+    const machineName = machine.base_name || machine.name;
     const eetMachineName = getEETMachineName(machineName);
-    const queue = [...(machine.queue || [])];
-    
 
-    if (!queue || queue.length === 0) return machine;
+    // If this machine group has replica_instances, process each replica independently
+    if (machine.replica_instances?.length > 0) {
+      let anyChange = false;
+      const updatedReplicas = machine.replica_instances.map(replica => {
+        const queue = [...(replica.queue || [])];
+        if (queue.length === 0) return replica;
+
+        const currentTask = queue[0];
+        const taskType = currentTask?.task_type;
+        const taskStart = currentTask.start_time ?? currentTask.start ?? 0;
+        const eet = eetTable.get(eetMachineName, taskType);
+
+        if (eet !== null && simulationTime >= taskStart + eet) {
+          const done = queue.shift();
+          classifyDone(done, simulationTime);
+          anyChange = true;
+          console.log(`✓ Dequeued [${machineName} #${replica.replica_number}][${taskType}] task ${done.id} at t=${simulationTime.toFixed(3)} (EET: ${eet}) → ${done.status}`);
+          return { ...replica, queue };
+        }
+        return replica;
+      });
+
+      return anyChange ? { ...machine, replica_instances: updatedReplicas } : machine;
+    }
+
+    // Fallback: single-queue behavior for machines without replica_instances
+    const queue = [...(machine.queue || [])];
+    if (queue.length === 0) return machine;
 
     const currentTask = queue[0];
     const taskType = currentTask?.task_type;
     const taskStart = currentTask.start_time ?? currentTask.start ?? 0;
-
-    //Get EET Value using mapped name
     const eet = eetTable.get(eetMachineName, taskType);
-    
-    // if (simulationTime >= taskStart + EET) dequeue
-    if (simulationTime >= (taskStart + eet)) {
-        const done = queue.shift();
-        done.status = 'COMPLETED';
-        done.end_time = simulationTime;
-        completed.push(done);
-  
-        console.log(`✓ Dequeued [${machineName}][${taskType}] task ${done.id} at t=${simulationTime.toFixed(3)} (EET: ${eet})`);
-  
-        return { ...machine, queue };
-      }
-  
-      return machine;
-    });
-  return { machines: updatedMachines, completed };
+
+    if (eet !== null && simulationTime >= taskStart + eet) {
+      const done = queue.shift();
+      classifyDone(done, simulationTime);
+      console.log(`✓ Dequeued [${machineName}][${taskType}] task ${done.id} at t=${simulationTime.toFixed(3)} (EET: ${eet}) → ${done.status}`);
+      return { ...machine, queue };
+    }
+
+    return machine;
+  });
+
+  return { machines: updatedMachines, completed, deadlineMissed };
 };
 
 /**

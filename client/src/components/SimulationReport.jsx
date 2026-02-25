@@ -2,14 +2,16 @@ import React, { useState, useCallback, useEffect, useMemo } from 'react';
 import { exportSimulationReport, exportCombinedReport } from '../utils/exportCSV';
 
 
-const SimulationReport = ({ 
-  dataResults, 
-  simulationTime, 
-  missedTasks, 
+const SimulationReport = ({
+  dataResults,
+  completedTasks = [],
+  missedTasks,
+  unassignedTasks = [],
+  simulationTime,
   machines = [],
   onClose,
   onMinimize,
-  onRunSimulation 
+  onRunSimulation
 }) => {
   const [reportSize, setReportSize] = useState({ width: 1000, height: 600 });
   const [reportPosition, setReportPosition] = useState({ x: 100, y: 100 });
@@ -39,18 +41,25 @@ const SimulationReport = ({
   const summaryStats = useMemo(() => {
     const results = Array.isArray(dataResults) ? dataResults : [];
     const missed = Array.isArray(missedTasks) ? missedTasks : [];
+    const done = Array.isArray(completedTasks) ? completedTasks : [];
+    const unassigned = Array.isArray(unassignedTasks) ? unassignedTasks : [];
     const machineList = Array.isArray(machines) ? machines.filter(m => m.id !== -1) : [];
-  
+
     const totalTasks = results.length;
-    const tasksMapped = results.filter(t => 
-      t.assigned_machine && t.assigned_machine !== '' && t.assigned_machine !== 'N/A'
-    ).length;
-    const tasksCancelled = results.filter(t => 
+    // Dynamic: tasks that have been fully processed (completed + missed) so far
+    const tasksMapped = done.length + missed.length;
+    const tasksCancelled = results.filter(t =>
       t.status === 'CANCELLED'
     ).length;
-    const tasksCompleted = results.filter(t => 
-      t.status === 'COMPLETED'
-    ).length;
+    // Dynamic: count from the live completedTasks accumulator
+    const tasksCompleted = done.length;
+    // Tasks never assigned to any machine (queue capacity constraint)
+    const tasksUnassigned = unassigned.length;
+    const unassignedByType = unassigned.reduce((acc, task) => {
+      const type = task.task_type || 'Unknown';
+      acc[type] = (acc[type] || 0) + 1;
+      return acc;
+    }, {});
     
     // Calculate tasks per machine by matching the machine name prefix
     const tasksPerMachine = {};
@@ -96,6 +105,8 @@ const SimulationReport = ({
       tasksMapped,
       tasksCancelled,
       tasksCompleted,
+      tasksUnassigned,
+      unassignedByType,
       missedByType,
       totalMissed: missed.length,
       completionPercentage,
@@ -103,7 +114,7 @@ const SimulationReport = ({
       totalCost,
       tasksPerMachine,
     };
-  }, [dataResults, missedTasks, machines]);
+  }, [dataResults, completedTasks, missedTasks, unassignedTasks, machines]);
   
   useEffect(() => {
     console.log('=== DEBUG dataResults ===');
@@ -275,7 +286,7 @@ const SimulationReport = ({
             </span>
             <span className="flex items-center">
               <span className="w-3 h-3 bg-green-500 rounded-full mr-1"></span>
-              Completed: {dataResults.filter(t => t.status === 'COMPLETED').length}
+              Completed: {completedTasks.length}
             </span>
             <span className="flex items-center">
               <span className="w-3 h-3 bg-red-500 rounded-full mr-1"></span>
@@ -405,13 +416,15 @@ const SimulationReport = ({
               <tbody>
                 {dataResults.map((task, index) => {
                   // Check if deadline was missed
-                  const deadlineMissed = task.deadline && task.end && task.end > task.deadline;
-                  
+                  const deadlineMissed = task.status === 'DEADLINE_MISSED';
+                  const isUnassigned = task.machineId === null;
+
                   return (
-                    <tr 
-                      key={`task-${task.taskId || task.id}-${index}`}  
+                    <tr
+                      key={`task-${task.taskId || task.id}-${index}`}
                       className={`hover:bg-gray-50 transition ${
-                        task.status === 'CANCELLED' ? 'bg-red-50' : 
+                        isUnassigned ? 'bg-amber-50' :
+                        task.status === 'CANCELLED' ? 'bg-red-50' :
                         deadlineMissed ? 'bg-orange-50' : ''
                       }`}
                     >
@@ -440,11 +453,12 @@ const SimulationReport = ({
                       <td className="border border-gray-300 px-3 py-2">
                         <span className={`px-2 py-1 rounded text-xs font-semibold ${
                           task.status === 'COMPLETED' ? 'bg-green-100 text-green-800' :
+                          isUnassigned ? 'bg-amber-100 text-amber-800' :
                           task.status === 'CANCELLED' ? 'bg-orange-100 text-orange-600' :
                           deadlineMissed ? 'bg-red-100 text-red-800' :
                           'bg-yellow-100 text-yellow-800'
                         }`}>
-                          {task.status}
+                          {isUnassigned ? 'UNASSIGNED' : task.status}
                         </span>
                       </td>
                     </tr>
@@ -483,12 +497,12 @@ const SimulationReport = ({
               <div className="text-sm text-green-600 font-medium">Tasks Mapped</div>
             </div>
 
-            {/* Tasks Cancelled */}
-            <div className="bg-orange-50 rounded-lg p-4 text-center">
-              <div className="text-3xl font-bold text-orange-700">
-                {summaryStats.tasksCancelled}
+            {/* Tasks Unassigned */}
+            <div className="bg-amber-50 rounded-lg p-4 text-center">
+              <div className="text-3xl font-bold text-amber-700">
+                {summaryStats.tasksUnassigned}
               </div>
-              <div className="text-sm text-orange-600 font-medium">Tasks Cancelled</div>
+              <div className="text-sm text-amber-600 font-medium">Tasks Unassigned</div>
             </div>
 
             {/* Total Missed */}
@@ -520,6 +534,10 @@ const SimulationReport = ({
               <tr className="hover:bg-gray-50">
                 <td className="border border-gray-300 px-4 py-2 font-medium">Tasks Cancelled</td>
                 <td className="border border-gray-300 px-4 py-2 text-right">{summaryStats.tasksCancelled}</td>
+              </tr>
+              <tr className="hover:bg-gray-50">
+                <td className="border border-gray-300 px-4 py-2 font-medium">Tasks Unassigned</td>
+                <td className="border border-gray-300 px-4 py-2 text-right">{summaryStats.tasksUnassigned}</td>
               </tr>
               <tr className="hover:bg-gray-50">
                 <td className="border border-gray-300 px-4 py-2 font-medium">Tasks Missed</td>
@@ -565,6 +583,33 @@ const SimulationReport = ({
                       <td className="border border-gray-300 px-4 py-2 text-right">{count}</td>
                       <td className="border border-gray-300 px-4 py-2 text-right">
                         {((count / summaryStats.totalMissed) * 100).toFixed(1)}%
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+
+          {/* Unassigned Tasks by Type */}
+          {summaryStats.unassignedByType && Object.keys(summaryStats.unassignedByType).length > 0 && (
+            <div className="mt-4">
+              <h5 className="text-sm font-semibold text-gray-700 mb-2">Unassigned Tasks by Type</h5>
+              <table className="table-auto border-collapse border border-gray-300 w-full text-sm">
+                <thead className="bg-amber-50">
+                  <tr>
+                    <th className="border border-gray-300 px-4 py-2 text-left">Task Type</th>
+                    <th className="border border-gray-300 px-4 py-2 text-right">Count</th>
+                    <th className="border border-gray-300 px-4 py-2 text-right">% of Unassigned</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {Object.entries(summaryStats.unassignedByType).map(([type, count], index) => (
+                    <tr key={`unassigned-type-${type}-${index}`} className="hover:bg-gray-50">
+                      <td className="border border-gray-300 px-4 py-2 font-medium">{type}</td>
+                      <td className="border border-gray-300 px-4 py-2 text-right">{count}</td>
+                      <td className="border border-gray-300 px-4 py-2 text-right">
+                        {((count / summaryStats.tasksUnassigned) * 100).toFixed(1)}%
                       </td>
                     </tr>
                   ))}
