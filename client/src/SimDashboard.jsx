@@ -220,6 +220,8 @@ const SimDashboard = () => {
   // - Sidebar tab handlers
   const [machineTab, setMachineTab] = useState("details");
   const [IOTTab, setIOTTab] = useState("details");
+  const pendingMissedRef = useRef([]);
+  const animatedMachinesRef = useRef([]);
   const [profilingFileName, setProfilingFileName] = useState("");
   const [profilingFileUploaded, setProfilingFileUploaded] = useState(false);
   const [profilingFileContents, setProfilingFileContents] = useState("");
@@ -249,6 +251,7 @@ const SimDashboard = () => {
   const [animatedMachines, setAnimatedMachines] = useState(machines); // ANIMATION
   const [flyers, setFlyers] = useState([]);
   const [missedTasks, setMissedTasks] = useState([]);
+  const [unassignedTasks, setUnassignedTasks] = useState([]);
   const [animatedTaskIds, setAnimatedTaskIds] = useState([]);
   const [isRunning, setIsRunning] = useState(false);
   const [machine_index, setMachine_index] = useState(0);
@@ -680,7 +683,31 @@ const SimDashboard = () => {
       };
 
       const animateAdmissions = (admissionEvents, baseMachines) => {
-        setAnimatedMachines(baseMachines.map((m) => ({ ...m, queue: [] }))); // Reset queues
+        const resetMachines = baseMachines.map((m) => ({
+          ...m,
+          queue: [],
+          replica_instances: m.replica_instances?.map((r) => ({ ...r, queue: [] })) ?? [],
+        }));
+        animatedMachinesRef.current = resetMachines;
+        setAnimatedMachines(resetMachines); // Reset queues
+
+        // Returns true if this machine group owns the target replica ID
+        const machineOwnsReplica = (machine, targetId) =>
+          machine.id === targetId ||
+          machine.replica_instances?.some((r) => r.id === targetId);
+
+        // Add task to the correct replica_instance queue within its machine group
+        const addTaskToMachine = (prev, targetId, event) =>
+          prev.map((machine) => {
+            if (!machineOwnsReplica(machine, targetId)) return machine;
+            if (machine.replica_instances?.length > 0) {
+              const updatedReplicas = machine.replica_instances.map((r) =>
+                r.id === targetId ? { ...r, queue: [...r.queue, event] } : r
+              );
+              return { ...machine, replica_instances: updatedReplicas };
+            }
+            return { ...machine, queue: [...machine.queue, event] };
+          });
 
         const play = (idx, currentQueues) => {
           if (idx >= admissionEvents.length) return;
@@ -698,13 +725,7 @@ const SimDashboard = () => {
           const to = getCenter(toEl);
 
           if (!from || !to) {
-            setAnimatedMachines((prev) =>
-              prev.map((machine) =>
-                machine.id === targetMachineId
-                  ? { ...machine, queue: [...machine.queue, event] }
-                  : machine,
-              ),
-            );
+            setAnimatedMachines((prev) => addTaskToMachine(prev, targetMachineId, event));
             const updated = {
               ...currentQueues,
               [targetMachineId]: nextSlotIndex + 1,
@@ -721,13 +742,7 @@ const SimDashboard = () => {
             label: event.taskId,
             onComplete: () => {
               setFlyers((fs) => fs.filter((f) => f.key !== flyerKey));
-              setAnimatedMachines((prev) =>
-                prev.map((machine) =>
-                  machine.id === targetMachineId
-                    ? { ...machine, queue: [...machine.queue, event] }
-                    : machine,
-                ),
-              );
+              setAnimatedMachines((prev) => addTaskToMachine(prev, targetMachineId, event));
               const updated = {
                 ...currentQueues,
                 [targetMachineId]: nextSlotIndex + 1,
@@ -742,7 +757,12 @@ const SimDashboard = () => {
         setTimeout(() => {
           const initialQueues = {};
           baseMachines.forEach((m) => {
-            initialQueues[m.id] = 0;
+            // Register all replica IDs so slot tracking works per physical machine
+            if (m.replica_instances?.length > 0) {
+              m.replica_instances.forEach((r) => { initialQueues[r.id] = 0; });
+            } else {
+              initialQueues[m.id] = 0;
+            }
           });
           play(0, initialQueues);
         }, 100);
@@ -776,44 +796,53 @@ const SimDashboard = () => {
 
       setSimulationTime(0);
       setCompletedTasks([]);
+      setUnassignedTasks([]);
 
       simulationIntervalRef.current = setInterval(() => {
         current = parseFloat((current + step).toFixed(3));
         setSimulationTime(current);
 
         // Process dequeue based on EET if loaded
+        // Read from ref (not functional updater) so StrictMode double-invocation
+        // doesn't cause setCompletedTasks / setMissedTasks to fire twice per tick.
         if (eetLoaded) {
-          setAnimatedMachines((prevMachines) => {
-            const { machines: updated, completed } = processDequeue(
-              prevMachines,
-              current,
-            );
+          const { machines: updated, completed, deadlineMissed } = processDequeue(animatedMachinesRef.current, current);
+          animatedMachinesRef.current = updated;
+          setAnimatedMachines(updated);
 
-            if (completed.length > 0) {
-              setCompletedTasks((prev) => [...prev, ...completed]);
-              console.log(
-                `Completed ${completed.length} task(s) at t=${current.toFixed(3)}`,
-              );
-            }
+          if (completed.length > 0) {
+            setCompletedTasks((prev) => [...prev, ...completed]);
+            console.log(`Completed ${completed.length} task(s) at t=${current.toFixed(3)}`);
+          }
 
-            return updated;
-          });
+          if (deadlineMissed.length > 0) {
+            setMissedTasks((prev) => [...prev, ...deadlineMissed]);
+            console.log(`Deadline missed: ${deadlineMissed.length} task(s) at t=${current.toFixed(3)}`);
+          }
+        }
+
+        // Surface CANCELLED/unstarted tasks as simulation time passes their deadline
+        const nowMissed = [];
+        while (
+          pendingMissedRef.current.length > 0 &&
+          (pendingMissedRef.current[0].deadline ?? Infinity) <= current
+        ) {
+          nowMissed.push(pendingMissedRef.current.shift());
+        }
+        if (nowMissed.length > 0) {
+          setMissedTasks((prev) => [...prev, ...nowMissed]);
         }
 
         if (current >= totalSimTime) {
+          // Flush any remaining tasks that never met their deadline by end of simulation
+          if (pendingMissedRef.current.length > 0) {
+            setMissedTasks((prev) => [...prev, ...pendingMissedRef.current]);
+            pendingMissedRef.current = [];
+          }
           setSimulationTime(Number(totalSimTime));
           clearInterval(simulationIntervalRef.current);
           simulationIntervalRef.current = null;
           console.log("Simulation complete!");
-        }
-      }, intervalMs);
-
-      const timer = setInterval(() => {
-        current = parseFloat((current + step).toFixed(2));
-        setSimulationTime(current);
-        if (current >= simulationTime) {
-          setSimulationTime(Number(simulationTime)); // Ensure exact match at end
-          clearInterval(timer);
         }
       }, intervalMs);
 
@@ -874,14 +903,12 @@ const SimDashboard = () => {
         }
       }
 
-      // Identify missed tasks: status === "CANCELLED" or (end == null && start == null) or end > deadline
-      const missed = results.filter(
-        (t) =>
-          t.status === "CANCELLED" ||
-          t.start == null ||
-          (t.deadline && t.end > t.deadline),
-      );
-      setMissedTasks(missed);
+      // Tasks never assigned to any machine (queue was full / size constraint)
+      setUnassignedTasks(results.filter((t) => t.machineId === null));
+
+      // Late-completion misses come from processDequeue; no static list needed
+      pendingMissedRef.current = [];
+      setMissedTasks([]); // accumulates dynamically during the simulation loop
 
       console.log("Simulation results:", results);
     } catch (error) {
@@ -889,6 +916,11 @@ const SimDashboard = () => {
       alert("Failed to run simulation.");
     }
   };
+
+  // Keep animatedMachinesRef in sync so the interval can read it without a functional updater
+  useEffect(() => {
+    animatedMachinesRef.current = animatedMachines;
+  }, [animatedMachines]);
 
   /*queue fns */
   const enqueue = useCallback(
@@ -901,7 +933,7 @@ const SimDashboard = () => {
       job.id = job.arrival_time; // unique id for tracking animation
       console.log("New task");
       console.log(job);
-      // // Determine edge id
+      // Determine edge id
       // if (LB) {
       //   // if using load balancer pass animation through lb otherwise dont
       //   // Push job into edge jobsInTransit to start animation
@@ -1170,8 +1202,10 @@ const SimDashboard = () => {
           {showReport && dataResults.length > 0 && (
             <SimulationReport
               dataResults={dataResults}
-              simulationTime={simulationTime}
+              completedTasks={completedTasks}
               missedTasks={missedTasks}
+              unassignedTasks={unassignedTasks}
+              simulationTime={simulationTime}
               machines={machines}
               onClose={() => {
                 setDataResults([]);
@@ -1204,50 +1238,7 @@ const SimDashboard = () => {
         </div>
       </ReactFlowProvider>
       {/* Main Simulation Area */}
-
-      {dataResults.length > 0 && (
-        <div className="px-10 py-4">
-          <h2 className="text-lg font-semibold mb-2">Results</h2>
-          <table className="table-auto border-collapse border border-gray-400 w-full text-sm bg-white">
-            <thead>
-              <tr className="bg-gray-200">
-                <th className="border px-2 py-1">Task ID</th>
-                <th className="border px-2 py-1">Task Type</th>
-                <th className="border px-2 py-1">Machine ID</th>
-                <th className="border px-2 py-1">Assigned Machine</th>
-                <th className="border px-2 py-1">Arrival Time</th>
-                <th className="border px-2 py-1">Start</th>
-                <th className="border px-2 py-1">End</th>
-                <th className="border px-2 py-1">Status</th>
-              </tr>
-            </thead>
-            <tbody>
-              {dataResults.map((task) => (
-                <tr key={task.taskId}>
-                  <td className="border px-2 py-1">{task.taskId}</td>
-                  <td className="border px-2 py-1">{task.task_type}</td>
-                  <td className="border px-2 py-1">
-                    {task.machineId ?? "N/A"}
-                  </td>
-                  <td className="border px-2 py-1">
-                    {task.assigned_machine ?? "N/A"}
-                  </td>{" "}
-                  {/* Display Machine Type */}
-                  <td className="border px-2 py-1">{task.arrival_time}</td>
-                  <td className="border px-2 py-1">{task.start}</td>
-                  <td className="border px-2 py-1">{task.end}</td>
-                  <td className="border px-2 py-1">{task.status}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-          <div className="text-center mb-4">
-            <h2 className="text-lg font-semibold">
-              Simulation Time: {simulationTime} seconds{" "}
-            </h2>
-          </div>
-        </div>
-      )}
+      
       {/* Sidebar */}
       <AnimatePresence>
         {showSidebar && (
