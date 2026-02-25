@@ -82,7 +82,11 @@ def run_sim():
             "end": task.end_time,
             "execution_time": task.execution_time,  
             "deadline": task.deadline,              
-            "status": task.status.name,
+            "status": (
+                "DEADLINE_MISSED"
+                if task.end_time and task.deadline and task.deadline > 0 and task.end_time > task.deadline
+                else task.status.name
+            ),
             "data_size": getattr(task, "data_size", 0),  # Use getattr with default value
         })
     
