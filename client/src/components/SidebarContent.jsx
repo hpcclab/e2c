@@ -54,7 +54,8 @@ export const WorkloadSidebar = ({
             <tr>
               <td className="border px-2 py-1 font-semibold">Machine Type</td>
               <td className="border px-2 py-1">
-                {selectedTask.assigned_machine?.type?.name || "No Machine Assigned"}
+                {selectedTask.assigned_machine?.type?.name ||
+                  "No Machine Assigned"}
               </td>
             </tr>
             <tr>
@@ -87,7 +88,9 @@ export const WorkloadSidebar = ({
       {profilingFileName && (
         <div className="flex flex-col space-y-2 mt-2">
           <div className="flex items-center space-x-2">
-            <p className="text-sm text-gray-600">Uploaded File: {profilingFileName}</p>
+            <p className="text-sm text-gray-600">
+              Uploaded File: {profilingFileName}
+            </p>
             <button
               className="text-red-600 hover:text-red-800 transition"
               onClick={() => {
@@ -104,7 +107,10 @@ export const WorkloadSidebar = ({
               <thead>
                 <tr>
                   {Object.keys(profilingTableData[0]).map((header) => (
-                    <th key={header} className="border border-gray-300 px-4 py-2 bg-gray-100">
+                    <th
+                      key={header}
+                      className="border border-gray-300 px-4 py-2 bg-gray-100"
+                    >
                       {header}
                     </th>
                   ))}
@@ -114,7 +120,10 @@ export const WorkloadSidebar = ({
                 {profilingTableData.map((row, index) => (
                   <tr key={`profiling-row-${index}`}>
                     {Object.values(row).map((value, idx) => (
-                      <td key={`profiling-cell-${index}-${idx}`} className="border border-gray-300 px-4 py-2">
+                      <td
+                        key={`profiling-cell-${index}-${idx}`}
+                        className="border border-gray-300 px-4 py-2"
+                      >
                         {value}
                       </td>
                     ))}
@@ -146,9 +155,11 @@ export const WorkloadSidebar = ({
         </button>
       )}
       {workloadFileName && (
-        <div className="flex flex-col space-y-2 mt-2">
+        <div className="flex overflow-scroll h-120 flex-col space-y-2 mt-2">
           <div className="flex items-center space-x-2">
-            <p className="text-sm text-gray-600">Uploaded File: {workloadFileName}</p>
+            <p className="text-sm text-gray-600">
+              Uploaded File: {workloadFileName}
+            </p>
             <button
               className="text-red-600 hover:text-red-800 transition"
               onClick={() => {
@@ -161,11 +172,14 @@ export const WorkloadSidebar = ({
             </button>
           </div>
           {workloadTableData.length > 0 && (
-            <table className="table-auto border-collapse border border-gray-300 w-full text-sm">
+            <table className="table-auto overflow-scroll border-collapse border border-gray-300 w-full text-sm">
               <thead>
                 <tr>
                   {Object.keys(workloadTableData[0]).map((header) => (
-                    <th key={header} className="border border-gray-300 px-4 py-2 bg-gray-100">
+                    <th
+                      key={header}
+                      className="border border-gray-300 px-4 py-2 bg-gray-100"
+                    >
                       {header}
                     </th>
                   ))}
@@ -175,7 +189,22 @@ export const WorkloadSidebar = ({
                 {workloadTableData.map((row, index) => (
                   <tr key={`workload-row-${index}`}>
                     {Object.values(row).map((value, idx) => (
-                      <td key={`workload-cell-${index}-${idx}`} className="border border-gray-300 px-4 py-2">
+                      <td
+                        key={`workload-cell-${index}-${idx}`}
+                        className="border border-gray-300 px-4 py-2"
+                      >
+                        {value}
+                      </td>
+                    ))}
+                  </tr>
+                ))}
+                {workloadTableData.map((row, index) => (
+                  <tr key={index}>
+                    {Object.values(row).map((value, idx) => (
+                      <td
+                        key={idx}
+                        className="border border-gray-300 px-4 py-2"
+                      >
                         {value}
                       </td>
                     ))}
@@ -208,7 +237,9 @@ export const WorkloadSidebar = ({
       )}
       {configFileName && (
         <div className="flex items-center space-x-2 mt-2">
-          <p className="text-sm text-gray-600">Uploaded File: {configFileName}</p>
+          <p className="text-sm text-gray-600">
+            Uploaded File: {configFileName}
+          </p>
           <button
             className="text-red-600 hover:text-red-800 transition"
             onClick={() => {
@@ -239,7 +270,9 @@ export const WorkloadSidebar = ({
 
       {/* Success Message */}
       {workloadSubmissionStatus && (
-        <p className="text-sm text-center text-green-600 mt-2">{workloadSubmissionStatus}</p>
+        <p className="text-sm text-center text-green-600 mt-2">
+          {workloadSubmissionStatus}
+        </p>
       )}
     </div>
   </div>

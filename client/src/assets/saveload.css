@@ -1,0 +1,143 @@
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.5);
+  z-index: 1000;
+}
+
+.modal-content {
+  position: absolute;
+  top: 50px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 500px;
+  max-height: 80vh;
+  background: #fff;
+  border-radius: 8px;
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.3);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.modal-header {
+  background: #1e90ff;
+  color: white;
+  padding: 10px 15px;
+  cursor: move;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.modal-header h2 {
+  margin: 0;
+  font-size: 16px;
+}
+
+.close-btn {
+  background: transparent;
+  border: none;
+  color: white;
+  font-size: 20px;
+  cursor: pointer;
+}
+
+.modal-body {
+  padding: 15px;
+  overflow-y: auto;
+  flex: 1;
+}
+
+.file-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.file-list li {
+  display: flex;
+  justify-content: space-between;
+  padding: 6px 10px;
+  border-radius: 4px;
+  margin-bottom: 4px;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.file-list li:hover {
+  background: #f0f0f0;
+}
+
+.file-list li.selected {
+  background: #d0ebff;
+}
+
+.file-btn {
+  margin-left: 8px;
+  padding: 2px 8px;
+  border: none;
+  background: #1e90ff;
+  color: white;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.file-btn:hover {
+  background: #0d6efd;
+}
+
+.save-section input {
+  width: 100%;
+  padding: 6px;
+  margin-bottom: 8px;
+  border-radius: 4px;
+  border: 1px solid #ccc;
+}
+
+.btn-group {
+  display: flex;
+  gap: 8px;
+}
+
+.save-btn,
+.rename-btn {
+  flex: 1;
+  padding: 6px 0;
+  border-radius: 4px;
+  border: none;
+  cursor: pointer;
+  color: white;
+}
+
+.save-btn {
+  background: #28a745;
+}
+.save-btn:hover {
+  background: #218838;
+}
+
+.rename-btn {
+  background: #ffc107;
+  color: black;
+}
+.rename-btn:hover {
+  background: #e0a800;
+}
+
+.drop-zone {
+  margin-top: 15px;
+  padding: 10px;
+  border: 2px dashed #ccc;
+  border-radius: 6px;
+  text-align: center;
+  color: #666;
+  transition: background 0.2s;
+}
+
+.drop-zone:hover {
+  background: #f9f9f9;
+}
