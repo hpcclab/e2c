@@ -1266,8 +1266,7 @@ const SimDashboard = () => {
                   </td>
                   <td className="border px-2 py-1">
                     {task.assigned_machine ?? "N/A"}
-                  </td>{" "}
-                  {/* Display Machine Type */}
+                  </td>
                   <td className="border px-2 py-1">{task.arrival_time}</td>
                   <td className="border px-2 py-1">{task.start}</td>
                   <td className="border px-2 py-1">{task.end}</td>

@@ -94,7 +94,7 @@ def run_sim():
 
     # Calculate the actual simulation time as the max end time
     simulation_time = max(
-        (task.arrival_time for task in tasks if task.arrival_time is not None),
+        (task.end_time for task in tasks if task.end_time is not None),
         default=0,
     )
 
