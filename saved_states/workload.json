@@ -1,0 +1,28 @@
+{
+  "nodes": [
+    {
+      "id": "dndnode_0",
+      "type": "workloadNode",
+      "position": {
+        "x": 823.4675565911294,
+        "y": 252.3672252350431
+      },
+      "data": {},
+      "measured": {
+        "width": 122,
+        "height": 122
+      }
+    }
+  ],
+  "edges": [
+    {
+      "data": {
+        "animate": false
+      },
+      "id": "e-T3-0",
+      "source": "T3",
+      "target": "0",
+      "type": "packet"
+    }
+  ]
+}

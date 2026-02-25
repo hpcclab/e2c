@@ -105,6 +105,18 @@ body {
   }
 }
 
+.react-flow__handle {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background-color: #45a1ec;
+  border: 2px solid #fff;
+}
+
+.react-flow__handle:after {
+  width: 24px;
+  height: 24px;
+}
 .animated-edge-particle {
   offset-path: path(var(--edge-path));
   animation: flowParticle 1.5s ease-in-out forwards;

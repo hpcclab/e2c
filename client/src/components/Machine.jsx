@@ -2,37 +2,37 @@ import React, { useState } from "react";
 import { ChevronDownIcon, ChevronRightIcon } from "@heroicons/react/24/outline";
 import TaskList from "./TaskList";
 
-// Define a list of colors for machines 
+// Define a list of colors for machines
 const machineColors = [
-  'bg-blue-600',
-  'bg-green-600',
-  'bg-purple-600',
-  'bg-red-600',
-  'bg-yellow-600',
-  'bg-pink-600',
-  'bg-indigo-600',
-  'bg-teal-600',
-  'bg-orange-600',
-  'bg-cyan-600',
+  "bg-blue-600",
+  "bg-green-600",
+  "bg-purple-600",
+  "bg-red-600",
+  "bg-yellow-600",
+  "bg-pink-600",
+  "bg-indigo-600",
+  "bg-teal-600",
+  "bg-orange-600",
+  "bg-cyan-600",
 ];
 
-export const Machine = ({ 
-  machine, 
+export const Machine = ({
+  machine,
   machineIndex = 0,
-  onClicked, 
-  onTaskClicked, 
-  setSelectedMachine, 
+  onClicked,
+  onTaskClicked,
+  setSelectedMachine,
   setSelectedTask,
-  registerMachineSlotRef
+  registerMachineSlotRef,
 }) => {
   const [isExpanded, setIsExpanded] = useState(false);
-  
+
   const getMachineColor = () => {
     return machineColors[machineIndex % machineColors.length];
   };
 
   const toggleExpansion = () => {
-    setIsExpanded(prev => !prev);
+    setIsExpanded((prev) => !prev);
   };
 
   const getMachineReplicas = () => {
@@ -43,10 +43,10 @@ export const Machine = ({
       originalId: machine.id,
       replicaNumber: replicaIndex + 1,
       displayName: `${machine.name} #${replicaIndex + 1}`,
-      colorIndex: machineIndex
+      colorIndex: machineIndex,
     }));
   };
-  
+
   // Calculate cost: price/hour × hours utilized (from simulation results)
   const calculateCost = (machineData) => {
     const hours = machineData.utilization_time || 0;
@@ -85,30 +85,31 @@ export const Machine = ({
             onClicked={onTaskClicked}
             setSelectedTask={setSelectedTask}
             registerSlotRef={(slotIdx, el) => {
-              if (registerMachineSlotRef) registerMachineSlotRef(machine.id, slotIdx, el);
+              if (registerMachineSlotRef)
+                registerMachineSlotRef(machine.id, slotIdx, el);
             }}
           />
         </div>
 
         <div className="flex flex-col items-end space-y-1">
           <div
-            onClick={()=>{
+            onClick={() => {
               setSelectedMachine({
-                "id": machine.id,
-                "originalId": machine.id,
-                "name": machine.name, 
-                "replicaNumber": 0,
-                "queue": machine.queue,
-                "power": machine.power,
-                "idle_power": machine.idle_power,
-                "replicas": machine.replicas,
-                "price": machine.price,
-                "cost": machine.cost,
-                "utilization_time": machine.utilization_time || 0,
-                "total_cost": machine.total_cost || 0,
-                "total_tasks": machine.total_tasks || 0
-              })
-              onClicked()
+                id: machine.id,
+                originalId: machine.id,
+                name: machine.name,
+                replicaNumber: 0,
+                queue: machine.queue,
+                power: machine.power,
+                idle_power: machine.idle_power,
+                replicas: machine.replicas,
+                price: machine.price,
+                cost: machine.cost,
+                utilization_time: machine.utilization_time || 0,
+                total_cost: machine.total_cost || 0,
+                total_tasks: machine.total_tasks || 0,
+              });
+              onClicked();
             }}
             className={`text-white ${getMachineColor()} font-semibold w-20 h-10 rounded-full flex items-center justify-center cursor-pointer hover:scale-105 transition text-xs`}
             title={`${totalTasks} tasks, ${utilizationHours}h × $${machine.price}/h = $${totalCost}`}
@@ -128,7 +129,7 @@ export const Machine = ({
             const replicaCost = calculateCost(replica);
             const replicaHours = (replica.utilization_time || 0).toFixed(3);
             const replicaTasks = replica.total_tasks || 0;
-            
+
             return (
               <div
                 key={replica.id}
@@ -140,30 +141,31 @@ export const Machine = ({
                     onClicked={onTaskClicked}
                     setSelectedTask={setSelectedTask}
                     registerSlotRef={(slotIdx, el) => {
-                      if (registerMachineSlotRef) registerMachineSlotRef(replica.id, slotIdx, el);
+                      if (registerMachineSlotRef)
+                        registerMachineSlotRef(replica.id, slotIdx, el);
                     }}
                   />
                 </div>
 
                 <div className="flex flex-col items-end space-y-1">
                   <div
-                    onClick={()=>{
+                    onClick={() => {
                       setSelectedMachine({
-                        "id": replica.id,
-                        "originalId": replica.originalId,
-                        "name": replica.displayName, 
-                        "replicaNumber": replica.replicaNumber,
-                        "queue": replica.queue,
-                        "power": replica.power,
-                        "idle_power": replica.idle_power,
-                        "replicas": replica.replicas,
-                        "price": replica.price,
-                        "cost": replica.cost,
-                        "utilization_time": replica.utilization_time || 0,
-                        "total_cost": replica.total_cost || 0,
-                        "total_tasks": replica.total_tasks || 0
-                      })
-                      onClicked()
+                        id: replica.id,
+                        originalId: replica.originalId,
+                        name: replica.displayName,
+                        replicaNumber: replica.replicaNumber,
+                        queue: replica.queue,
+                        power: replica.power,
+                        idle_power: replica.idle_power,
+                        replicas: replica.replicas,
+                        price: replica.price,
+                        cost: replica.cost,
+                        utilization_time: replica.utilization_time || 0,
+                        total_cost: replica.total_cost || 0,
+                        total_tasks: replica.total_tasks || 0,
+                      });
+                      onClicked();
                     }}
                     className={`text-white ${getMachineColor()} font-semibold w-20 h-8 rounded-full flex items-center justify-center cursor-pointer hover:scale-105 transition text-xs`}
                     title={`${replicaTasks} tasks, ${replicaHours}h × $${replica.price}/h = $${replicaCost}`}
