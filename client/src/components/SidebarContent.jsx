@@ -24,7 +24,7 @@ export const WorkloadSidebar = ({
   setWorkloadTableData,
   setConfigFileName,
   setConfigFileUploaded,
-  selectedTask, // Add selectedTask for task details display
+  selectedTask,
 }) => (
   <div className="space-y-6">
     {/* Task Details */}

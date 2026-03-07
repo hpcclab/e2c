@@ -23,7 +23,7 @@ export default function TaskList({
   }
 
   return (
-    <div className="flex gap-2">
+    <div className="flex flex-row-reverse gap-2">
       {taskSlots.map((_, i) => {
         const task = i < queue.length ? queue[i] : emptyTask;
         return (

@@ -46,7 +46,7 @@ export const GlobalProvider = ({ children }) => {
     if (node.type === "machineNode") {
       setMachines((prev) =>
         prev.map((m) =>
-          `machine-${m.id}` === node.id
+          `${m.id}` === node.id
             ? { ...m, position: node.position } // update position in state
             : m,
         ),
@@ -55,7 +55,7 @@ export const GlobalProvider = ({ children }) => {
     if (node.type === "iotNode") {
       setIot((prev) =>
         prev.map((m) =>
-          `IOT-${m.id}` === node.id
+          `${m.id}` === node.id
             ? { ...m, position: node.position } // update position in state
             : m,
         ),

@@ -1,7 +1,6 @@
 import React from "react";
 import { BrowserRouter as Router, Routes, Route, Link } from "react-router-dom";
 import SimDashboard from "./SimDashboard";
-import DNDApp from "./DNDAppTEST";
 import "./assets/index.css";
 import WorkloadGenerator from "./WorkloadGenerator";
 
@@ -24,11 +23,6 @@ const App = () => {
                 </Link>
               </li>
               <li>
-                <Link to="/e2c/dndtest" className="hover:underline">
-                  dndTest
-                </Link>
-              </li>
-              <li>
                 <Link to="/e2c/generate" className="hover:underline">
                   Workload Generator
                 </Link>
@@ -41,7 +35,6 @@ const App = () => {
           <Routes>
             <Route path="/e2c" element={<Home />} />
             <Route path="/e2c/simulate" element={<SimDashboard />} />
-            <Route path="/e2c/dndtest" element={<DNDApp />} />
             <Route path="/e2c/generate" element={<WorkloadGenerator />} />
           </Routes>
         </main>

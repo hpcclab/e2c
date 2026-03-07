@@ -17,6 +17,7 @@ export default function FlowSaveLoadPanel() {
     iot,
     setMachines,
     setIot,
+    setBatchQ,
   } = useGlobalState();
 
   const [modalOpen, setModalOpen] = useState(false);
@@ -101,7 +102,6 @@ export default function FlowSaveLoadPanel() {
         const loadedIots = res.data.data.iot || [];
         const loadedEdges = res.data.data.edges || [];
         const loadedNodes = res.data.data.nodes || [];
-
         // Separate other nodes (non-machine / non-iot)
         const otherNodes = loadedNodes.filter(
           (n) => n.type !== "machineNode" && n.type !== "iotNode",
@@ -109,7 +109,7 @@ export default function FlowSaveLoadPanel() {
 
         // Map machines to React Flow nodes
         const machinesArr = loadedMachines.map((m) => ({
-          id: `machine-${m.id}`,
+          id: `${m.id}`,
           type: "machineNode",
           position: m.position || { x: 0, y: 0 },
           data: m,
@@ -117,17 +117,15 @@ export default function FlowSaveLoadPanel() {
 
         // Map IoTs to React Flow nodes
         const iotArr = loadedIots.map((i) => ({
-          id: `iot-${i.id}`,
+          id: `${i.id}`,
           type: "iotNode",
           position: i.position || { x: 0, y: 0 },
           data: i,
         }));
-
         setNodes([...otherNodes, ...machinesArr, ...iotArr]);
         setEdges(loadedEdges);
         setMachines(loadedMachines);
         setIot(loadedIots);
-
         alert(res.data.message || "Flow loaded successfully!");
         fetchFiles();
       } else {

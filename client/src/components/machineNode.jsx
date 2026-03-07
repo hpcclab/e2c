@@ -21,7 +21,6 @@ const MachineNode = memo(({ data, isConnectable }) => {
   // Get the single machine and its index from data
   const machine = data.machine;
   const machineIndex = data.machineIndex || 0;
-
   return (
     <>
       <Handle

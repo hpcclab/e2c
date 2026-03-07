@@ -29,7 +29,12 @@ def save_state():
     try:
         with open(save_path, "w") as f:
             json.dump(
-                {"nodes": data.get("nodes", []), "edges": data.get("edges", [])},
+                {
+                    "nodes": data.get("nodes", []),
+                    "edges": data.get("edges", []),
+                    "machines": data.get("machines", []),
+                    "iot": data.get("iot", []),
+                },
                 f,
                 indent=2,
             )
