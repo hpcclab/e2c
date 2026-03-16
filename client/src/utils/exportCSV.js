@@ -335,6 +335,14 @@ export const exportToCSV = (data, filename = 'report.csv') => {
       };
     }
   
+    /**
+     * Load EET from a plain object { machineName: { taskType: eet } }
+     */
+    loadFromObject(table) {
+      this.table = { ...table };
+      return this;
+    }
+
     isEmpty() {
       return Object.keys(this.table).length === 0;
     }

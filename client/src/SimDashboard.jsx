@@ -604,6 +604,10 @@ const SimDashboard = () => {
   const handleMachinePropertySave = async (updatedMachine) => {
     try {
       console.log("Saving machine properties:", updatedMachine);
+      // Update React state so canvas and sidebar re-render
+      setMachines((prev) =>
+        prev.map((m) => (m.id === updatedMachine.id ? updatedMachine : m)),
+      );
       // Update the machines ref
       machinesRef.current = machinesRef.current.map((machine) =>
         machine.id === updatedMachine.id ? updatedMachine : machine,
@@ -653,28 +657,24 @@ const SimDashboard = () => {
       console.log("Config update response:", response.data);
       console.log("Machine properties updated successfully");
     } catch (error) {
-      console.error("Failed to update machine properties:", error);
-      console.error("Error details:", error.response?.data);
-      // Show more specific error message
-      const errorMessage =
-        error.response?.data?.error ||
-        error.message ||
-        "Unknown error occurred";
-      alert(`Failed to update machine properties: ${errorMessage}`);
-      throw error;
+      // Config sync failed (e.g. server not running) — state already updated, just warn
+      console.warn("Config sync failed (non-fatal):", error.message);
     }
   };
   // End Data Update handlers
   const runDataSimulation = async () => {
     try {
       // Ensure required files are uploaded
+      const machinesHaveEET = machines.some(
+        (m) => m.eet && Object.values(m.eet).some((v) => v !== "" && v !== undefined),
+      );
       if (
         !workloadFileUploaded ||
-        !profilingFileUploaded ||
+        (!profilingFileUploaded && !machinesHaveEET) ||
         !configFileUploaded
       ) {
         alert(
-          "Please upload the workload (.wkl), profiling table (.eet), and configuration (.json) files before running the simulation.",
+          "Please upload the workload (.wkl) and configuration (.json) files before running the simulation. Either upload a profiling table (.eet) or set EET values on machines.",
         );
         return;
       }
@@ -684,6 +684,18 @@ const SimDashboard = () => {
         clearInterval(simulationIntervalRef.current);
       }
       setIsRunning(true);
+
+      // Build EET table from machine canvas data if no .eet file was uploaded
+      if (!profilingFileUploaded && machinesHaveEET) {
+        const eetObj = {};
+        machines.forEach((machine) => {
+          if (machine.eet && Object.keys(machine.eet).length > 0) {
+            eetObj[machine.name] = machine.eet;
+          }
+        });
+        eetTable.loadFromObject(eetObj);
+        setEetLoaded(true);
+      }
 
       // Auto-map machine names (EET CSV machines to config machines by order)
       const configMachines = machinesRef.current.filter((m) => m.id !== -1);

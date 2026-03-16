@@ -11,6 +11,7 @@ export const GlobalProvider = ({ children }) => {
     id: -1,
     name: "empty machine",
     queue: [],
+    eet: {},
   });
   const [selectedIOT, setSelectedIOT] = useState({
     id: -3,
