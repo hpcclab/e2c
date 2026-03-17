@@ -11,6 +11,7 @@ import { TrashIcon } from "@heroicons/react/24/outline";
 import { WorkloadSidebar } from "./components/SidebarContent";
 import AdmissionsOverlay from "./components/AdmissionsOverlay";
 import EditMachineProperties from "./components/EditMachineProperties";
+import EditIoTProperties from "./components/EditIoTProperties";
 import SimulationReport from "./components/SimulationReport";
 import { processDequeue, autoMapMachineNames } from "./utils/dequeueProcess";
 import { eetTable } from "./utils/exportCSV";
@@ -264,6 +265,7 @@ const SimDashboard = () => {
   const simulationIntervalRef = useRef(null);
   const [dataResults, setDataResults] = useState([]);
   const [animatedMachines, setAnimatedMachines] = useState(machines); // ANIMATION
+  const [animatedIOTs, setAnimatedIOTs] = useState(iot);
   const [flyers, setFlyers] = useState([]);
   const [missedTasks, setMissedTasks] = useState([]);
   const [unassignedTasks, setUnassignedTasks] = useState([]);
@@ -418,6 +420,10 @@ const SimDashboard = () => {
   const handleMachinePropertySave = async (updatedMachine) => {
     try {
       console.log("Saving machine properties:", updatedMachine);
+      // Update React state so canvas and sidebar re-render
+      setMachines((prev) =>
+        prev.map((m) => (m.id === updatedMachine.id ? updatedMachine : m)),
+      );
       // Update the machines ref
       machinesRef.current = machinesRef.current.map((machine) =>
         machine.id === updatedMachine.id ? updatedMachine : machine,
@@ -467,39 +473,50 @@ const SimDashboard = () => {
       console.log("Config update response:", response.data);
       console.log("Machine properties updated successfully");
     } catch (error) {
-      console.error("Failed to update machine properties:", error);
-      console.error("Error details:", error.response?.data);
-      // Show more specific error message
-      const errorMessage =
-        error.response?.data?.error ||
-        error.message ||
-        "Unknown error occurred";
-      alert(`Failed to update machine properties: ${errorMessage}`);
-      throw error;
+      // Config sync failed (e.g. server not running) — state already updated, just warn
+      console.warn("Config sync failed (non-fatal):", error.message);
     }
+  };
+  const handleIOTPropertySave = async (updatedIOT) => {
+    setIot(prev => prev.map(i => i.id === updatedIOT.id ? updatedIOT : i));
   };
   // End Data Update handlers
   const runDataSimulation = async () => {
     try {
       // Ensure required files are uploaded
-      // if (
-      //   !workloadFileUploaded ||
-      //   !profilingFileUploaded ||
-      //   !configFileUploaded
-      // ) {
-      //   alert(
-      //     "Please upload the workload (.wkl), profiling table (.eet), and configuration (.json) files before running the simulation.",
-      //   );
-      //   return;
-      // }
+      const machinesHaveEET = machines.some(
+        (m) => m.eet && Object.values(m.eet).some((v) => v !== "" && v !== undefined),
+      );
+      if (
+        !workloadFileUploaded ||
+        (!profilingFileUploaded && !machinesHaveEET) ||
+        !configFileUploaded
+      ) {
+        alert(
+          "Please upload the workload (.wkl) and configuration (.json) files before running the simulation. Either upload a profiling table (.eet) or set EET values on machines.",
+        );
+        return;
+      }
 
-      // // Clear any existing simulation interval
-      // if (simulationIntervalRef.current) {
-      //   clearInterval(simulationIntervalRef.current);
-      // }
+      // Clear any existing simulation interval
+      if (simulationIntervalRef.current) {
+        clearInterval(simulationIntervalRef.current);
+      }
       setIsRunning(true);
       const workload = generateWorkload(scenarioRows, taskTypes);
       console.log(workload);
+
+      // Build EET table from machine canvas data if no .eet file was uploaded
+      if (!profilingFileUploaded && machinesHaveEET) {
+        const eetObj = {};
+        machines.forEach((machine) => {
+          if (machine.eet && Object.keys(machine.eet).length > 0) {
+            eetObj[machine.name] = machine.eet;
+          }
+        });
+        eetTable.loadFromObject(eetObj);
+        setEetLoaded(true);
+      }
 
       // Auto-map machine names (EET CSV machines to config machines by order)
       const configMachines = machinesRef.current.filter((m) => m.id !== -1);
@@ -1372,13 +1389,13 @@ const SimDashboard = () => {
                   <div className="space-y-6">
                     {/* IOT Details Tab */}
                     <div className="space-y-2">
-                      {/* <EditIOTProperties
+                      <EditIoTProperties
                         selectedIOT={selectedIOT}
                         setSelectedIOT={setSelectedIOT}
                         onSave={handleIOTPropertySave}
                         animatedIOTs={animatedIOTs}
                         setAnimatedIOTs={setAnimatedIOTs}
-                      /> */}
+                      />
                     </div>
 
                     {/* Show admitted tasks */}

@@ -1,11 +1,13 @@
 import React, { useState, useEffect } from 'react';
+import { useGlobalState } from '../context/GlobalStates';
 
-const EditMachineProperties = ({ 
-  selectedMachine, 
-  setSelectedMachine, 
+const EditMachineProperties = ({
+  selectedMachine,
+  setSelectedMachine,
   onSave,
   setAnimatedMachines
 }) => {
+  const { iot } = useGlobalState();
   const [editMode, setEditMode] = useState(false);
   const [editedMachine, setEditedMachine] = useState({});
 
@@ -22,8 +24,16 @@ const EditMachineProperties = ({
       utilization_time: selectedMachine.utilization_time || 0,
       total_cost: selectedMachine.total_cost || 0,
       total_tasks: selectedMachine.total_tasks || 0,
+      eet: selectedMachine.eet || {},
     });
   }, [selectedMachine]);
+
+  const handleEETChange = (iotName, value) => {
+    setEditedMachine(prev => ({
+      ...prev,
+      eet: { ...prev.eet, [iotName]: value },
+    }));
+  };
 
   const handleSave = async () => {
     try {
@@ -131,6 +141,37 @@ const EditMachineProperties = ({
           </div>
         </div>
 
+        {iot.length > 0 && (
+          <div className="border-t pt-2 mt-4">
+            <label className="block text-sm font-semibold text-gray-700 mb-2">EET (s) per Task Type</label>
+            <table className="table-auto border-collapse border border-gray-300 w-full text-sm">
+              <thead>
+                <tr>
+                  <th className="border px-2 py-1 bg-gray-100 text-left">Task Type</th>
+                  <th className="border px-2 py-1 bg-gray-100">EET (s)</th>
+                </tr>
+              </thead>
+              <tbody>
+                {iot.map((iotNode) => (
+                  <tr key={iotNode.id}>
+                    <td className="border px-2 py-1 text-gray-600">{iotNode.name}</td>
+                    <td className="border px-2 py-1">
+                      <input
+                        type="number"
+                        min="0"
+                        step="0.1"
+                        value={editedMachine.eet?.[iotNode.name] ?? ""}
+                        onChange={e => handleEETChange(iotNode.name, e.target.value)}
+                        className="w-full border rounded px-1 py-0.5 text-center"
+                      />
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+
         <div className="flex gap-2 mt-4">
           <button
             onClick={handleSave}
@@ -196,6 +237,33 @@ const EditMachineProperties = ({
             ${selectedMachine.price !== undefined ? Number(selectedMachine.price).toFixed(2) : "0.00"}
           </div>
         </div>
+
+        {/* EET per Task Type */}
+        {iot.length > 0 && (
+          <div className="border-t pt-2 mt-4">
+            <label className="block text-sm font-semibold text-gray-700 mb-2">EET (s) per Task Type</label>
+            <table className="table-auto border-collapse border border-gray-300 w-full text-sm">
+              <thead>
+                <tr>
+                  <th className="border px-2 py-1 bg-gray-100 text-left">Task Type</th>
+                  <th className="border px-2 py-1 bg-gray-100">EET (s)</th>
+                </tr>
+              </thead>
+              <tbody>
+                {iot.map((iotNode) => (
+                  <tr key={iotNode.id}>
+                    <td className="border px-2 py-1 text-gray-600">{iotNode.name}</td>
+                    <td className="border px-2 py-1 text-center">
+                      {selectedMachine.eet?.[iotNode.name] !== undefined && selectedMachine.eet?.[iotNode.name] !== ""
+                        ? selectedMachine.eet[iotNode.name]
+                        : "-"}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
 
         {/* Utilization and Cost Information */}
         <div className="border-t pt-2 mt-4">

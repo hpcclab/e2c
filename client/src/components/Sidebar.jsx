@@ -81,6 +81,7 @@ export default function Sidebar() {
           price: 0,
           cost: 0,
           position,
+          eet: {},
         };
 
         setMachines((prev) => [...prev, newMachine]);
@@ -131,6 +132,12 @@ export default function Sidebar() {
         ]);
 
         setIot((prev) => [...prev, newIot]);
+        setMachines((prev) =>
+          prev.map((m) => ({
+            ...m,
+            eet: { ...(m.eet || {}), [newIot.name]: "" },
+          })),
+        );
       } else {
         const newNode = {
           id: getId(nodeType),
