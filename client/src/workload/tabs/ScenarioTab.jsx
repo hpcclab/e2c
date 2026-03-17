@@ -1,5 +1,10 @@
 import React, { useState } from "react";
-import { TrashIcon, PencilIcon, CheckIcon, XMarkIcon } from '@heroicons/react/24/outline';
+import {
+  TrashIcon,
+  PencilIcon,
+  CheckIcon,
+  XMarkIcon,
+} from "@heroicons/react/24/outline";
 import seedrandom from "seedrandom";
 
 const distributionOptions = ["uniform", "normal", "exponential", "spiky"];
@@ -38,7 +43,7 @@ function sampleArrivalTimes(start, end, n, dist, seed = 100) {
       let spikeTime = start + (end - start) * rng();
       let spikeSize = Math.max(1, Math.floor(n / spikes));
       for (let i = 0; i < spikeSize; i++) {
-        let t = spikeTime + ((rng() - 0.5) * (end - start) / 20);
+        let t = spikeTime + ((rng() - 0.5) * (end - start)) / 20;
         t = Math.max(start, Math.min(end, t));
         arr.push(Number(t.toFixed(2)));
       }
@@ -65,7 +70,7 @@ function getDataSizes(mean, stdv, num_of_tasks) {
   return sizes;
 }
 
-function generateWorkload(scenarioRows, taskTypes, seedOffset = 0) {
+export function generateWorkload(scenarioRows, taskTypes, seedOffset = 0) {
   let workload = [];
   scenarioRows.forEach((row, idx) => {
     const sample = sampleArrivalTimes(
@@ -73,9 +78,9 @@ function generateWorkload(scenarioRows, taskTypes, seedOffset = 0) {
       Number(row.endTime),
       Number(row.numTasks),
       row.distribution,
-      100 + 10 * idx + seedOffset // unique seed for each file
+      100 + 10 * idx + seedOffset, // unique seed for each file
     );
-    const typeObj = (taskTypes || []).find(t => t.name === row.taskType);
+    const typeObj = (taskTypes || []).find((t) => t.name === row.taskType);
     const meanSize = Number(typeObj?.meanSize || 100);
     const stdv = Number(typeObj?.stdv || 20);
     const dataSizes = getDataSizes(meanSize, stdv, sample.length);
@@ -85,7 +90,7 @@ function generateWorkload(scenarioRows, taskTypes, seedOffset = 0) {
         task_type: row.taskType,
         arrival_time,
         distribution: row.distribution,
-        data_size: dataSizes[i]
+        data_size: dataSizes[i],
       });
     });
   });
@@ -99,17 +104,19 @@ const ScenarioTab = ({
   setActiveTab,
   setWorkloadFiles,
   setSelectedWorkloadIdx,
-  taskTypes
+  taskTypes,
 }) => {
-  const initialTaskType = taskTypes && taskTypes.length > 0
-    ? (taskTypes[0].name || taskTypes[0])
-    : "";
+  const initialTaskType =
+    taskTypes && taskTypes.length > 0 ? taskTypes[0].name || taskTypes[0] : "";
 
   const [newTaskType, setNewTaskType] = useState(initialTaskType);
   const [newNumTasks, setNewNumTasks] = useState("");
+  const [newSrcID, setnewSrcID] = useState("");
   const [newStartTime, setNewStartTime] = useState("");
   const [newEndTime, setNewEndTime] = useState("");
-  const [newDistribution, setNewDistribution] = useState(distributionOptions[0]);
+  const [newDistribution, setNewDistribution] = useState(
+    distributionOptions[0],
+  );
   const [numWorkloads, setNumWorkloads] = useState(1);
 
   // Edit logic
@@ -121,6 +128,7 @@ const ScenarioTab = ({
     setScenarioRows([
       ...scenarioRows,
       {
+        srcID: newSrcID,
         taskType: newTaskType,
         numTasks: newNumTasks,
         startTime: newStartTime,
@@ -135,7 +143,7 @@ const ScenarioTab = ({
     setNewDistribution(distributionOptions[0]);
   };
 
-  const removeScenarioRow = idx => {
+  const removeScenarioRow = (idx) => {
     setScenarioRows(scenarioRows.filter((_, i) => i !== idx));
   };
 
@@ -150,7 +158,9 @@ const ScenarioTab = ({
   };
 
   const saveEdit = () => {
-    setScenarioRows(scenarioRows.map((row, idx) => idx === editIdx ? editRow : row));
+    setScenarioRows(
+      scenarioRows.map((row, idx) => (idx === editIdx ? editRow : row)),
+    );
     setEditIdx(null);
     setEditRow({});
   };
@@ -189,17 +199,26 @@ const ScenarioTab = ({
           <tbody>
             {scenarioRows.length === 0 ? (
               <tr>
-                <td className="border px-2 py-1 text-center text-gray-400" colSpan={6}>-</td>
+                <td
+                  className="border px-2 py-1 text-center text-gray-400"
+                  colSpan={6}
+                >
+                  -
+                </td>
               </tr>
             ) : (
               scenarioRows.map((row, idx) => (
-                <tr key={`scenario-row-${idx}-${row.taskType}-${row.startTime}`}>
+                <tr
+                  key={`scenario-row-${idx}-${row.taskType}-${row.startTime}`}
+                >
                   {editIdx === idx ? (
                     <>
                       <td className="border px-2 py-1">
                         <select
                           value={editRow.taskType}
-                          onChange={e => handleEditChange("taskType", e.target.value)}
+                          onChange={(e) =>
+                            handleEditChange("taskType", e.target.value)
+                          }
                           className="border rounded px-2 py-1 w-full"
                         >
                           {(taskTypes || []).map((type, i) => (
@@ -213,7 +232,9 @@ const ScenarioTab = ({
                         <input
                           type="number"
                           value={editRow.numTasks}
-                          onChange={e => handleEditChange("numTasks", e.target.value)}
+                          onChange={(e) =>
+                            handleEditChange("numTasks", e.target.value)
+                          }
                           className="border rounded px-2 py-1 w-full"
                           min={1}
                         />
@@ -222,7 +243,9 @@ const ScenarioTab = ({
                         <input
                           type="number"
                           value={editRow.startTime}
-                          onChange={e => handleEditChange("startTime", e.target.value)}
+                          onChange={(e) =>
+                            handleEditChange("startTime", e.target.value)
+                          }
                           className="border rounded px-2 py-1 w-full"
                           min={0}
                         />
@@ -231,7 +254,9 @@ const ScenarioTab = ({
                         <input
                           type="number"
                           value={editRow.endTime}
-                          onChange={e => handleEditChange("endTime", e.target.value)}
+                          onChange={(e) =>
+                            handleEditChange("endTime", e.target.value)
+                          }
                           className="border rounded px-2 py-1 w-full"
                           min={0}
                         />
@@ -239,11 +264,15 @@ const ScenarioTab = ({
                       <td className="border px-2 py-1">
                         <select
                           value={editRow.distribution}
-                          onChange={e => handleEditChange("distribution", e.target.value)}
+                          onChange={(e) =>
+                            handleEditChange("distribution", e.target.value)
+                          }
                           className="border rounded px-2 py-1 w-full"
                         >
                           {distributionOptions.map((dist, i) => (
-                            <option key={i} value={dist}>{dist}</option>
+                            <option key={i} value={dist}>
+                              {dist}
+                            </option>
                           ))}
                         </select>
                       </td>
@@ -289,10 +318,12 @@ const ScenarioTab = ({
 
         {/* Add Scenario Row Section */}
         <div className="bg-gray-50 p-4 rounded shadow flex flex-col gap-3 mt-8">
-          <h3 className="font-semibold text-lg text-gray-700 mb-2">Add Scenario Row</h3>
+          <h3 className="font-semibold text-lg text-gray-700 mb-2">
+            Add Scenario Row
+          </h3>
           <select
             value={newTaskType}
-            onChange={e => setNewTaskType(e.target.value)}
+            onChange={(e) => setNewTaskType(e.target.value)}
             className="border rounded px-3 py-2"
           >
             {(taskTypes || []).map((type, idx) => (
@@ -305,7 +336,7 @@ const ScenarioTab = ({
             type="number"
             placeholder="# Tasks"
             value={newNumTasks}
-            onChange={e => setNewNumTasks(e.target.value)}
+            onChange={(e) => setNewNumTasks(e.target.value)}
             className="border rounded px-3 py-2"
             min={1}
           />
@@ -313,7 +344,7 @@ const ScenarioTab = ({
             type="number"
             placeholder="Start Time"
             value={newStartTime}
-            onChange={e => setNewStartTime(e.target.value)}
+            onChange={(e) => setNewStartTime(e.target.value)}
             className="border rounded px-3 py-2"
             min={0}
           />
@@ -321,17 +352,19 @@ const ScenarioTab = ({
             type="number"
             placeholder="End Time"
             value={newEndTime}
-            onChange={e => setNewEndTime(e.target.value)}
+            onChange={(e) => setNewEndTime(e.target.value)}
             className="border rounded px-3 py-2"
             min={0}
           />
           <select
             value={newDistribution}
-            onChange={e => setNewDistribution(e.target.value)}
+            onChange={(e) => setNewDistribution(e.target.value)}
             className="border rounded px-3 py-2"
           >
             {distributionOptions.map((dist, idx) => (
-              <option key={idx} value={dist}>{dist}</option>
+              <option key={idx} value={dist}>
+                {dist}
+              </option>
             ))}
           </select>
           <button
@@ -345,7 +378,7 @@ const ScenarioTab = ({
               type="number"
               min={1}
               value={numWorkloads}
-              onChange={e => setNumWorkloads(Number(e.target.value))}
+              onChange={(e) => setNumWorkloads(Number(e.target.value))}
               className="border rounded px-3 py-2 w-24"
               placeholder="Files"
             />

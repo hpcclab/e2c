@@ -11,7 +11,16 @@ export default function ContextMenu({
   ...props
 }) {
   const { getNode, setNodes, setEdges, addNodes } = useReactFlow();
-  const { machines, setMachines, iot, setIot } = useGlobalState();
+  const {
+    machines,
+    setMachines,
+    iot,
+    setIot,
+    taskTypes,
+    setTaskTypes,
+    scenarioRows,
+    setScenarioRows,
+  } = useGlobalState();
 
   const extractNumericId = (nodeId) => {
     const parts = nodeId.split("-");
@@ -77,6 +86,32 @@ export default function ContextMenu({
         };
 
         setIot((prev) => [...prev, newIot]);
+        setTaskTypes((prev) => [
+          ...prev,
+          {
+            srcID: newIot.id,
+            name: newIot.name,
+            dataInput: newIot.properties.dataInput,
+            meanSize: newIot.properties.meanSize,
+            urgency: newIot.properties.urgency,
+            slack: newIot.properties.slack,
+            numTasks: newIot.properties.numTasks,
+            startTime: newIot.properties.startTime,
+            endTime: newIot.properties.endTime,
+          },
+        ]);
+
+        setScenarioRows((prev) => [
+          ...prev,
+          {
+            srcID: newIot.id,
+            taskType: newIot.properties.task_type,
+            numTasks: newIot.properties.numTasks,
+            startTime: newIot.properties.startTime,
+            endTime: newIot.properties.endTime,
+            distribution: newIot.properties.distribution,
+          },
+        ]);
       }
     }
   }, [id, getNode, machines, iot, addNodes, setMachines, setIot]);
@@ -89,7 +124,7 @@ export default function ContextMenu({
 
     setNodes((nodes) => nodes.filter((n) => n.id !== id));
     setEdges((edges) =>
-      edges.filter((e) => e.source !== id && e.target !== id)
+      edges.filter((e) => e.source !== id && e.target !== id),
     );
 
     if (node.type === "machineNode") {
@@ -97,7 +132,10 @@ export default function ContextMenu({
     }
 
     if (node.type === "iotNode") {
+      // setIot((prev) => prev.filter((i) => Number(i.id) !== numericId));
       setIot((prev) => prev.filter((i) => Number(i.id) !== numericId));
+      setScenarioRows(scenarioRows.filter((o) => o.srcID !== numericId));
+      setTaskTypes(taskTypes.filter((o) => o.srcID !== numericId));
     }
   }, [id, getNode, setNodes, setEdges, setMachines, setIot]);
 

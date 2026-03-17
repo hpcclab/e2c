@@ -44,9 +44,16 @@ function DraggableNode({ className, children, nodeType, onDrop }) {
 }
 
 export default function Sidebar() {
-  const { setMachines, setIot } = useGlobalState();
-  const { setNodes, screenToFlowPosition } = useReactFlow();
-
+  const {
+    setMachines,
+    setIot,
+    taskTypes,
+    setTaskTypes,
+    scenarioRows,
+    setScenarioRows,
+  } = useGlobalState();
+  const { setNodes, screenToFlowPosition, fitView } = useReactFlow();
+  const distributionOptions = ["uniform", "normal", "exponential", "spiky"];
   const handleNodeDrop = useCallback(
     (nodeType, screenPosition) => {
       const flow = document.querySelector(".react-flow");
@@ -82,10 +89,47 @@ export default function Sidebar() {
         const newIot = {
           id: Date.now(), // unique ID
           name: `IOT ${Date.now().toString().slice(-4)}`,
-          properties: [],
+          properties: {
+            task_type: `IOT ${Date.now().toString().slice(-4)}`,
+            dataInput: "default",
+            meanSize: 6,
+            urgency: "BestEffort",
+            slack: 0,
+            numTasks: 10,
+            startTime: 0,
+            endTime: 30,
+            distribution: distributionOptions[0],
+          },
           queue: [],
           position,
         };
+
+        setTaskTypes((prev) => [
+          ...prev,
+          {
+            srcID: newIot.id,
+            name: newIot.name,
+            dataInput: newIot.properties.dataInput,
+            meanSize: newIot.properties.meanSize,
+            urgency: newIot.properties.urgency,
+            slack: newIot.properties.slack,
+            numTasks: newIot.properties.numTasks,
+            startTime: newIot.properties.startTime,
+            endTime: newIot.properties.endTime,
+          },
+        ]);
+
+        setScenarioRows((prev) => [
+          ...prev,
+          {
+            srcID: newIot.id,
+            taskType: newIot.properties.task_type,
+            numTasks: newIot.properties.numTasks,
+            startTime: newIot.properties.startTime,
+            endTime: newIot.properties.endTime,
+            distribution: newIot.properties.distribution,
+          },
+        ]);
 
         setIot((prev) => [...prev, newIot]);
         setMachines((prev) =>
@@ -103,6 +147,7 @@ export default function Sidebar() {
         };
         setNodes((nds) => nds.concat(newNode));
       }
+      fitView({ padding: 0.5, duration: 600, interpolate: "smooth" });
     },
     [setNodes, screenToFlowPosition, setMachines, setIot],
   );
