@@ -12,6 +12,7 @@ import TaskList from "./components/TaskList";
 import { WorkloadSidebar } from "./components/SidebarContent";
 import AdmissionsOverlay from "./components/AdmissionsOverlay";
 import EditMachineProperties from "./components/EditMachineProperties";
+import EditIoTProperties from "./components/EditIoTProperties";
 import SimulationReport from "./components/SimulationReport";
 import { processDequeue, autoMapMachineNames } from "./utils/dequeueProcess";
 import { eetTable } from "./utils/exportCSV";
@@ -256,6 +257,7 @@ const SimDashboard = () => {
   const simulationIntervalRef = useRef(null);
   const [dataResults, setDataResults] = useState([]);
   const [animatedMachines, setAnimatedMachines] = useState(machines); // ANIMATION
+  const [animatedIOTs, setAnimatedIOTs] = useState(iot);
   const [flyers, setFlyers] = useState([]);
   const [missedTasks, setMissedTasks] = useState([]);
   const [unassignedTasks, setUnassignedTasks] = useState([]);
@@ -449,6 +451,15 @@ const SimDashboard = () => {
           name: taskType,
           queue: taskTypeMap[taskType],
           properties: {},
+          taskType: taskType,
+          dataInput: "image",
+          meanSize: 0,
+          urgency: "BestEffort",
+          slack: 0,
+          numTasks: 0,
+          startTime: 0,
+          endTime: 0,
+          distribution: "uniform",
         };
         newIoTs.push(iotObj);
 
@@ -660,6 +671,9 @@ const SimDashboard = () => {
       // Config sync failed (e.g. server not running) — state already updated, just warn
       console.warn("Config sync failed (non-fatal):", error.message);
     }
+  };
+  const handleIOTPropertySave = async (updatedIOT) => {
+    setIot(prev => prev.map(i => i.id === updatedIOT.id ? updatedIOT : i));
   };
   // End Data Update handlers
   const runDataSimulation = async () => {
@@ -1562,13 +1576,13 @@ const SimDashboard = () => {
                   <div className="space-y-6">
                     {/* IOT Details Tab */}
                     <div className="space-y-2">
-                      {/* <EditIOTProperties
+                      <EditIoTProperties
                         selectedIOT={selectedIOT}
                         setSelectedIOT={setSelectedIOT}
                         onSave={handleIOTPropertySave}
                         animatedIOTs={animatedIOTs}
                         setAnimatedIOTs={setAnimatedIOTs}
-                      /> */}
+                      />
                     </div>
 
                     {/* Show admitted tasks */}

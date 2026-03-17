@@ -18,6 +18,15 @@ export const GlobalProvider = ({ children }) => {
     name: "empty iot",
     properties: [],
     queue: [],
+    taskType: "",
+    dataInput: "image",
+    meanSize: 0,
+    urgency: "BestEffort",
+    slack: 0,
+    numTasks: 0,
+    startTime: 0,
+    endTime: 0,
+    distribution: "uniform",
   });
   const [simulationTime, setSimulationTime] = useState(0); //TIME
 
