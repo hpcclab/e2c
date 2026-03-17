@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect } from "react";
 
 const EditIoTProperties = ({
   selectedIOT,
@@ -14,35 +14,47 @@ const EditIoTProperties = ({
     setEditedIOT({
       id: selectedIOT.id,
       name: selectedIOT.name || "",
-      taskType: selectedIOT.taskType || "",
-      dataInput: selectedIOT.dataInput || "image",
-      meanSize: selectedIOT.meanSize || 0,
-      urgency: selectedIOT.urgency || "BestEffort",
-      slack: selectedIOT.slack || 0,
-      numTasks: selectedIOT.numTasks || 0,
-      startTime: selectedIOT.startTime || 0,
-      endTime: selectedIOT.endTime || 0,
-      distribution: selectedIOT.distribution || "uniform",
-      properties: selectedIOT.properties || [],
+      properties: {
+        task_type: selectedIOT.properties.task_type || "",
+        dataInput: selectedIOT.properties.dataInput || "image",
+        meanSize: selectedIOT.properties.meanSize || 0,
+        urgency: selectedIOT.properties.urgency || "BestEffort",
+        slack: selectedIOT.properties.slack || 0,
+        numTasks: selectedIOT.properties.numTasks || 0,
+        startTime: selectedIOT.properties.startTime || 0,
+        endTime: selectedIOT.properties.endTime || 0,
+        distribution: selectedIOT.properties.distribution || "uniform",
+      },
+      properties: selectedIOT.properties || {},
       queue: selectedIOT.queue || [],
     });
   }, [selectedIOT]);
 
-  const handleChange = (field, value) => {
-    setEditedIOT(prev => ({ ...prev, [field]: value }));
+  const handleChange = (field, value, is_property = true) => {
+    if (!is_property) setEditedIOT((prev) => ({ ...prev, [field]: value }));
+    else
+      setEditedIOT((prev) => ({
+        ...prev,
+        properties: {
+          ...prev.properties,
+          [field]: value,
+        },
+      }));
   };
 
   const handleSave = async () => {
     try {
       setSelectedIOT(editedIOT);
-      setAnimatedIOTs(prev =>
-        prev.map(iot => iot.id === editedIOT.id ? { ...iot, ...editedIOT } : iot)
+      setAnimatedIOTs((prev) =>
+        prev.map((iot) =>
+          iot.id === editedIOT.id ? { ...iot, ...editedIOT } : iot,
+        ),
       );
       await onSave(editedIOT);
       setEditMode(false);
     } catch (error) {
-      console.error('Failed to save IoT properties:', error);
-      alert('Failed to save IoT properties');
+      console.error("Failed to save IoT properties:", error);
+      alert("Failed to save IoT properties");
     }
   };
 
@@ -50,15 +62,19 @@ const EditIoTProperties = ({
     setEditedIOT({
       id: selectedIOT.id,
       name: selectedIOT.name || "",
-      taskType: selectedIOT.taskType || "",
-      dataInput: selectedIOT.dataInput || "image",
-      meanSize: selectedIOT.meanSize || 0,
-      urgency: selectedIOT.urgency || "BestEffort",
-      slack: selectedIOT.slack || 0,
-      numTasks: selectedIOT.numTasks || 0,
-      startTime: selectedIOT.startTime || 0,
-      endTime: selectedIOT.endTime || 0,
-      distribution: selectedIOT.distribution || "uniform",
+      properties: {
+        task_type: selectedIOT.properties.task_type || "",
+        dataInput: selectedIOT.properties.dataInput || "image",
+        meanSize: selectedIOT.properties.meanSize || 0,
+        urgency: selectedIOT.properties.urgency || "BestEffort",
+        slack: selectedIOT.properties.slack || 0,
+        numTasks: selectedIOT.properties.numTasks || 0,
+        startTime: selectedIOT.properties.startTime || 0,
+        endTime: selectedIOT.properties.endTime || 0,
+        distribution: selectedIOT.properties.distribution || "uniform",
+      },
+      properties: selectedIOT.properties || {},
+      queue: selectedIOT.queue || [],
     });
     setEditMode(false);
   };
@@ -66,37 +82,47 @@ const EditIoTProperties = ({
   if (editMode) {
     return (
       <div className="space-y-4">
-        <h3 className="text-lg font-semibold text-gray-800 mb-4">Edit IoT Properties</h3>
+        <h3 className="text-lg font-semibold text-gray-800 mb-4">
+          Edit IoT Properties
+        </h3>
 
         <div>
-          <label className="block text-sm font-semibold text-gray-700 mb-1">Name</label>
+          <label className="block text-sm font-semibold text-gray-700 mb-1">
+            Name
+          </label>
           <input
             type="text"
             value={editedIOT.name}
-            onChange={e => handleChange('name', e.target.value)}
+            onChange={(e) => handleChange("name", e.target.value, false)}
             className="w-full border px-3 py-2 text-sm rounded"
           />
         </div>
 
         <div className="border-t pt-3 mt-2">
-          <p className="text-xs font-bold text-gray-500 uppercase mb-2">Task Descriptor</p>
+          <p className="text-xs font-bold text-gray-500 uppercase mb-2">
+            Task Descriptor
+          </p>
 
           <div>
-            <label className="block text-sm font-semibold text-gray-700 mb-1">Task Type</label>
+            <label className="block text-sm font-semibold text-gray-700 mb-1">
+              Task Type
+            </label>
             <input
               type="text"
-              value={editedIOT.taskType}
-              onChange={e => handleChange('taskType', e.target.value)}
+              value={editedIOT.properties.task_type}
+              onChange={(e) => handleChange("task_type", e.target.value)}
               className="w-full border px-3 py-2 text-sm rounded"
               placeholder="e.g. T1"
             />
           </div>
 
           <div className="mt-2">
-            <label className="block text-sm font-semibold text-gray-700 mb-1">Data Input</label>
+            <label className="block text-sm font-semibold text-gray-700 mb-1">
+              Data Input
+            </label>
             <select
-              value={editedIOT.dataInput}
-              onChange={e => handleChange('dataInput', e.target.value)}
+              value={editedIOT.properties.dataInput}
+              onChange={(e) => handleChange("dataInput", e.target.value)}
               className="w-full border px-3 py-2 text-sm rounded"
             >
               <option value="image">image</option>
@@ -107,80 +133,98 @@ const EditIoTProperties = ({
           </div>
 
           <div className="mt-2">
-            <label className="block text-sm font-semibold text-gray-700 mb-1">Mean Size (KB)</label>
+            <label className="block text-sm font-semibold text-gray-700 mb-1">
+              Mean Size (KB)
+            </label>
             <input
               type="number"
               min="0"
-              value={editedIOT.meanSize}
-              onChange={e => handleChange('meanSize', Number(e.target.value))}
+              value={editedIOT.properties.meanSize}
+              onChange={(e) => handleChange("meanSize", Number(e.target.value))}
               className="w-full border px-3 py-2 text-sm rounded"
             />
           </div>
 
           <div className="mt-2">
-            <label className="block text-sm font-semibold text-gray-700 mb-1">Urgency</label>
+            <label className="block text-sm font-semibold text-gray-700 mb-1">
+              Urgency
+            </label>
             <input
               type="text"
-              value={editedIOT.urgency}
-              onChange={e => handleChange('urgency', e.target.value)}
+              value={editedIOT.properties.urgency}
+              onChange={(e) => handleChange("urgency", e.target.value)}
               className="w-full border px-3 py-2 text-sm rounded"
               placeholder="e.g. BestEffort"
             />
           </div>
 
           <div className="mt-2">
-            <label className="block text-sm font-semibold text-gray-700 mb-1">Slack</label>
+            <label className="block text-sm font-semibold text-gray-700 mb-1">
+              Slack
+            </label>
             <input
               type="number"
               min="0"
-              value={editedIOT.slack}
-              onChange={e => handleChange('slack', Number(e.target.value))}
+              value={editedIOT.properties.slack}
+              onChange={(e) => handleChange("slack", Number(e.target.value))}
               className="w-full border px-3 py-2 text-sm rounded"
             />
           </div>
         </div>
 
         <div className="border-t pt-3 mt-2">
-          <p className="text-xs font-bold text-gray-500 uppercase mb-2">Arrival / Scenario</p>
+          <p className="text-xs font-bold text-gray-500 uppercase mb-2">
+            Arrival / Scenario
+          </p>
 
           <div>
-            <label className="block text-sm font-semibold text-gray-700 mb-1">Num Tasks</label>
+            <label className="block text-sm font-semibold text-gray-700 mb-1">
+              Num Tasks
+            </label>
             <input
               type="number"
               min="0"
-              value={editedIOT.numTasks}
-              onChange={e => handleChange('numTasks', Number(e.target.value))}
+              value={editedIOT.properties.numTasks}
+              onChange={(e) => handleChange("numTasks", Number(e.target.value))}
               className="w-full border px-3 py-2 text-sm rounded"
             />
           </div>
 
           <div className="mt-2">
-            <label className="block text-sm font-semibold text-gray-700 mb-1">Start Time</label>
+            <label className="block text-sm font-semibold text-gray-700 mb-1">
+              Start Time
+            </label>
             <input
               type="number"
               min="0"
-              value={editedIOT.startTime}
-              onChange={e => handleChange('startTime', Number(e.target.value))}
+              value={editedIOT.properties.startTime}
+              onChange={(e) =>
+                handleChange("startTime", Number(e.target.value))
+              }
               className="w-full border px-3 py-2 text-sm rounded"
             />
           </div>
 
           <div className="mt-2">
-            <label className="block text-sm font-semibold text-gray-700 mb-1">End Time</label>
+            <label className="block text-sm font-semibold text-gray-700 mb-1">
+              End Time
+            </label>
             <input
               type="number"
               min="0"
-              value={editedIOT.endTime}
-              onChange={e => handleChange('endTime', Number(e.target.value))}
+              value={editedIOT.properties.endTime}
+              onChange={(e) => handleChange("endTime", Number(e.target.value))}
               className="w-full border px-3 py-2 text-sm rounded"
             />
           </div>
 
           <div className="mt-2">
-            <label className="block text-sm font-semibold text-gray-700 mb-1">Distribution</label>
+            <label className="block text-sm font-semibold text-gray-700 mb-1">
+              Distribution
+            </label>
             <select
-              value={editedIOT.distribution}
-              onChange={e => handleChange('distribution', e.target.value)}
+              value={editedIOT.properties.distribution}
+              onChange={(e) => handleChange("distribution", e.target.value)}
               className="w-full border px-3 py-2 text-sm rounded"
             >
               <option value="uniform">uniform</option>
@@ -223,79 +267,113 @@ const EditIoTProperties = ({
 
       <div className="space-y-2">
         <div>
-          <label className="block text-sm font-semibold text-gray-700 mb-1">Name</label>
+          <label className="block text-sm font-semibold text-gray-700 mb-1">
+            Name
+          </label>
           <div className="w-full border px-3 py-2 text-sm rounded bg-gray-100">
             {selectedIOT.name || "-"}
           </div>
         </div>
 
         <div className="border-t pt-3 mt-2">
-          <p className="text-xs font-bold text-gray-500 uppercase mb-2">Task Descriptor</p>
+          <p className="text-xs font-bold text-gray-500 uppercase mb-2">
+            Task Descriptor
+          </p>
 
           <div>
-            <label className="block text-sm font-semibold text-gray-700 mb-1">Task Type</label>
+            <label className="block text-sm font-semibold text-gray-700 mb-1">
+              Task Type
+            </label>
             <div className="w-full border px-3 py-2 text-sm rounded bg-gray-100">
-              {selectedIOT.taskType || "-"}
+              {selectedIOT.properties.task_type || "-"}
             </div>
           </div>
 
           <div className="mt-2">
-            <label className="block text-sm font-semibold text-gray-700 mb-1">Data Input</label>
+            <label className="block text-sm font-semibold text-gray-700 mb-1">
+              Data Input
+            </label>
             <div className="w-full border px-3 py-2 text-sm rounded bg-gray-100">
-              {selectedIOT.dataInput || "-"}
+              {selectedIOT.properties.dataInput || "-"}
             </div>
           </div>
 
           <div className="mt-2">
-            <label className="block text-sm font-semibold text-gray-700 mb-1">Mean Size (KB)</label>
+            <label className="block text-sm font-semibold text-gray-700 mb-1">
+              Mean Size (KB)
+            </label>
             <div className="w-full border px-3 py-2 text-sm rounded bg-gray-100">
-              {selectedIOT.meanSize !== undefined ? selectedIOT.meanSize : "-"}
+              {selectedIOT.properties.meanSize !== undefined
+                ? selectedIOT.properties.meanSize
+                : "-"}
             </div>
           </div>
 
           <div className="mt-2">
-            <label className="block text-sm font-semibold text-gray-700 mb-1">Urgency</label>
+            <label className="block text-sm font-semibold text-gray-700 mb-1">
+              Urgency
+            </label>
             <div className="w-full border px-3 py-2 text-sm rounded bg-gray-100">
-              {selectedIOT.urgency || "-"}
+              {selectedIOT.properties.urgency || "-"}
             </div>
           </div>
 
           <div className="mt-2">
-            <label className="block text-sm font-semibold text-gray-700 mb-1">Slack</label>
+            <label className="block text-sm font-semibold text-gray-700 mb-1">
+              Slack
+            </label>
             <div className="w-full border px-3 py-2 text-sm rounded bg-gray-100">
-              {selectedIOT.slack !== undefined ? selectedIOT.slack : "-"}
+              {selectedIOT.properties.slack !== undefined
+                ? selectedIOT.properties.slack
+                : "-"}
             </div>
           </div>
         </div>
 
         <div className="border-t pt-3 mt-2">
-          <p className="text-xs font-bold text-gray-500 uppercase mb-2">Arrival / Scenario</p>
+          <p className="text-xs font-bold text-gray-500 uppercase mb-2">
+            Arrival / Scenario
+          </p>
 
           <div>
-            <label className="block text-sm font-semibold text-gray-700 mb-1">Num Tasks</label>
+            <label className="block text-sm font-semibold text-gray-700 mb-1">
+              Num Tasks
+            </label>
             <div className="w-full border px-3 py-2 text-sm rounded bg-gray-100">
-              {selectedIOT.numTasks !== undefined ? selectedIOT.numTasks : "-"}
+              {selectedIOT.properties.numTasks !== undefined
+                ? selectedIOT.properties.numTasks
+                : "-"}
             </div>
           </div>
 
           <div className="mt-2">
-            <label className="block text-sm font-semibold text-gray-700 mb-1">Start Time</label>
+            <label className="block text-sm font-semibold text-gray-700 mb-1">
+              Start Time
+            </label>
             <div className="w-full border px-3 py-2 text-sm rounded bg-gray-100">
-              {selectedIOT.startTime !== undefined ? selectedIOT.startTime : "-"}
+              {selectedIOT.properties.startTime !== undefined
+                ? selectedIOT.properties.startTime
+                : "-"}
             </div>
           </div>
 
           <div className="mt-2">
-            <label className="block text-sm font-semibold text-gray-700 mb-1">End Time</label>
+            <label className="block text-sm font-semibold text-gray-700 mb-1">
+              End Time
+            </label>
             <div className="w-full border px-3 py-2 text-sm rounded bg-gray-100">
-              {selectedIOT.endTime !== undefined ? selectedIOT.endTime : "-"}
+              {selectedIOT.properties.endTime !== undefined
+                ? selectedIOT.properties.endTime
+                : "-"}
             </div>
           </div>
 
           <div className="mt-2">
-            <label className="block text-sm font-semibold text-gray-700 mb-1">Distribution</label>
+            <label className="block text-sm font-semibold text-gray-700 mb-1">
+              Distribution
+            </label>
             <div className="w-full border px-3 py-2 text-sm rounded bg-gray-100">
-              {selectedIOT.distribution || "-"}
+              {selectedIOT.properties.distribution || "-"}
             </div>
           </div>
         </div>

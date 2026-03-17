@@ -18,17 +18,18 @@ export const GlobalProvider = ({ children }) => {
   const [selectedIOT, setSelectedIOT] = useState({
     id: -3,
     name: "empty iot",
-    properties: [],
+    properties: {
+      task_type: "",
+      dataInput: "image",
+      meanSize: 0,
+      urgency: "BestEffort",
+      slack: 0,
+      numTasks: 0,
+      startTime: 0,
+      endTime: 0,
+      distribution: "uniform",
+    },
     queue: [],
-    taskType: "",
-    dataInput: "image",
-    meanSize: 0,
-    urgency: "BestEffort",
-    slack: 0,
-    numTasks: 0,
-    startTime: 0,
-    endTime: 0,
-    distribution: "uniform",
   });
   const [simulationTime, setSimulationTime] = useState(0); //TIME
 
@@ -253,13 +254,6 @@ export const GlobalProvider = ({ children }) => {
       setScenarioRows((prev) => [...prev, ...newScenarios]);
       fitView({ padding: 0.5, duration: 600, interpolate: "smooth" });
     };
-    // // for future edits to iot's
-    // setScenarioRows(
-    //       scenarioRows.map((o) => (o.srcID === numericId ? newIot : o)),
-    //     );
-    //     setTaskTypes(
-    //       taskTypes.map((o) => (o.srcID === numericId ? newIot : o)),
-    //     );
 
     reader.readAsText(file);
 

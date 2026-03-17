@@ -478,14 +478,45 @@ const SimDashboard = () => {
     }
   };
   const handleIOTPropertySave = async (updatedIOT) => {
-    setIot(prev => prev.map(i => i.id === updatedIOT.id ? updatedIOT : i));
+    setIot((prev) =>
+      prev.map((i) => (i.id === updatedIOT.id ? updatedIOT : i)),
+    );
+    const updatedIotType = {
+      srcID: updatedIOT.id,
+      name: updatedIOT.name,
+      dataInput: updatedIOT.properties.dataInput,
+      meanSize: updatedIOT.properties.meanSize,
+      urgency: updatedIOT.properties.urgency,
+      slack: updatedIOT.properties.slack,
+    };
+
+    const updatedIotScenarios = {
+      srcID: updatedIOT.id,
+      taskType: updatedIOT.properties.task_type,
+      numTasks: updatedIOT.properties.numTasks,
+      startTime: updatedIOT.properties.startTime,
+      endTime: updatedIOT.properties.endTime,
+      distribution: updatedIOT.properties.distribution,
+    };
+
+    setTaskTypes(
+      taskTypes.map((i) => (i.srcID === updatedIOT.id ? updatedIotType : i)),
+    );
+    setScenarioRows(
+      scenarioRows.map((i) =>
+        i.srcID === updatedIOT.id ? updatedIotScenarios : i,
+      ),
+    );
+    // generate new workload and save to workload Q
   };
   // End Data Update handlers
   const runDataSimulation = async () => {
     try {
       // Ensure required files are uploaded
       const machinesHaveEET = machines.some(
-        (m) => m.eet && Object.values(m.eet).some((v) => v !== "" && v !== undefined),
+        (m) =>
+          m.eet &&
+          Object.values(m.eet).some((v) => v !== "" && v !== undefined),
       );
       if (
         !workloadFileUploaded ||
