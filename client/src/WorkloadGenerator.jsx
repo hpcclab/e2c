@@ -4,6 +4,7 @@ import TaskTypesTab from "./workload/tabs/TaskTypesTab";
 import MachineTypesTab from "./workload/tabs/MachineTypesTab";
 import EETTab from "./workload/tabs/EETTab";
 import WorkloadPreviewTab from "./workload/tabs/WorkloadPreviewTab";
+import { useGlobalState } from "./context/GlobalStates";
 
 const TABS = [
   { key: "taskTypes", label: "Task Types" },
@@ -15,8 +16,9 @@ const TABS = [
 
 const WorkloadGenerator = () => {
   const [activeTab, setActiveTab] = useState("scenario");
-  const [scenarioRows, setScenarioRows] = useState([]);  
-  const [taskTypes, setTaskTypes] = useState([]);
+
+  const { taskTypes, setTaskTypes, scenarioRows, setScenarioRows } =
+    useGlobalState();
   const [machineTypes, setMachineTypes] = useState([]);
   const [eet, setEET] = useState([
     ["", "", ""],
@@ -26,7 +28,7 @@ const WorkloadGenerator = () => {
   const [setWorkloadTableData] = useState([]);
   const [workloadFiles, setWorkloadFiles] = useState([]); // Array of workload arrays
   const [selectedWorkloadIdx, setSelectedWorkloadIdx] = useState(0);
-  
+
   const renderTab = () => {
     switch (activeTab) {
       case "scenario":
@@ -82,8 +84,10 @@ const WorkloadGenerator = () => {
     <div className="min-h-screen bg-gray-100 flex">
       {/* Sidebar */}
       <aside className="w-64 bg-white shadow-lg p-6 space-y-2">
-        <h2 className="text-xl font-bold mb-6 text-gray-800">Workload Generator</h2>
-        {TABS.map(tab => (
+        <h2 className="text-xl font-bold mb-6 text-gray-800">
+          Workload Generator
+        </h2>
+        {TABS.map((tab) => (
           <button
             key={tab.key}
             className={`block w-full text-left px-4 py-2 rounded transition ${

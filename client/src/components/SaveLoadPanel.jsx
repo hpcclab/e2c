@@ -2,11 +2,11 @@ import React, { useState, useRef, useEffect } from "react";
 import { Panel } from "@xyflow/react";
 import Modal from "react-modal";
 import { useGlobalState } from "../context/GlobalStates";
+import { useReactFlow } from "@xyflow/react";
 import axios from "axios";
 import "../assets/saveload.css";
 
 Modal.setAppElement("#root");
-
 export default function FlowSaveLoadPanel() {
   const {
     nodes,
@@ -18,8 +18,17 @@ export default function FlowSaveLoadPanel() {
     setMachines,
     setIot,
     setBatchQ,
+    handleProfilingUpload,
+    handleWorkloadUpload,
+    handleConfigUpload,
+    workloadFileName,
+    profilingFileName,
+    configFileName,
+    setWorkloadFileUploaded,
+    setProfilingFileUploaded,
+    setConfigFileUploaded,
   } = useGlobalState();
-
+  const { fitView } = useReactFlow();
   const [modalOpen, setModalOpen] = useState(false);
   const [files, setFiles] = useState([]);
   const [selectedFile, setSelectedFile] = useState("");
@@ -63,6 +72,9 @@ export default function FlowSaveLoadPanel() {
         edges,
         machines,
         iot,
+        workloadFileName,
+        profilingFileName,
+        configFileName,
         filename: fileWithExtension,
       });
       alert(res.data.message || res.data.error);
@@ -81,6 +93,9 @@ export default function FlowSaveLoadPanel() {
         edges,
         machines,
         iot,
+        workloadFileName,
+        profilingFileName,
+        configFileName,
         filename: selectedFile,
       });
       alert(res.data.message || res.data.error);
@@ -102,6 +117,29 @@ export default function FlowSaveLoadPanel() {
         const loadedIots = res.data.data.iot || [];
         const loadedEdges = res.data.data.edges || [];
         const loadedNodes = res.data.data.nodes || [];
+        const loadedWorkloadFileName = res.data.data.workloadFileName || [];
+        const loadedProfilingFileName = res.data.data.profilingFileName || [];
+        const loadedConfigFileName = res.data.data.configFileName || [];
+        console.log(loadedWorkloadFileName);
+        console.log(loadedProfilingFileName);
+        console.log(loadedConfigFileName);
+        // upload files
+
+        if (loadedWorkloadFileName?.length) {
+          handleWorkloadUpload(loadedWorkloadFileName[0]);
+          // setWorkloadFileUploaded(true);
+        }
+
+        if (loadedProfilingFileName?.length) {
+          handleProfilingUpload(loadedProfilingFileName[0]);
+          // setProfilingFileUploaded(true);
+        }
+
+        if (loadedConfigFileName?.length) {
+          handleConfigUpload(loadedConfigFileName[0]);
+          // setConfigFileUploaded(true);
+        }
+
         // Separate other nodes (non-machine / non-iot)
         const otherNodes = loadedNodes.filter(
           (n) => n.type !== "machineNode" && n.type !== "iotNode",
@@ -128,6 +166,8 @@ export default function FlowSaveLoadPanel() {
         setIot(loadedIots);
         alert(res.data.message || "Flow loaded successfully!");
         fetchFiles();
+
+        fitView({ padding: 0.5, duration: 600, interpolate: "smooth" });
       } else {
         alert("No data found in file.");
       }

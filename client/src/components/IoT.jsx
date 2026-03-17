@@ -11,6 +11,7 @@ export default function IoT({ iot, onIoTClicked, setSelectedIOT, onClicked }) {
     });
     onClicked();
   }
+
   return (
     <div
       key={iot.id}
