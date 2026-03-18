@@ -308,10 +308,6 @@ const SimDashboard = () => {
   // Data Update handlers
   // - Update machine params
   useEffect(() => {
-    console.log(
-      "Updating performance params with selected machine:",
-      selectedMachine,
-    );
     setPerformanceParams({
       id: selectedMachine.id,
       name: selectedMachine.name,
@@ -876,17 +872,15 @@ const SimDashboard = () => {
       setIot_index(iot.findIndex((m) => m.name == task.task_type));
       let sender = iot[iot_index];
       let mecha = machines[machine_index].id;
-      console.lo;
       enqueue(mecha, sender, true, LB_ID);
 
       setTaskLoaded(false);
     }
 
     machines.forEach((m) => {
-      if (!m.queue.length) return;
+      if (!m.queue?.length) return;
       let task_life = simulationTime - m.queue[0].arrival_time;
-      if (task_life >= eetTable.get(m.name, m.queue[0].task_type))
-        dequeue(m.id);
+      if (task_life >= m.eet?.[task.task_type]) dequeue(m.id);
     });
   }, [simulationTime, isRunning]);
   const dequeue = useCallback(
@@ -966,10 +960,10 @@ const SimDashboard = () => {
   };
 
   return (
-    <div className=" bg-[#d9d9d9] max-w-screen min-w-screen min-h-screen flex flex-col relative ">
+    <div className=" bg-[#d9d9d9] m-5 h-720 max-h-screen max-w-1600 flex flex-col relative ">
       {/* DND */}
 
-      <div className="p-8 bg-gray-100 size-dvw max-w-screen max-h-screen min-w-screen min-h-screen relative">
+      <div className=" p-3 bg-gray-100 size-dvw max-w-screen max-h-screen relative">
         <div className="dndflow">
           <div className="reactflow-wrapper" ref={reactFlowWrapper}>
             <ReactFlow

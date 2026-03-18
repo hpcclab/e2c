@@ -153,66 +153,55 @@ export default function Sidebar() {
   );
 
   return (
-    <aside>
+    <aside className="mr-10">
       <div className="description">
         You can drag these nodes to the pane to create new nodes.
       </div>
-      <DraggableNode
-        className="dndnode edge"
-        nodeType="edgeSpace"
-        onDrop={handleNodeDrop}
-      >
-        Edge Space
-      </DraggableNode>
-      <DraggableNode
-        className="dndnode cloud"
-        nodeType="cloudSpace"
-        onDrop={handleNodeDrop}
-      >
-        Cloud Space
-      </DraggableNode>
-      <DraggableNode
-        className="dndnode machine"
-        nodeType="machineNode"
-        onDrop={handleNodeDrop}
-      >
-        Machine Node
-      </DraggableNode>
-      <DraggableNode
-        className="dndnode iot"
-        nodeType="iotNode"
-        onDrop={handleNodeDrop}
-      >
-        IoT Node
-      </DraggableNode>
-      <DraggableNode
-        className="dndnode iot"
-        nodeType="edgeLockedNode"
-        onDrop={handleNodeDrop}
-      >
-        Edge Locked Node
-      </DraggableNode>
-      <DraggableNode
-        className="dndnode iot"
-        nodeType="workloadNode"
-        onDrop={handleNodeDrop}
-      >
-        workload Node
-      </DraggableNode>
-      <DraggableNode
-        className="dndnode iot"
-        nodeType="LBNode"
-        onDrop={handleNodeDrop}
-      >
-        Load Balancer Node
-      </DraggableNode>
-      <DraggableNode
-        className="dndnode iot"
-        nodeType="QueueNode"
-        onDrop={handleNodeDrop}
-      >
-        Queue Node
-      </DraggableNode>
+      <div className="nodes">
+        <DraggableNode
+          className="dndnode edge"
+          nodeType="edgeSpace"
+          onDrop={handleNodeDrop}
+        >
+          Edge Space
+        </DraggableNode>
+        <DraggableNode
+          className="dndnode cloud"
+          nodeType="cloudSpace"
+          onDrop={handleNodeDrop}
+        >
+          Cloud Space
+        </DraggableNode>
+        <DraggableNode
+          className="dndnode machine"
+          nodeType="machineNode"
+          onDrop={handleNodeDrop}
+        >
+          Machine
+        </DraggableNode>
+        <DraggableNode
+          className="dndnode iot"
+          nodeType="iotNode"
+          onDrop={handleNodeDrop}
+        >
+          IoT
+        </DraggableNode>
+
+        <DraggableNode
+          className="dndnode"
+          nodeType="workloadNode"
+          onDrop={handleNodeDrop}
+        >
+          Work Space
+        </DraggableNode>
+        <DraggableNode
+          className="dndnode text-wrap"
+          nodeType="LBNode"
+          onDrop={handleNodeDrop}
+        >
+          Load Balancer
+        </DraggableNode>
+      </div>
     </aside>
   );
 }

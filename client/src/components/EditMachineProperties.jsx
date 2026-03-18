@@ -163,7 +163,7 @@ const EditMachineProperties = ({
         {iot.length > 0 && (
           <div className="border-t pt-2 mt-4">
             <label className="block text-sm font-semibold text-gray-700 mb-2">
-              EET (s) per Task Type
+              Estimated Execution Times
             </label>
             <table className="table-auto border-collapse border border-gray-300 w-full text-sm">
               <thead>
@@ -171,23 +171,29 @@ const EditMachineProperties = ({
                   <th className="border px-2 py-1 bg-gray-100 text-left">
                     Task Type
                   </th>
-                  <th className="border px-2 py-1 bg-gray-100">EET (s)</th>
+                  <th className="border px-2 py-1 bg-gray-100">EET(s)</th>
                 </tr>
               </thead>
               <tbody>
                 {iot.map((iotNode) => (
                   <tr key={iotNode.id}>
                     <td className="border px-2 py-1 text-gray-600">
-                      {iotNode.name}
+                      {iotNode.properties.task_type}
                     </td>
                     <td className="border px-2 py-1">
                       <input
                         type="number"
                         min="0"
                         step="0.1"
-                        value={editedMachine.eet?.[iotNode.name] ?? ""}
+                        value={
+                          editedMachine.eet?.[iotNode.properties.task_type] ||
+                          ""
+                        }
                         onChange={(e) =>
-                          handleEETChange(iotNode.name, e.target.value)
+                          handleEETChange(
+                            iotNode.properties.task_type,
+                            e.target.value,
+                          )
                         }
                         className="w-full border rounded px-1 py-0.5 text-center"
                       />
@@ -303,12 +309,13 @@ const EditMachineProperties = ({
                 {iot.map((iotNode) => (
                   <tr key={iotNode.id}>
                     <td className="border px-2 py-1 text-gray-600">
-                      {iotNode.name}
+                      {iotNode.properties.task_type}
                     </td>
                     <td className="border px-2 py-1 text-center">
-                      {selectedMachine.eet?.[iotNode.name] !== undefined &&
-                      selectedMachine.eet?.[iotNode.name] !== ""
-                        ? selectedMachine.eet[iotNode.name]
+                      {selectedMachine.eet?.[iotNode.properties.task_type] !==
+                        undefined &&
+                      selectedMachine.eet?.[iotNode.properties.task_type] !== ""
+                        ? selectedMachine.eet[iotNode.properties.task_type]
                         : "-"}
                     </td>
                   </tr>

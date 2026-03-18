@@ -11,7 +11,6 @@ const EditIoTProperties = ({
   const [editedIOT, setEditedIOT] = useState({});
 
   useEffect(() => {
-    console.log("iot - selectedMachine updated:", selectedIOT);
     setEditedIOT({
       id: selectedIOT.id,
       name: selectedIOT.name || "",
@@ -26,7 +25,6 @@ const EditIoTProperties = ({
         endTime: selectedIOT.properties.endTime || 0,
         distribution: selectedIOT.properties.distribution || "uniform",
       },
-      properties: selectedIOT.properties || {},
       queue: selectedIOT.queue || [],
     });
   }, [selectedIOT]);
@@ -74,7 +72,6 @@ const EditIoTProperties = ({
         endTime: selectedIOT.properties.endTime || 0,
         distribution: selectedIOT.properties.distribution || "uniform",
       },
-      properties: selectedIOT.properties || {},
       queue: selectedIOT.queue || [],
     });
     setEditMode(false);
