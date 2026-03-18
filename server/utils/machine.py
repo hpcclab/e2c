@@ -6,7 +6,7 @@ class MachineType:
 
 
 class Machine:
-    def __init__(self, machine_type, speed=1, identifier=None, weight=1 ,queue_limit=5):
+    def __init__(self, machine_type, speed=1, identifier=None, weight=1 ,queue_limit=0):
         """Represents a machine in the simulator.
 
         Parameters
@@ -18,12 +18,12 @@ class Machine:
         identifier : str | int, optional
             Optional unique identifier for the machine.
         queue_limit : int, optional
-            Maximum number of tasks that can wait in the queue.
+            Maximum number of tasks that can wait in the queue. 0 = unlimited.
         """
 
         self.type = machine_type
         self.id = identifier
-        self.queue = Queue(maxsize=queue_limit)  # Use Queue with a max size
+        self.queue = Queue(maxsize=queue_limit)  # Use Queue with a max size (0 = unlimited)
         self.running_task = None
         self.speed = speed
         self.weight = weight
@@ -36,6 +36,7 @@ class Machine:
         self.base_name = ""  # Base machine type name
         self.price = 0
         self.cost = 0
+        self.eet = {}  # Execution Estimation Time: { task_type: seconds }
 
     def is_working(self):
         return self.running_task is not None

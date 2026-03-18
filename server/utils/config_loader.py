@@ -8,6 +8,11 @@ def load_config_file(path):
     load_machines(data)
     load_task_types(data)
 
+def load_config_inline(data):
+    """Load machine/task config directly from a dict (no file I/O)."""
+    load_machines(data)
+    load_task_types(data)
+
 def load_machines(data):
     machines = []
     machine_id = 0
@@ -21,10 +26,12 @@ def load_machines(data):
         cost = m.get("cost", 0)
         
         # Create a separate machine instance for each replica
+        queue_limit = m.get("queue_limit", 0)  # 0 = unlimited
+
         for replica_num in range(replicas):
             machine_type = MachineType(type_name)
-            
-            machine = Machine(machine_type, identifier=machine_id)
+
+            machine = Machine(machine_type, identifier=machine_id, queue_limit=queue_limit)
             # Add additional properties to the machine object
             machine.power = power
             machine.idle_power = idle_power
@@ -33,6 +40,7 @@ def load_machines(data):
             machine.price = price
             machine.cost = cost
             machine.base_name = type_name  # Store the base machine type name
+            machine.eet = m.get("eet", {})  # Execution Estimation Time lookup
             
             machines.append(machine)
             machine_id += 1

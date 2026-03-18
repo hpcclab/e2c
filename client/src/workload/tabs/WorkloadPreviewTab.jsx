@@ -40,7 +40,7 @@ const WorkloadPreviewTab = ({
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
     link.href = url;
-    link.download = `workload_${selectedWorkloadIdx + 1}.csv`;
+    link.download = `workload_${selectedWorkloadIdx + 1}.wkl`;
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -60,7 +60,7 @@ const WorkloadPreviewTab = ({
         created_at: new Date().toISOString(),
         total_files: workloadFiles.length,
         file_info: workloadFiles.map((workload, index) => ({
-          filename: `workload_${index + 1}.csv`,
+          filename: `workload_${index + 1}.wkl`,
           task_count: workload.length,
           task_types: [...new Set(workload.map((task) => task.task_type))],
           duration_range: {
@@ -80,7 +80,7 @@ const WorkloadPreviewTab = ({
       // Add each workload file to ZIP
       workloadFiles.forEach((workload, index) => {
         const csvContent = workloadToCSV(workload);
-        zip.file(`workload_${index + 1}.csv`, csvContent);
+        zip.file(`workload_${index + 1}.wkl`, csvContent);
       });
 
       // Generate and download ZIP
