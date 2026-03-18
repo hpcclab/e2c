@@ -11,8 +11,15 @@ export const GlobalProvider = ({ children }) => {
   // Define States
   const [selectedMachine, setSelectedMachine] = useState({
     id: -1,
-    name: "empty machine",
-    queue: [],
+    name: "",
+    power: 0,
+    idle_power: 0,
+    replicas: 1,
+    price: 0,
+    cost: 0,
+    utilization_time: 0,
+    total_cost: 0,
+    total_tasks: 0,
     eet: {},
   });
   const [selectedIOT, setSelectedIOT] = useState({

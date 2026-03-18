@@ -26,7 +26,26 @@ export const Machine = ({
   registerMachineSlotRef,
 }) => {
   const [isExpanded, setIsExpanded] = useState(false);
-
+  function handleChildClick(event) {
+    event.stopPropagation();
+    setSelectedMachine({
+      id: machine.id,
+      originalId: machine.id,
+      name: machine.name,
+      replicaNumber: 0,
+      queue: machine.queue,
+      power: machine.power,
+      idle_power: machine.idle_power,
+      replicas: machine.replicas,
+      price: machine.price,
+      cost: machine.cost,
+      utilization_time: machine.utilization_time || 0,
+      total_cost: machine.total_cost || 0,
+      total_tasks: machine.total_tasks || 0,
+      eet: machine.eet || {},
+    });
+    onClicked();
+  }
   const getMachineColor = () => {
     return machineColors[machineIndex % machineColors.length];
   };
@@ -93,24 +112,7 @@ export const Machine = ({
 
         <div className="flex flex-col items-end space-y-1">
           <div
-            onClick={() => {
-              setSelectedMachine({
-                id: machine.id,
-                originalId: machine.id,
-                name: machine.name,
-                replicaNumber: 0,
-                queue: machine.queue,
-                power: machine.power,
-                idle_power: machine.idle_power,
-                replicas: machine.replicas,
-                price: machine.price,
-                cost: machine.cost,
-                utilization_time: machine.utilization_time || 0,
-                total_cost: machine.total_cost || 0,
-                total_tasks: machine.total_tasks || 0,
-              });
-              onClicked();
-            }}
+            onClick={handleChildClick}
             className={`text-white ${getMachineColor()} font-semibold w-20 h-10 rounded-full flex items-center justify-center cursor-pointer hover:scale-105 transition text-xs`}
             title={`${totalTasks} tasks, ${utilizationHours}h × $${machine.price}/h = $${totalCost}`}
           >
@@ -149,24 +151,7 @@ export const Machine = ({
 
                 <div className="flex flex-col items-end space-y-1">
                   <div
-                    onClick={() => {
-                      setSelectedMachine({
-                        id: replica.id,
-                        originalId: replica.originalId,
-                        name: replica.displayName,
-                        replicaNumber: replica.replicaNumber,
-                        queue: replica.queue,
-                        power: replica.power,
-                        idle_power: replica.idle_power,
-                        replicas: replica.replicas,
-                        price: replica.price,
-                        cost: replica.cost,
-                        utilization_time: replica.utilization_time || 0,
-                        total_cost: replica.total_cost || 0,
-                        total_tasks: replica.total_tasks || 0,
-                      });
-                      onClicked();
-                    }}
+                    onClick={handleChildClick}
                     className={`text-white ${getMachineColor()} font-semibold w-20 h-8 rounded-full flex items-center justify-center cursor-pointer hover:scale-105 transition text-xs`}
                     title={`${replicaTasks} tasks, ${replicaHours}h × $${replica.price}/h = $${replicaCost}`}
                   >

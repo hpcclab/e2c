@@ -11,6 +11,7 @@ const EditIoTProperties = ({
   const [editedIOT, setEditedIOT] = useState({});
 
   useEffect(() => {
+    console.log("iot - selectedMachine updated:", selectedIOT);
     setEditedIOT({
       id: selectedIOT.id,
       name: selectedIOT.name || "",
