@@ -518,13 +518,14 @@ const SimDashboard = () => {
           m.eet &&
           Object.values(m.eet).some((v) => v !== "" && v !== undefined),
       );
+      const canvasHasWorkload = scenarioRows.length > 0;
       if (
-        !workloadFileUploaded ||
+        (!workloadFileUploaded && !canvasHasWorkload) ||
         (!profilingFileUploaded && !machinesHaveEET) ||
         !configFileUploaded
       ) {
         alert(
-          "Please upload the workload (.wkl) and configuration (.json) files before running the simulation. Either upload a profiling table (.eet) or set EET values on machines.",
+          "Please provide a workload (upload a .wkl file or add IoT nodes with scenario data), a configuration (.json) file, and either a profiling table (.eet) or set EET values on machines.",
         );
         return;
       }
@@ -558,7 +559,7 @@ const SimDashboard = () => {
         schedulingPolicy: policy, // Load balancing policy type
         configFilename: configFileName, // Configuration file name
         profilingData: profilingTableData, // Profiling data parsed from the .eet file
-        tasks: workloadTableData, // Tasks parsed from the .wkl file
+        tasks: workloadFileUploaded ? workloadTableData : generateWorkload(scenarioRows, taskTypes),
       };
 
       // const animateAdmissions = (admissionEvents, baseMachines) => {

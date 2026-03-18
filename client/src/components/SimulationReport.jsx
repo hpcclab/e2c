@@ -1,5 +1,6 @@
 import React, { useState, useCallback, useEffect, useMemo } from 'react';
 import { exportSimulationReport, exportCombinedReport } from '../utils/exportCSV';
+import TaskLifecycle from './TaskLifecycle';
 
 
 const SimulationReport = ({
@@ -20,6 +21,7 @@ const SimulationReport = ({
   const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
   const [exportType, setExportType] = useState('combined');
   const [isFullscreen, setIsFullscreen] = useState(false);
+  const [lifecycleTask, setLifecycleTask] = useState(null);
 
   // Handle CSV Export
   const handleExport = () => {
@@ -422,7 +424,9 @@ const SimulationReport = ({
                   return (
                     <tr
                       key={`task-${task.taskId || task.id}-${index}`}
-                      className={`hover:bg-gray-50 transition ${
+                      onClick={() => setLifecycleTask(task)}
+                      className={`cursor-pointer hover:bg-blue-50 transition ${
+                        lifecycleTask?.taskId === task.taskId ? 'ring-2 ring-inset ring-blue-400' :
                         isUnassigned ? 'bg-amber-50' :
                         task.status === 'CANCELLED' ? 'bg-red-50' :
                         deadlineMissed ? 'bg-orange-50' : ''
@@ -467,6 +471,11 @@ const SimulationReport = ({
               </tbody>
             </table>
           </div>
+          {lifecycleTask && (
+            <div className="px-2 pb-2">
+              <TaskLifecycle task={lifecycleTask} />
+            </div>
+          )}
         </div>
 
 
