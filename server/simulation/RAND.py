@@ -105,15 +105,21 @@ class RAND(BaseScheduler):
                 s += f'\t{r}'
             config.log.write(s)
 
-        if self.batch_queue.empty():
+        if self.batch_queue.empty() and not self.unmapped_task:
             return None
 
-         # actual schedulin process below
-            #ASSIGN TASK THEN COUNT DOWN
-        machine = self.getRandMachine() # getting machine by index
-        available_machine = machine
-        if available_machine != None:
+        if not self.unmapped_task:
+            if self.batch_queue.empty():
+                return None
+            next_task = self.batch_queue.list()[0]
+            if next_task.arrival_time > config.time.gct():
+                increment(next_task.arrival_time - config.time.gct())
+                return None
             self.choose()
+
+        machine = self.getRandMachine()
+        available_machine = machine
+        if available_machine is not None:
             self.map(available_machine)
             increment(0.01)
             return available_machine

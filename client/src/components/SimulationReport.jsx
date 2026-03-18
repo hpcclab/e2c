@@ -22,6 +22,7 @@ const SimulationReport = ({
   const [exportType, setExportType] = useState('combined');
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [lifecycleTask, setLifecycleTask] = useState(null);
+  const [taskSearch, setTaskSearch] = useState('');
 
   // Handle CSV Export
   const handleExport = () => {
@@ -394,12 +395,21 @@ const SimulationReport = ({
 
         {/* Task Results Table */}
         <div className="mb-6">
-          <h4 className="text-lg font-bold text-gray-800 mb-3 flex items-center">
-            <svg className="w-5 h-5 mr-2 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
-            </svg>
-            Task Results
-          </h4>
+          <div className="flex items-center justify-between mb-3">
+            <h4 className="text-lg font-bold text-gray-800 flex items-center">
+              <svg className="w-5 h-5 mr-2 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+              </svg>
+              Task Results
+            </h4>
+            <input
+              type="text"
+              placeholder="Search by ID, type, machine, status..."
+              value={taskSearch}
+              onChange={(e) => setTaskSearch(e.target.value)}
+              className="border border-gray-300 rounded px-3 py-1 text-sm w-64 focus:outline-none focus:ring-2 focus:ring-blue-400"
+            />
+          </div>
           <div className="overflow-x-auto">
             <table className="table-auto border-collapse border border-gray-300 w-full text-sm shadow-sm">
               <thead className="sticky top-0 bg-gradient-to-r from-gray-100 to-gray-200 z-10">
@@ -416,7 +426,16 @@ const SimulationReport = ({
                 </tr>
               </thead>
               <tbody>
-                {dataResults.map((task, index) => {
+                {dataResults.filter((task) => {
+                  if (!taskSearch) return true;
+                  const q = taskSearch.toLowerCase();
+                  return (
+                    String(task.taskId ?? task.id).toLowerCase().includes(q) ||
+                    (task.task_type || '').toLowerCase().includes(q) ||
+                    (task.assigned_machine || '').toLowerCase().includes(q) ||
+                    (task.status || '').toLowerCase().includes(q)
+                  );
+                }).map((task, index) => {
                   // Check if deadline was missed
                   const deadlineMissed = task.status === 'DEADLINE_MISSED';
                   const isUnassigned = task.machineId === null;

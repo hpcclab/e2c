@@ -4,7 +4,7 @@ from flask import Blueprint, current_app, jsonify, request  # Import current_app
 
 import server.utils.config as config
 from server.services.workload_service import simulate_load_balancing
-from server.utils.config_loader import load_config_file
+from server.utils.config_loader import load_config_file, load_config_inline
 from server.utils.task_generator import generate_tasks_from_batch
 from server.utils.time import increment, reset
 
@@ -19,23 +19,43 @@ def run_sim():
     data = request.get_json()
     num_tasks = data.get("numTasks", 10)
     config_filename = data.get("configFilename")
+    machine_config = data.get("machineConfig")  # Inline config from canvas
     policy = data["schedulingPolicy"]
-
-    if not config_filename:
-        return jsonify({"error": "No config filename provided"}), 400
-
-    # Use the absolute path for the config file
-    config_path = os.path.join(current_app.config["UPLOAD_FOLDER"], config_filename)
-    print(f"Attempting to load config file from: {config_path}")  # Debugging
 
     # Reset the global simulator state
     config.reset()
     reset()  # Reset global time
 
-    try:
-        load_config_file(config_path)
-    except FileNotFoundError:
-        return jsonify({"error": f"Config file not found: {config_path}"}), 500
+    if machine_config:
+        # Inline config provided from canvas nodes
+        print(f"Loading inline config with {len(machine_config.get('machines', []))} machines")
+        load_config_inline(machine_config)
+    elif config_filename:
+        # File-based config
+        config_path = os.path.join(current_app.config["UPLOAD_FOLDER"], config_filename)
+        print(f"Attempting to load config file from: {config_path}")
+        try:
+            load_config_file(config_path)
+        except FileNotFoundError:
+            return jsonify({"error": f"Config file not found: {config_path}"}), 500
+    else:
+        return jsonify({"error": "No machine config provided"}), 400
+
+    # Apply EET from profilingData if provided
+    profiling_data = data.get("profilingData", [])
+    if profiling_data:
+        eet_lookup = {}  # { machineName: { taskType: seconds } }
+        for row in profiling_data:
+            m_name = row.get("machine") or row.get("machineName") or row.get("Machine")
+            t_type = row.get("taskType") or row.get("task_type") or row.get("TaskType")
+            eet_val = row.get("eet") or row.get("EET") or row.get("execution_time")
+            if m_name and t_type and eet_val is not None:
+                eet_lookup.setdefault(m_name, {})[t_type] = float(eet_val)
+        # Apply EET to matching machines
+        for machine in config.machines:
+            base = machine.base_name or machine.type.name
+            if base in eet_lookup:
+                machine.eet = {**machine.eet, **eet_lookup[base]}
 
     batch_queue = data.get("tasks", [])
     tasks = generate_tasks_from_batch(batch_queue)
@@ -50,7 +70,7 @@ def run_sim():
     except ValueError as ve:
         return jsonify({"error": str(ve)}), 400
 
-    while not config.batch_queue.empty():
+    while not config.batch_queue.empty() or scheduler.unmapped_task:
         scheduler.schedule()
         increment(0.01)  # Increment global time after each scheduling step
 
