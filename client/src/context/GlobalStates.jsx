@@ -3,11 +3,13 @@ import React, { createContext, useContext, useState, useRef } from "react";
 import { useEdgesState, useNodesState, useReactFlow } from "@xyflow/react";
 import axios from "axios";
 import { eetTable } from "../utils/exportCSV";
+import { generateWorkload } from "../workload/tabs/ScenarioTab";
 
 const GlobalContext = createContext();
 
 export const GlobalProvider = ({ children }) => {
   const { fitView } = useReactFlow();
+
   // Define States
   const [selectedMachine, setSelectedMachine] = useState({
     id: -1,
@@ -21,6 +23,8 @@ export const GlobalProvider = ({ children }) => {
     total_cost: 0,
     total_tasks: 0,
     eet: {},
+    parentId: undefined,
+    extent: undefined,
   });
   const [selectedIOT, setSelectedIOT] = useState({
     id: -3,
@@ -37,6 +41,8 @@ export const GlobalProvider = ({ children }) => {
       distribution: "uniform",
     },
     queue: [],
+    parentId: undefined,
+    extent: undefined,
   });
   const [simulationTime, setSimulationTime] = useState(0); //TIME
 
@@ -51,6 +57,16 @@ export const GlobalProvider = ({ children }) => {
     end: "",
     status: "",
   });
+  const workspace = {
+    id: -3030,
+    job_q: [],
+    system_config: {},
+    machines: [],
+    iots: [],
+  };
+
+  const [selectedWorkspace, setSelectedWorkspace] = useState(workspace);
+  const [workspaces, setWorkspaces] = useState([]);
   const [machines, setMachines] = useState([]);
   const [iot, setIot] = useState([]);
   const [batchQ, setBatchQ] = useState({
@@ -64,24 +80,28 @@ export const GlobalProvider = ({ children }) => {
   const [menu, setMenu] = useState(null);
 
   const onDragStop = (event, node) => {
-    if (node.type === "machineNode") {
-      setMachines((prev) =>
-        prev.map((m) =>
-          `${m.id}` === node.id
-            ? { ...m, position: node.position } // update position in state
-            : m,
-        ),
-      );
-    }
-    if (node.type === "iotNode") {
-      setIot((prev) =>
-        prev.map((m) =>
-          `${m.id}` === node.id
-            ? { ...m, position: node.position } // update position in state
-            : m,
-        ),
-      );
-    }
+    // Adjust viewport nicely after drag
+    fitView({ padding: 0.5, duration: 600, interpolate: "smooth" });
+
+    // Only handle machine/iot nodes
+    if (node.type !== "machineNode" && node.type !== "iotNode") return;
+
+    const updater = node.type === "machineNode" ? setMachines : setIot;
+
+    updater((prev) =>
+      prev.map((item) =>
+        `${item.id}` === node.id
+          ? {
+              ...item,
+              // Keep the node position relative to its current parent
+              position: node.position,
+              // Keep parentId and extent as-is
+              parentId: item.parentId,
+              extent: item.extent,
+            }
+          : item,
+      ),
+    );
   };
   // Workload generator states
   const [taskTypes, setTaskTypes] = useState([]);
@@ -110,6 +130,8 @@ export const GlobalProvider = ({ children }) => {
     );
     return data;
   };
+  // work space helpers
+
   const handleProfilingUpload = async (e) => {
     const file = e.target.files[0];
     console.log(e);
@@ -169,6 +191,7 @@ export const GlobalProvider = ({ children }) => {
     reader.onload = (event) => {
       const content = event.target.result;
       const parsedCSV = parseCSV(content);
+      // console.log(content);
       setBatchQ({ id: -2, name: "Batch Queue", queue: parseCSV(content) });
 
       console.log("raw content:", batchQ);
@@ -216,6 +239,8 @@ export const GlobalProvider = ({ children }) => {
             endTime: 30,
             distribution: distributionOptions[0],
           },
+          parentId: undefined,
+          extent: undefined,
         };
         newIoTs.push(iotObj);
         const iotType = {
@@ -245,6 +270,8 @@ export const GlobalProvider = ({ children }) => {
             y: row * verticalSpacing + 100,
           },
           data: { iot: iotObj },
+          parentId: iotObj.parentId,
+          extent: iotObj.parentId ? "parent" : undefined,
         };
         newIoTNodes.push(iotNode);
 
@@ -315,6 +342,8 @@ export const GlobalProvider = ({ children }) => {
             cost: machine.cost || 0,
             queue: machine.queue || [],
             replica_instances: [],
+            parentId: undefined,
+            extent: undefined,
           };
         }
         // Add this specific replica instance
@@ -335,7 +364,36 @@ export const GlobalProvider = ({ children }) => {
       alert("Failed to upload configuration file.");
     }
   };
+  const handleNodesChange = (changes) => {
+    setNodes((nds) => {
+      return nds.map((node) => {
+        const change = changes.find((c) => c.id === node.id);
+        if (!change) return node;
 
+        let updatedNode = { ...node, ...change };
+
+        if (node.parentId) {
+          const parent = nds.find((n) => n.id === node.parentId);
+          if (parent) {
+            // Keep node inside parent's bounds
+            const width = parent.style?.width ?? 280;
+            const height = parent.style?.height ?? 250;
+            updatedNode.position = {
+              x: Math.min(Math.max(updatedNode.position.x, 0), width),
+              y: Math.min(Math.max(updatedNode.position.y, 0), height),
+            };
+          }
+        }
+
+        return updatedNode;
+      });
+    });
+  };
+  const ld_workspace = () => {
+    const stuff = generateWorkload(scenarioRows, taskTypes);
+    setBatchQ({ id: -2, name: "Batch Queue", queue: stuff });
+    return batchQ;
+  };
   const [nodes, setNodes, onNodesChange] = useNodesState([]);
   /* future Node reference
 {
@@ -430,6 +488,12 @@ export const GlobalProvider = ({ children }) => {
     setTaskTypes,
     scenarioRows,
     setScenarioRows,
+    selectedWorkspace,
+    setSelectedWorkspace,
+    workspaces,
+    workspace,
+    setWorkspaces,
+    ld_workspace,
   };
 
   return (

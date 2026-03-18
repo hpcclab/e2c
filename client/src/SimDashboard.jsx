@@ -15,7 +15,6 @@ import EditIoTProperties from "./components/EditIoTProperties";
 import SimulationReport from "./components/SimulationReport";
 import { processDequeue, autoMapMachineNames } from "./utils/dequeueProcess";
 import { eetTable } from "./utils/exportCSV";
-import { generateWorkload } from "./workload/tabs/ScenarioTab";
 
 // Drag and drop imports and requirements
 import {
@@ -53,7 +52,7 @@ const nodeTypes = {
   edgeSpace: edgeSpace,
   cloudSpace: cloudSpace,
   edgeLockedNode: edgeLockedNode,
-  workloadNode: workloadNode,
+  group: workloadNode,
   LBNode: LBNode,
   QueueNode: QueueNode,
 };
@@ -124,6 +123,9 @@ const SimDashboard = () => {
     setTaskTypes,
     scenarioRows,
     setScenarioRows,
+    workspaces,
+    setWorkspaces,
+    ld_workspace,
   } = useGlobalState();
   // End Global States
 
@@ -530,8 +532,10 @@ const SimDashboard = () => {
         clearInterval(simulationIntervalRef.current);
       }
       setIsRunning(true);
-      const workload = generateWorkload(scenarioRows, taskTypes);
-      console.log(workload);
+      const workspace = ld_workspace();
+
+      // console.log(workload);
+      console.log(workspace);
 
       // Build EET table from machine canvas data if no .eet file was uploaded
       if (!profilingFileUploaded && machinesHaveEET) {
@@ -898,42 +902,52 @@ const SimDashboard = () => {
     },
     [setMachines],
   );
-  // /* -------------------- MACHINE NODES -------------------- */
+  // /* -------------------- WORKSPACE, MACHINE and IOT NODES -------------------- */
   useEffect(() => {
     setNodes((prev) => {
-      // Keep all non-machine nodes as-is
-      const otherNodes = prev.filter((n) => n.type !== "machineNode");
+      const nodesMap = Object.fromEntries(prev.map((n) => [n.id, n]));
 
-      // Map machines to nodes
-      const machineNodes = machines
-        .filter((m) => m.id !== -1) // skip placeholders
-        .map((machine, index) => ({
-          id: `${machine.id}`,
+      const machineNodes = machines.map((m, index) => {
+        const parentExists = m.parentId ? nodesMap[m.parentId] : true;
+
+        return {
+          id: `${m.id}`,
           type: "machineNode",
-          data: {
-            machine,
-            machineIndex: index,
-          },
-          position: machine.position ?? { x: 600, y: 80 + index * 150 },
+          data: { machine: m },
+          position: m.position ?? { x: 600, y: 80 + index * 150 },
+          parentId: parentExists ? m.parentId : undefined,
+          extent: parentExists && m.parentId ? "parent" : undefined,
           draggable: true,
-        }));
+        };
+      });
+
+      const otherNodes = prev.filter((n) => n.type !== "machineNode");
 
       return [...otherNodes, ...machineNodes];
     });
   }, [machines, setNodes]);
-  /* -------------------- IOT NODES -------------------- */
+
   useEffect(() => {
     setNodes((prev) => {
-      const other = prev.filter((n) => n.type !== "iotNode");
+      const nodesMap = Object.fromEntries(prev.map((n) => [n.id, n]));
 
-      const iotNodes = iot.map((m, index) => ({
-        id: `${m.id}`,
-        type: "iotNode",
-        data: { iot: m },
-        position: m.position ?? { x: 0, y: 80 + index * 150 },
-      }));
+      const iotNodes = iot.map((i, index) => {
+        const parentExists = i.parentId ? nodesMap[i.parentId] : true;
 
-      return [...other, ...iotNodes];
+        return {
+          id: `${i.id}`,
+          type: "iotNode",
+          data: { iot: i },
+          position: i.position ?? { x: 0, y: 80 + index * 150 },
+          parentId: parentExists ? i.parentId : undefined,
+          extent: parentExists && i.parentId ? "parent" : undefined,
+          draggable: true,
+        };
+      });
+
+      const otherNodes = prev.filter((n) => n.type !== "iotNode");
+
+      return [...otherNodes, ...iotNodes];
     });
   }, [iot, setNodes]);
 

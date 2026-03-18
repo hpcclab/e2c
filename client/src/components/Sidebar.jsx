@@ -51,28 +51,62 @@ export default function Sidebar() {
     setTaskTypes,
     scenarioRows,
     setScenarioRows,
+    setWorkspaces,
+    workspaces,
+    workspace,
+    nodes,
   } = useGlobalState();
-  const { setNodes, screenToFlowPosition, fitView } = useReactFlow();
+  const {
+    setNodes,
+    screenToFlowPosition,
+    fitView,
+    getNodes,
+    getNodesBounds,
+    getIntersectingNodes,
+  } = useReactFlow();
   const distributionOptions = ["uniform", "normal", "exponential", "spiky"];
   const handleNodeDrop = useCallback(
     (nodeType, screenPosition) => {
-      const flow = document.querySelector(".react-flow");
-      const flowRect = flow?.getBoundingClientRect();
+      if (!screenToFlowPosition) return;
 
-      const isInFlow =
-        flowRect &&
-        screenPosition.x >= flowRect.left &&
-        screenPosition.x <= flowRect.right &&
-        screenPosition.y >= flowRect.top &&
-        screenPosition.y <= flowRect.bottom;
+      // Convert screen coordinates to flow coordinates
+      const position = screenToFlowPosition({
+        x: screenPosition.x,
+        y: screenPosition.y,
+      });
 
-      if (!isInFlow) return;
+      // Get all group nodes from React Flow instance
+      const groupNodes = getNodes().filter((n) => n.type === "group");
 
-      const position = screenToFlowPosition(screenPosition);
+      // Find the group node that contains this position
+      let parentNode = undefined;
+      for (const group of groupNodes) {
+        const bounds = getNodesBounds([group]);
+        if (
+          position.x >= bounds.x &&
+          position.x <= bounds.x + bounds.width &&
+          position.y >= bounds.y &&
+          position.y <= bounds.y + bounds.height
+        ) {
+          parentNode = group;
+          break;
+        }
+      }
 
+      const parentId = parentNode?.id;
+
+      // Position relative to parent group if it exists
+      const relativePosition = parentNode
+        ? {
+            x: position.x - parentNode.position.x,
+            y: position.y - parentNode.position.y,
+          }
+        : position;
+
+      // Handle different node types
       if (nodeType === "machineNode") {
         const newMachine = {
-          id: Date.now(), // unique ID
+          id: Date.now(),
           name: `Machine ${Date.now().toString().slice(-4)}`,
           queue: [],
           power: 0,
@@ -80,14 +114,30 @@ export default function Sidebar() {
           replicas: 1,
           price: 0,
           cost: 0,
-          position,
+          position: relativePosition,
+          parentId, // assign parent group
+          extent: parentId ? "parent" : undefined,
           eet: {},
         };
-
         setMachines((prev) => [...prev, newMachine]);
+
+        if (parentId) {
+          setWorkspaces((prev) =>
+            prev.map((ws) => {
+              const workspaceId = parentId.replace("nd-", "");
+              if (ws.id.toString() === workspaceId) {
+                return {
+                  ...ws,
+                  machines: [...ws.machines, newMachine.id],
+                };
+              }
+              return ws;
+            }),
+          );
+        }
       } else if (nodeType === "iotNode") {
         const newIot = {
-          id: Date.now(), // unique ID
+          id: Date.now(),
           name: `IOT ${Date.now().toString().slice(-4)}`,
           properties: {
             task_type: `IOT ${Date.now().toString().slice(-4)}`,
@@ -101,8 +151,11 @@ export default function Sidebar() {
             distribution: distributionOptions[0],
           },
           queue: [],
-          position,
+          position: relativePosition,
+          parentId, // assign parent group
+          extent: parentId ? "parent" : undefined,
         };
+        setIot((prev) => [...prev, newIot]);
 
         setTaskTypes((prev) => [
           ...prev,
@@ -131,25 +184,80 @@ export default function Sidebar() {
           },
         ]);
 
-        setIot((prev) => [...prev, newIot]);
         setMachines((prev) =>
           prev.map((m) => ({
             ...m,
             eet: { ...(m.eet || {}), [newIot.name]: "" },
           })),
         );
+
+        if (parentId) {
+          setWorkspaces((prev) =>
+            prev.map((ws) => {
+              const workspaceId = parentId.replace("nd-", "");
+              if (ws.id.toString() === workspaceId) {
+                return {
+                  ...ws,
+                  iots: [...ws.iots, newIot.id],
+                };
+              }
+              return ws;
+            }),
+          );
+        }
+      } else if (nodeType === "workloadNode") {
+        const newWorkspace = {
+          id: Date.now(),
+          job_q: [],
+          system_config: {},
+          machines: [],
+          iots: [],
+        };
+        setWorkspaces((prev) => [...prev, newWorkspace]);
+
+        setNodes((nds) =>
+          nds.concat({
+            id: `nd-${newWorkspace.id}`,
+            type: "group",
+            position: relativePosition,
+            data: {
+              workspaceId: newWorkspace.id,
+              nodes: [],
+            },
+            resizing: true,
+            style: {
+              width: 280,
+              height: 250,
+              minWidth: 280,
+              minHeight: 250,
+              backgroundColor: "rgba(240,240,240,0.25)",
+            },
+          }),
+        );
       } else {
         const newNode = {
-          id: getId(nodeType),
+          id: getId(),
           type: nodeType,
           position,
           data: {},
+          parentId: parentId, // assign parent group
+          extent: parentId ? "parent" : undefined,
         };
         setNodes((nds) => nds.concat(newNode));
       }
+
       fitView({ padding: 0.5, duration: 600, interpolate: "smooth" });
     },
-    [setNodes, screenToFlowPosition, setMachines, setIot],
+    [
+      getNodes,
+      setMachines,
+      setIot,
+      setWorkspaces,
+      setTaskTypes,
+      setScenarioRows,
+      screenToFlowPosition,
+      fitView,
+    ],
   );
 
   return (
@@ -195,7 +303,7 @@ export default function Sidebar() {
           Work Space
         </DraggableNode>
         <DraggableNode
-          className="dndnode text-wrap"
+          className="dndnode"
           nodeType="LBNode"
           onDrop={handleNodeDrop}
         >
