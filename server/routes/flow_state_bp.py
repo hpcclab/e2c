@@ -37,6 +37,9 @@ def save_state():
                     "workloadFileName": data.get("workloadFileName", []),
                     "profilingFileName": data.get("profilingFileName", []),
                     "configFileName": data.get("configFileName", []),
+                    "machineConfig": data.get("machineConfig", []),
+                    "taskTypes": data.get("taskTypes", []),
+                    "scenarioRows": data.get("scenarioRows", []),
                 },
                 f,
                 indent=2,
@@ -62,7 +65,18 @@ def save_as():
     try:
         with open(save_path, "w") as f:
             json.dump(
-                {"nodes": data.get("nodes", []), "edges": data.get("edges", [])},
+                {
+                    "nodes": data.get("nodes", []),
+                    "edges": data.get("edges", []),
+                    "machines": data.get("machines", []),
+                    "iot": data.get("iot", []),
+                    "workloadFileName": data.get("workloadFileName", []),
+                    "profilingFileName": data.get("profilingFileName", []),
+                    "configFileName": data.get("configFileName", []),
+                    "machineConfig": data.get("machineConfig", []),
+                    "taskTypes": data.get("taskTypes", []),
+                    "scenarioRows": data.get("scenarioRows", []),
+                },
                 f,
                 indent=2,
             )

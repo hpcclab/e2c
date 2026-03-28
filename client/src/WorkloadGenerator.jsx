@@ -17,9 +17,15 @@ const TABS = [
 const WorkloadGenerator = () => {
   const [activeTab, setActiveTab] = useState("scenario");
 
-  const { taskTypes, setTaskTypes, scenarioRows, setScenarioRows } =
-    useGlobalState();
-  const [machineTypes, setMachineTypes] = useState([]);
+  const {
+    taskTypes,
+    setTaskTypes,
+    scenarioRows,
+    setScenarioRows,
+    machineTypes,
+    setMachineTypes,
+  } = useGlobalState();
+
   const [eet, setEET] = useState([
     ["", "", ""],
     ["", "", ""],

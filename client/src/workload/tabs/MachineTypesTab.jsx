@@ -7,6 +7,53 @@ import {
   TrashIcon,
 } from "@heroicons/react/24/outline";
 
+export function generateMachineConfig(mechs, taskTypes) {
+  const configData = {
+    parameters: [
+      {
+        machine_queue_size: 3000,
+        batch_queue_size: 1,
+        scheduling_method: "FCFS",
+        fairness_factor: 1.0,
+      },
+    ],
+    settings: [
+      {
+        path_to_output: "./output",
+        path_to_workload: "./workload",
+        verbosity: 3,
+        gui: 1,
+      },
+    ],
+    task_types: taskTypes.map((t, idx) => ({
+      id: idx + 1,
+      name: t.name,
+      urgency: t.urgency || "BestEffort",
+      deadline: Number(t.slack) || 10.0,
+    })),
+    battery: [
+      {
+        capacity: 5000.0,
+      },
+    ],
+    machines: mechs.map((m) => ({
+      name: m.name,
+      power: Number(m.power),
+      idle_power: Number(m.idlePower),
+      replicas: Number(m.replicas),
+      price: Number(m.price), // NEW PRICE
+      cost: Number(m.cost), // NEW COST
+    })),
+    cloud: [
+      {
+        bandwidth: 15000.0,
+        network_latency: 0.015,
+      },
+    ],
+  };
+  return configData;
+}
+
 const MachineTypesTab = ({
   machineTypes,
   setMachineTypes,
@@ -312,7 +359,6 @@ const MachineTypesTab = ({
           >
             Save Config
           </button>
-
           <button
             className="bg-green-600 text-white px-4 py-2 rounded mt-2 self-end"
             onClick={() => setActiveTab && setActiveTab("scenario")}

@@ -24,10 +24,16 @@ export default function FlowSaveLoadPanel() {
     workloadFileName,
     profilingFileName,
     configFileName,
-    setWorkloadFileUploaded,
-    setProfilingFileUploaded,
-    setConfigFileUploaded,
+    machineConfig,
+    setMachineConfig,
+    taskTypes,
+    setTaskTypes,
+    scenarioRows,
+    setScenarioRows,
+    generateMachineConfig,
   } = useGlobalState();
+  // check sets
+
   const { fitView } = useReactFlow();
   const [modalOpen, setModalOpen] = useState(false);
   const [files, setFiles] = useState([]);
@@ -67,6 +73,10 @@ export default function FlowSaveLoadPanel() {
       : `${filename}.json`;
 
     try {
+      if (!machineConfig) {
+        generateMachineConfig(machines, taskTypes);
+      }
+      //
       const res = await axios.post("http://localhost:5001/flow/save_as", {
         nodes,
         edges,
@@ -75,6 +85,9 @@ export default function FlowSaveLoadPanel() {
         workloadFileName,
         profilingFileName,
         configFileName,
+        machineConfig,
+        taskTypes,
+        scenarioRows,
         filename: fileWithExtension,
       });
       alert(res.data.message || res.data.error);
@@ -88,6 +101,10 @@ export default function FlowSaveLoadPanel() {
   const save = async () => {
     if (!selectedFile) return alert("Select a file to save");
     try {
+      if (!machineConfig) {
+        generateMachineConfig(machines, taskTypes);
+      }
+      //
       const res = await axios.post("http://localhost:5001/flow/save_state", {
         nodes,
         edges,
@@ -96,6 +113,9 @@ export default function FlowSaveLoadPanel() {
         workloadFileName,
         profilingFileName,
         configFileName,
+        machineConfig,
+        taskTypes,
+        scenarioRows,
         filename: selectedFile,
       });
       alert(res.data.message || res.data.error);
@@ -120,6 +140,9 @@ export default function FlowSaveLoadPanel() {
         const loadedWorkloadFileName = res.data.data.workloadFileName || [];
         const loadedProfilingFileName = res.data.data.profilingFileName || [];
         const loadedConfigFileName = res.data.data.configFileName || [];
+        const loadedMachineConfig = res.data.data.machineConfig || [];
+        const loadedTaskTypes = res.data.data.taskTypes || [];
+        const loadedScenarioRows = res.data.data.scenarioRows || [];
         console.log(loadedWorkloadFileName);
         console.log(loadedProfilingFileName);
         console.log(loadedConfigFileName);
@@ -133,11 +156,6 @@ export default function FlowSaveLoadPanel() {
         if (loadedProfilingFileName?.length) {
           handleProfilingUpload(loadedProfilingFileName[0]);
           // setProfilingFileUploaded(true);
-        }
-
-        if (loadedConfigFileName?.length) {
-          handleConfigUpload(loadedConfigFileName[0]);
-          // setConfigFileUploaded(true);
         }
 
         // Separate other nodes (non-machine / non-iot)
@@ -160,6 +178,9 @@ export default function FlowSaveLoadPanel() {
           position: i.position || { x: 0, y: 0 },
           data: i,
         }));
+        setMachineConfig(loadedMachineConfig);
+        setTaskTypes(loadedTaskTypes);
+        setScenarioRows(loadedScenarioRows);
         setNodes([...otherNodes, ...machinesArr, ...iotArr]);
         setEdges(loadedEdges);
         setMachines(loadedMachines);

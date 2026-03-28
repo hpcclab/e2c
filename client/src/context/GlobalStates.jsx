@@ -4,6 +4,7 @@ import { useEdgesState, useNodesState, useReactFlow } from "@xyflow/react";
 import axios from "axios";
 import { eetTable } from "../utils/exportCSV";
 import { generateWorkload } from "../workload/tabs/ScenarioTab";
+import { generateMachineConfig } from "../workload/tabs/MachineTypesTab";
 
 const GlobalContext = createContext();
 
@@ -117,6 +118,7 @@ export const GlobalProvider = ({ children }) => {
   const [workloadFileUploaded, setWorkloadFileUploaded] = useState(false);
   const [workloadTableData, setWorkloadTableData] = useState([]);
   const [configFileName, setConfigFileName] = useState("");
+  const [machineConfig, setMachineConfig] = useState("");
   const [configFileUploaded, setConfigFileUploaded] = useState(false);
   const distributionOptions = ["uniform", "normal", "exponential", "spiky"];
   const parseCSV = (csvContent) => {
@@ -239,9 +241,10 @@ export const GlobalProvider = ({ children }) => {
             endTime: 30,
             distribution: distributionOptions[0],
           },
-          parentId: undefined,
+          parentId: selectedWorkspace?.id,
           extent: undefined,
         };
+        console.log(iotObj.parentId);
         newIoTs.push(iotObj);
         const iotType = {
           srcID: iotObj.id,
@@ -265,10 +268,10 @@ export const GlobalProvider = ({ children }) => {
         const iotNode = {
           id: Date.now(),
           type: "iotNode",
-          position: {
-            x: col * horizontalSpacing,
-            y: row * verticalSpacing + 100,
-          },
+          // position: {
+          //   x: col * horizontalSpacing,
+          //   y: row * verticalSpacing + 100,
+          // },
           data: { iot: iotObj },
           parentId: iotObj.parentId,
           extent: iotObj.parentId ? "parent" : undefined,
@@ -355,7 +358,8 @@ export const GlobalProvider = ({ children }) => {
       });
       const machinesWithIds = Object.values(machineMap);
       console.log("Processed machines with replicas:", machinesWithIds);
-      setMachines(machinesWithIds);
+      // setMachines((prev) => [...prev]);
+      // setMachines((prev) => [...prev, ...machinesWithIds]);
       // setAnimatedMachines(machinesWithIds);
       machinesRef.current = machinesWithIds;
       fitView({ padding: 0.5, duration: 600, interpolate: "smooth" });
@@ -364,6 +368,7 @@ export const GlobalProvider = ({ children }) => {
       alert("Failed to upload configuration file.");
     }
   };
+  const [machineTypes, setMachineTypes] = useState([]);
   const handleNodesChange = (changes) => {
     setNodes((nds) => {
       return nds.map((node) => {
@@ -391,7 +396,12 @@ export const GlobalProvider = ({ children }) => {
   };
   const ld_workspace = () => {
     const stuff = generateWorkload(scenarioRows, taskTypes);
-    setBatchQ({ id: -2, name: "Batch Queue", queue: stuff });
+    setBatchQ({ id: -2, name: "Batch Queue", queue: [...stuff] });
+    setWorkloadTableData([...stuff]);
+    // setWorkloadSubmissionStatus(true);
+    setWorkloadFileUploaded(true);
+    setMachineConfig(generateMachineConfig(machines, taskTypes));
+
     return batchQ;
   };
   const [nodes, setNodes, onNodesChange] = useNodesState([]);
@@ -494,6 +504,12 @@ export const GlobalProvider = ({ children }) => {
     workspace,
     setWorkspaces,
     ld_workspace,
+    machineTypes,
+    setMachineTypes,
+    machineConfig,
+    setMachineConfig,
+    generateWorkload,
+    generateMachineConfig,
   };
 
   return (

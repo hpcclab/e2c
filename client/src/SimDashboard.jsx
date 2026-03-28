@@ -126,6 +126,8 @@ const SimDashboard = () => {
     workspaces,
     setWorkspaces,
     ld_workspace,
+    generateWorkload,
+    generateMachineConfig,
   } = useGlobalState();
   // End Global States
 
@@ -517,16 +519,16 @@ const SimDashboard = () => {
           Object.values(m.eet).some((v) => v !== "" && v !== undefined),
       );
       const canvasHasWorkload = scenarioRows.length > 0;
-      if (
-        (!workloadFileUploaded && !canvasHasWorkload) ||
-        (!profilingFileUploaded && !machinesHaveEET) ||
-        !configFileUploaded
-      ) {
-        alert(
-          "Please provide a workload (upload a .wkl file or add IoT nodes with scenario data), a configuration (.json) file, and either a profiling table (.eet) or set EET values on machines.",
-        );
-        return;
-      }
+      // if (
+      //   (!workloadFileUploaded && !canvasHasWorkload) ||
+      //   (!profilingFileUploaded && !machinesHaveEET) ||
+      //   !configFileUploaded
+      // ) {
+      //   alert(
+      //     "Please provide a workload (upload a .wkl file or add IoT nodes with scenario data), a configuration (.json) file, and either a profiling table (.eet) or set EET values on machines.",
+      //   );
+      //   return;
+      // }
 
       // Clear any existing simulation interval
       if (simulationIntervalRef.current) {
@@ -558,8 +560,11 @@ const SimDashboard = () => {
       const simulationData = {
         schedulingPolicy: policy, // Load balancing policy type
         configFilename: configFileName, // Configuration file name
-        profilingData: profilingTableData, // Profiling data parsed from the .eet file
-        tasks: workloadFileUploaded ? workloadTableData : generateWorkload(scenarioRows, taskTypes),
+        machineConfig: generateMachineConfig(machines, taskTypes), // Configuration file name
+        // profilingData: profilingTableData, // Profiling data parsed from the .eet file
+        tasks: workloadFileUploaded
+          ? workloadTableData
+          : generateWorkload(scenarioRows, taskTypes),
       };
 
       // const animateAdmissions = (admissionEvents, baseMachines) => {
@@ -821,17 +826,18 @@ const SimDashboard = () => {
   const enqueue = useCallback(
     (targetId, sender, LB = false, LB_ID = "LBNode_2") => {
       // TODO fix hard coded LB id
-      const job = sender?.queue?.shift();
+      // const job = sender?.queue?.shift();
+      const job = sender;
       console.log(job);
       if (!job) return;
       // setTask_counter(task_counter + 1);
       job.id = job.arrival_time; // unique id for tracking animation
-      if (LB) {
-        startAnimation(`e-${sender.id}-${LB_ID}`);
-        startAnimation(`e-${LB_ID}-${targetId}`);
-      } else {
-        startAnimation(`e-${sender}-${targetId}`);
-      }
+      // if (LB) {
+      //   startAnimation(`e-${sender.id}-${LB_ID}`);
+      //   startAnimation(`e-${LB_ID}-${targetId}`);
+      // } else {
+      //   startAnimation(`e-${sender}-${targetId}`);
+      // }
       setMachines((prevMachines) =>
         prevMachines.map((machine) =>
           machine.id === targetId
@@ -875,7 +881,7 @@ const SimDashboard = () => {
       setMachine_index((prev_machine_index + 1) % machine_count);
       setPrev_machine_index(machine_index);
       setIot_index(iot.findIndex((m) => m.name == task.task_type));
-      let sender = iot[iot_index];
+      let sender = task;
       let mecha = machines[machine_index].id;
       enqueue(mecha, sender, true, LB_ID);
 
