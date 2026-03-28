@@ -6,10 +6,12 @@ export default function IoT({ iot, onIoTClicked, setSelectedIOT, onClicked }) {
     setSelectedIOT({
       id: iot.id,
       name: iot.name,
+      queue: iot.queue,
       properties: iot.properties,
     });
     onClicked();
   }
+
   return (
     <div
       key={iot.id}

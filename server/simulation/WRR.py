@@ -112,23 +112,29 @@ class WRR(BaseScheduler):
                 s += f'\t{r}'
             config.log.write(s)
 
-        if self.batch_queue.empty():
+        if self.batch_queue.empty() and not self.unmapped_task:
             return None
 
-         # actual schedulin process below
-        if(self.schedlue_counter <= 0): # loop if at end of Q
+        if not self.unmapped_task:
+            if self.batch_queue.empty():
+                return None
+            next_task = self.batch_queue.list()[0]
+            if next_task.arrival_time > config.time.gct():
+                increment(next_task.arrival_time - config.time.gct())
+                return None
+            self.choose()
+
+        if self.schedlue_counter <= 0:
             if self.mnIndex >= (len(self.machineQ) - 1):
                 self.mnIndex = -1
             self.mnIndex += 1
             self.schedlue_counter = self.weightsDict[self.machineQ[self.mnIndex]]
-        # assign task
-        if(self.schedlue_counter > 0):
-            #ASSIGN TASK THEN COUNT DOWN
+
+        if self.schedlue_counter > 0:
             self.schedlue_counter -= 1
-            machine = config.machines[self.machineQ[self.mnIndex]] # getting machine by index
+            machine = config.machines[self.machineQ[self.mnIndex]]
             available_machine = machine
-            if available_machine != None:
-                self.choose()
+            if available_machine is not None:
                 self.map(available_machine)
                 increment(0.01)
                 return available_machine

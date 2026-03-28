@@ -1,19 +1,17 @@
 import React from "react";
 import { BrowserRouter as Router, Routes, Route, Link } from "react-router-dom";
 import SimDashboard from "./SimDashboard";
-import DNDApp from "./DNDAppTEST";
 import "./assets/index.css";
 import WorkloadGenerator from "./WorkloadGenerator";
-
 
 const App = () => {
   return (
     <Router>
-      <div className="min-h-screen bg-gray-50">
-        <header className="bg-blue-500 text-white p-6 shadow-md">
-          <nav className="max-w-7xl mx-auto flex justify-between items-center">
+      <div className="container bg-gray-50 overflow-hidden">
+        <header className="bg-blue-500 text-white p-3 shadow-md overflow-hidden">
+          <nav className="max-w-7xl mx-auto flex justify-between items-center overflow-hidden ">
             <h1 className="text-3xl font-bold">E2C</h1>
-            <ul className="flex space-x-6 text-lg">
+            <ul className="flex space-x-6 text-lg max-w-screen overflow-hidden">
               <li>
                 <Link to="/e2c" className="hover:underline">
                   Home
@@ -25,24 +23,20 @@ const App = () => {
                 </Link>
               </li>
               <li>
-                <Link to="/e2c/dndtest" className="hover:underline">
-                  dndTest
+                <Link to="/e2c/generate" className="hover:underline">
+                  Workload Generator
                 </Link>
-              </li>
-              <li>
-                <Link to="/e2c/generate" className="hover:underline">Workload Generator</Link>
               </li>
             </ul>
           </nav>
         </header>
 
-        <main className="p-6">
-            <Routes>
-              <Route path="/e2c" element={<Home />} />
-              <Route path="/e2c/simulate" element={<SimDashboard />} />
-              <Route path="/e2c/dndtest" element={<DNDApp />} />
-               <Route path="/e2c/generate" element={<WorkloadGenerator />} /> 
-            </Routes>
+        <main className="p-0 overflow-hidden">
+          <Routes>
+            <Route path="/e2c" element={<Home />} />
+            <Route path="/e2c/simulate" element={<SimDashboard />} />
+            <Route path="/e2c/generate" element={<WorkloadGenerator />} />
+          </Routes>
         </main>
       </div>
     </Router>

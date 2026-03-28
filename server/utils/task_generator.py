@@ -1,5 +1,5 @@
-import random
 from server.utils.base_task import Task
+
 
 def _to_float(val, default=0.0):
     try:
@@ -7,11 +7,13 @@ def _to_float(val, default=0.0):
     except (TypeError, ValueError):
         return float(default)
 
+
 def _to_int(val, default=0):
     try:
         return int(float(val))
     except (TypeError, ValueError):
         return int(default)
+
 
 def generate_tasks_from_batch(batch_queue):
     """
@@ -21,7 +23,7 @@ def generate_tasks_from_batch(batch_queue):
     for i, row in enumerate(batch_queue):
         t = Task()
         # prefer provided id, fallback to index
-        t.id = _to_int(row.get("id"), i)
+        t.id = _to_int(row.get("id"), i + 1)
 
         # map fields safely
         t.task_type = row.get("task_type") or row.get("type")

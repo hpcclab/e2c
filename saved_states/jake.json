@@ -1,0 +1,213 @@
+{
+  "nodes": [
+    {
+      "data": {},
+      "dragging": false,
+      "id": "workloadNode_0",
+      "measured": {
+        "height": 122,
+        "width": 122
+      },
+      "position": {
+        "x": 278.6748098692193,
+        "y": 327.8933275356105
+      },
+      "selected": false,
+      "type": "workloadNode"
+    },
+    {
+      "id": "1773805389353",
+      "type": "iotNode",
+      "data": {
+        "iot": {
+          "id": 1773805389353,
+          "name": "IOT 9353",
+          "properties": {
+            "task_type": "IOT 9353",
+            "dataInput": "default",
+            "meanSize": 6,
+            "urgency": "BestEffort",
+            "slack": 0,
+            "numTasks": 10,
+            "startTime": 0,
+            "endTime": 30,
+            "distribution": "uniform"
+          },
+          "queue": [],
+          "position": {
+            "x": 87.42296874498622,
+            "y": 331.87384291491145
+          }
+        }
+      },
+      "position": {
+        "x": 87.42296874498622,
+        "y": 331.87384291491145
+      },
+      "measured": {
+        "width": 126,
+        "height": 102
+      }
+    },
+    {
+      "id": "0",
+      "type": "machineNode",
+      "data": {
+        "machine": {
+          "id": 0,
+          "name": "cpu",
+          "power": 10,
+          "idle_power": 1,
+          "replicas": 1,
+          "price": 0,
+          "cost": 0,
+          "utilization_time": 0.006094444444444445,
+          "total_cost": 0,
+          "total_tasks": 5,
+          "eet": {
+            "IOT 9353": "34"
+          },
+          "replica_stats": [
+            {
+              "cost": 0,
+              "id": 0,
+              "replica_number": 1,
+              "tasks_completed": 5,
+              "utilization_hours": 0.006094444444444445,
+              "utilization_seconds": 21.94
+            }
+          ]
+        },
+        "machineIndex": 0
+      },
+      "position": {
+        "x": 600,
+        "y": 80
+      },
+      "draggable": true,
+      "measured": {
+        "width": 438,
+        "height": 102
+      }
+    },
+    {
+      "id": "1",
+      "type": "machineNode",
+      "data": {
+        "machine": {
+          "id": 1,
+          "name": "gpu",
+          "power": 100,
+          "idle_power": 10,
+          "replicas": 1,
+          "price": 0,
+          "cost": 0,
+          "utilization_time": -0.0001472222222222229,
+          "total_cost": 0,
+          "total_tasks": 5,
+          "eet": {
+            "IOT 9353": "34"
+          },
+          "replica_stats": [
+            {
+              "cost": 0,
+              "id": 1,
+              "replica_number": 1,
+              "tasks_completed": 5,
+              "utilization_hours": -0.0001472222222222229,
+              "utilization_seconds": -0.5300000000000025
+            }
+          ]
+        },
+        "machineIndex": 1
+      },
+      "position": {
+        "x": 600,
+        "y": 230
+      },
+      "draggable": true,
+      "measured": {
+        "width": 438,
+        "height": 102
+      }
+    }
+  ],
+  "edges": [],
+  "machines": [
+    {
+      "id": 0,
+      "name": "cpu",
+      "power": 10,
+      "idle_power": 1,
+      "replicas": 1,
+      "price": 0,
+      "cost": 0,
+      "utilization_time": 0.006094444444444445,
+      "total_cost": 0,
+      "total_tasks": 5,
+      "eet": {
+        "IOT 9353": "34"
+      },
+      "replica_stats": [
+        {
+          "cost": 0,
+          "id": 0,
+          "replica_number": 1,
+          "tasks_completed": 5,
+          "utilization_hours": 0.006094444444444445,
+          "utilization_seconds": 21.94
+        }
+      ]
+    },
+    {
+      "id": 1,
+      "name": "gpu",
+      "power": 100,
+      "idle_power": 10,
+      "replicas": 1,
+      "price": 0,
+      "cost": 0,
+      "utilization_time": -0.0001472222222222229,
+      "total_cost": 0,
+      "total_tasks": 5,
+      "eet": {
+        "IOT 9353": "34"
+      },
+      "replica_stats": [
+        {
+          "cost": 0,
+          "id": 1,
+          "replica_number": 1,
+          "tasks_completed": 5,
+          "utilization_hours": -0.0001472222222222229,
+          "utilization_seconds": -0.5300000000000025
+        }
+      ]
+    }
+  ],
+  "iot": [
+    {
+      "id": 1773805389353,
+      "name": "IOT 9353",
+      "properties": {
+        "task_type": "IOT 9353",
+        "dataInput": "default",
+        "meanSize": 6,
+        "urgency": "BestEffort",
+        "slack": 0,
+        "numTasks": 10,
+        "startTime": 0,
+        "endTime": 30,
+        "distribution": "uniform"
+      },
+      "queue": [],
+      "position": {
+        "x": 87.42296874498622,
+        "y": 331.87384291491145
+      }
+    }
+  ],
+  "workloadFileName": "",
+  "profilingFileName": "",
+  "configFileName": "myconfig.json"
+}

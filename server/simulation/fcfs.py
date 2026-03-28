@@ -57,6 +57,10 @@ class FCFS(BaseScheduler):
         if assignment != 'notEmpty':
             task.assigned_machine = machine
             task.start_time = config.time.gct()
+            # Apply EET lookup if available for this machine + task type
+            eet_val = machine.eet.get(task.task_type) if hasattr(machine, 'eet') else None
+            if eet_val is not None:
+                task.execution_time = float(eet_val)
             task.end_time = task.start_time + task.execution_time
             self.stats['mapped'].append(task)
 
@@ -94,16 +98,23 @@ class FCFS(BaseScheduler):
                 s += f'\t{r}'
             config.log.write(s)
 
-        if self.batch_queue.empty():
+        if self.batch_queue.empty() and not self.unmapped_task:
             return None
 
-        machine_count = len(config.machines)
-        machine_index = (self.prev_assignment_idx + 1) % machine_count
-        self.prev_assignment_idx = machine_index
-        available_machine = config.machines[machine_index]
-
-        if available_machine:
+        if not self.unmapped_task:
+            if self.batch_queue.empty():
+                return None
+            next_task = self.batch_queue.list()[0]
+            if next_task.arrival_time > config.time.gct():
+                increment(next_task.arrival_time - config.time.gct())
+                return None
             self.choose()
-            self.map(available_machine)
+
+        available_machine = self.first_available_machine()
+        if not available_machine:
             increment(0.01)
-            return available_machine
+            return None
+
+        self.map(available_machine)
+        increment(0.01)
+        return available_machine

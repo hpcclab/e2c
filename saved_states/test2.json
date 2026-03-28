@@ -1,0 +1,42 @@
+{
+  "nodes": [
+    {
+      "id": "1772871130392",
+      "type": "iotNode",
+      "data": {
+        "iot": {
+          "id": 1772871130392,
+          "name": "IOT 0392",
+          "properties": [],
+          "queue": [],
+          "position": {
+            "x": 398.5,
+            "y": 431
+          }
+        }
+      },
+      "position": {
+        "x": 398.5,
+        "y": 431
+      },
+      "measured": {
+        "width": 126,
+        "height": 102
+      }
+    }
+  ],
+  "edges": [],
+  "machines": [],
+  "iot": [
+    {
+      "id": 1772871130392,
+      "name": "IOT 0392",
+      "properties": [],
+      "queue": [],
+      "position": {
+        "x": 398.5,
+        "y": 431
+      }
+    }
+  ]
+}

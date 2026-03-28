@@ -5,7 +5,7 @@ import { useGlobalState } from "../context/GlobalStates";
 
 // Simple ID generator for nodes
 let id = 0;
-const getId = () => `dndnode_${id++}`;
+const getId = (type) => `${type}_${id++}`;
 const machine = { id: -1, name: "empty machine", queue: [] };
 const iot = { id: -2, name: "empty iot", queue: [] };
 
@@ -44,28 +44,69 @@ function DraggableNode({ className, children, nodeType, onDrop }) {
 }
 
 export default function Sidebar() {
-  const { setMachines, setIot } = useGlobalState();
-  const { setNodes, screenToFlowPosition } = useReactFlow();
-
+  const {
+    setMachines,
+    setIot,
+    taskTypes,
+    setTaskTypes,
+    scenarioRows,
+    setScenarioRows,
+    setWorkspaces,
+    workspaces,
+    workspace,
+    nodes,
+  } = useGlobalState();
+  const {
+    setNodes,
+    screenToFlowPosition,
+    fitView,
+    getNodes,
+    getNodesBounds,
+    getIntersectingNodes,
+  } = useReactFlow();
+  const distributionOptions = ["uniform", "normal", "exponential", "spiky"];
   const handleNodeDrop = useCallback(
     (nodeType, screenPosition) => {
-      const flow = document.querySelector(".react-flow");
-      const flowRect = flow?.getBoundingClientRect();
+      if (!screenToFlowPosition) return;
 
-      const isInFlow =
-        flowRect &&
-        screenPosition.x >= flowRect.left &&
-        screenPosition.x <= flowRect.right &&
-        screenPosition.y >= flowRect.top &&
-        screenPosition.y <= flowRect.bottom;
+      // Convert screen coordinates to flow coordinates
+      const position = screenToFlowPosition({
+        x: screenPosition.x,
+        y: screenPosition.y,
+      });
 
-      if (!isInFlow) return;
+      // Get all group nodes from React Flow instance
+      const groupNodes = getNodes().filter((n) => n.type === "group");
 
-      const position = screenToFlowPosition(screenPosition);
+      // Find the group node that contains this position
+      let parentNode = undefined;
+      for (const group of groupNodes) {
+        const bounds = getNodesBounds([group]);
+        if (
+          position.x >= bounds.x &&
+          position.x <= bounds.x + bounds.width &&
+          position.y >= bounds.y &&
+          position.y <= bounds.y + bounds.height
+        ) {
+          parentNode = group;
+          break;
+        }
+      }
 
+      const parentId = parentNode?.id;
+
+      // Position relative to parent group if it exists
+      const relativePosition = parentNode
+        ? {
+            x: position.x - parentNode.position.x,
+            y: position.y - parentNode.position.y,
+          }
+        : position;
+
+      // Handle different node types
       if (nodeType === "machineNode") {
         const newMachine = {
-          id: Date.now(), // unique ID
+          id: Date.now(),
           name: `Machine ${Date.now().toString().slice(-4)}`,
           queue: [],
           power: 0,
@@ -73,93 +114,202 @@ export default function Sidebar() {
           replicas: 1,
           price: 0,
           cost: 0,
-          position,
+          position: relativePosition,
+          parentId, // assign parent group
+          extent: parentId ? "parent" : undefined,
+          eet: {},
         };
-
         setMachines((prev) => [...prev, newMachine]);
+
+        if (parentId) {
+          setWorkspaces((prev) =>
+            prev.map((ws) => {
+              const workspaceId = parentId.replace("nd-", "");
+              if (ws.id.toString() === workspaceId) {
+                return {
+                  ...ws,
+                  machines: [...ws.machines, newMachine.id],
+                };
+              }
+              return ws;
+            }),
+          );
+        }
       } else if (nodeType === "iotNode") {
         const newIot = {
-          id: Date.now(), // unique ID
+          id: Date.now(),
           name: `IOT ${Date.now().toString().slice(-4)}`,
-          properties: [],
-          position,
+          properties: {
+            task_type: `IOT ${Date.now().toString().slice(-4)}`,
+            dataInput: "default",
+            meanSize: 6,
+            urgency: "BestEffort",
+            slack: 0,
+            numTasks: 10,
+            startTime: 0,
+            endTime: 30,
+            distribution: distributionOptions[0],
+          },
+          queue: [],
+          position: relativePosition,
+          parentId, // assign parent group
+          extent: parentId ? "parent" : undefined,
         };
-
         setIot((prev) => [...prev, newIot]);
+
+        setTaskTypes((prev) => [
+          ...prev,
+          {
+            srcID: newIot.id,
+            name: newIot.name,
+            dataInput: newIot.properties.dataInput,
+            meanSize: newIot.properties.meanSize,
+            urgency: newIot.properties.urgency,
+            slack: newIot.properties.slack,
+            numTasks: newIot.properties.numTasks,
+            startTime: newIot.properties.startTime,
+            endTime: newIot.properties.endTime,
+          },
+        ]);
+
+        setScenarioRows((prev) => [
+          ...prev,
+          {
+            srcID: newIot.id,
+            taskType: newIot.properties.task_type,
+            numTasks: newIot.properties.numTasks,
+            startTime: newIot.properties.startTime,
+            endTime: newIot.properties.endTime,
+            distribution: newIot.properties.distribution,
+          },
+        ]);
+
+        setMachines((prev) =>
+          prev.map((m) => ({
+            ...m,
+            eet: { ...(m.eet || {}), [newIot.name]: "" },
+          })),
+        );
+
+        if (parentId) {
+          setWorkspaces((prev) =>
+            prev.map((ws) => {
+              const workspaceId = parentId.replace("nd-", "");
+              if (ws.id.toString() === workspaceId) {
+                return {
+                  ...ws,
+                  iots: [...ws.iots, newIot.id],
+                };
+              }
+              return ws;
+            }),
+          );
+        }
+      } else if (nodeType === "workloadNode") {
+        const newWorkspace = {
+          id: Date.now(),
+          job_q: [],
+          system_config: {},
+          machines: [],
+          iots: [],
+        };
+        setWorkspaces((prev) => [...prev, newWorkspace]);
+
+        setNodes((nds) =>
+          nds.concat({
+            id: `nd-${newWorkspace.id}`,
+            type: "group",
+            position: relativePosition,
+            data: {
+              workspaceId: newWorkspace.id,
+              nodes: [],
+            },
+            resizing: true,
+            style: {
+              width: 280,
+              height: 250,
+              minWidth: 280,
+              minHeight: 250,
+              backgroundColor: "rgba(240,240,240,0.25)",
+            },
+          }),
+        );
       } else {
         const newNode = {
           id: getId(),
           type: nodeType,
           position,
           data: {},
+          parentId: parentId, // assign parent group
+          extent: parentId ? "parent" : undefined,
         };
         setNodes((nds) => nds.concat(newNode));
       }
+
+      fitView({ padding: 0.5, duration: 600, interpolate: "smooth" });
     },
-    [setNodes, screenToFlowPosition, setMachines, setIot]
+    [
+      getNodes,
+      setMachines,
+      setIot,
+      setWorkspaces,
+      setTaskTypes,
+      setScenarioRows,
+      screenToFlowPosition,
+      fitView,
+    ],
   );
 
   return (
-    <aside>
+    <aside className="mr-10">
       <div className="description">
         You can drag these nodes to the pane to create new nodes.
       </div>
-      <DraggableNode
-        className="dndnode edge"
-        nodeType="edgeSpace"
-        onDrop={handleNodeDrop}
-      >
-        Edge Space
-      </DraggableNode>
-      <DraggableNode
-        className="dndnode cloud"
-        nodeType="cloudSpace"
-        onDrop={handleNodeDrop}
-      >
-        Cloud Space
-      </DraggableNode>
-      <DraggableNode
-        className="dndnode machine"
-        nodeType="machineNode"
-        onDrop={handleNodeDrop}
-      >
-        Machine Node
-      </DraggableNode>
-      <DraggableNode
-        className="dndnode iot"
-        nodeType="iotNode"
-        onDrop={handleNodeDrop}
-      >
-        IoT Node
-      </DraggableNode>
-      <DraggableNode
-        className="dndnode iot"
-        nodeType="edgeLockedNode"
-        onDrop={handleNodeDrop}
-      >
-        Edge Locked Node
-      </DraggableNode>
-      <DraggableNode
-        className="dndnode iot"
-        nodeType="workloadNode"
-        onDrop={handleNodeDrop}
-      >
-        workload Node
-      </DraggableNode>
-      <DraggableNode
-        className="dndnode iot"
-        nodeType="LBNode"
-        onDrop={handleNodeDrop}
-      >
-        Load Balancer Node
-      </DraggableNode>
-      <DraggableNode
-        className="dndnode iot"
-        nodeType="QueueNode"
-        onDrop={handleNodeDrop}
-      >
-        Queue Node
-      </DraggableNode>
+      <div className="nodes">
+        <DraggableNode
+          className="dndnode edge"
+          nodeType="edgeSpace"
+          onDrop={handleNodeDrop}
+        >
+          Edge Space
+        </DraggableNode>
+        <DraggableNode
+          className="dndnode cloud"
+          nodeType="cloudSpace"
+          onDrop={handleNodeDrop}
+        >
+          Cloud Space
+        </DraggableNode>
+        <DraggableNode
+          className="dndnode machine"
+          nodeType="machineNode"
+          onDrop={handleNodeDrop}
+        >
+          Machine
+        </DraggableNode>
+        <DraggableNode
+          className="dndnode iot"
+          nodeType="iotNode"
+          onDrop={handleNodeDrop}
+        >
+          IoT
+        </DraggableNode>
+
+        <DraggableNode
+          className="dndnode"
+          nodeType="workloadNode"
+          onDrop={handleNodeDrop}
+        >
+          Work Space
+        </DraggableNode>
+        <DraggableNode
+          className="dndnode"
+          nodeType="LBNode"
+          onDrop={handleNodeDrop}
+        >
+          Load Balancer
+        </DraggableNode>
+      </div>
     </aside>
   );
 }

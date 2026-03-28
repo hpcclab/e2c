@@ -1,20 +1,27 @@
 import React, { useState } from "react";
-import JSZip from 'jszip';
+import JSZip from "jszip";
 
 function getDuration(distribution) {
   switch (distribution) {
-    case "uniform": return 10;
-    case "normal": return 12;
-    case "exponential": return 15;
-    case "spiky": return 8;
-    default: return 10;
+    case "uniform":
+      return 10;
+    case "normal":
+      return 12;
+    case "exponential":
+      return 15;
+    case "spiky":
+      return 8;
+    default:
+      return 10;
   }
 }
 
 function workloadToCSV(workload) {
   const header = ["task_type", "arrival_time", "distribution", "data_size"];
-  const rows = workload.map(row =>
-    [row.task_type, row.arrival_time, row.distribution, row.data_size].join(",")
+  const rows = workload.map((row) =>
+    [row.task_type, row.arrival_time, row.distribution, row.data_size].join(
+      ",",
+    ),
   );
   return [header.join(","), ...rows].join("\n");
 }
@@ -22,7 +29,7 @@ function workloadToCSV(workload) {
 const WorkloadPreviewTab = ({
   workloadFiles = [],
   selectedWorkloadIdx = 0,
-  setSelectedWorkloadIdx
+  setSelectedWorkloadIdx,
 }) => {
   const [isDownloading, setIsDownloading] = useState(false);
   const workloadTableData = workloadFiles[selectedWorkloadIdx] || [];
@@ -33,7 +40,7 @@ const WorkloadPreviewTab = ({
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
     link.href = url;
-    link.download = `workload_${selectedWorkloadIdx + 1}.csv`;
+    link.download = `workload_${selectedWorkloadIdx + 1}.wkl`;
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -44,50 +51,53 @@ const WorkloadPreviewTab = ({
     if (workloadFiles.length === 0) return;
 
     setIsDownloading(true);
-    
+
     try {
       const zip = new JSZip();
-      
+
       // Create metadata file
       const metadata = {
         created_at: new Date().toISOString(),
         total_files: workloadFiles.length,
         file_info: workloadFiles.map((workload, index) => ({
-          filename: `workload_${index + 1}.csv`,
+          filename: `workload_${index + 1}.wkl`,
           task_count: workload.length,
-          task_types: [...new Set(workload.map(task => task.task_type))],
+          task_types: [...new Set(workload.map((task) => task.task_type))],
           duration_range: {
-            min: Math.min(...workload.map(task => parseFloat(task.arrival_time))),
-            max: Math.max(...workload.map(task => parseFloat(task.arrival_time)))
-          }
-        }))
+            min: Math.min(
+              ...workload.map((task) => parseFloat(task.arrival_time)),
+            ),
+            max: Math.max(
+              ...workload.map((task) => parseFloat(task.arrival_time)),
+            ),
+          },
+        })),
       };
-      
+
       // Add metadata to ZIP
       zip.file("metadata.json", JSON.stringify(metadata, null, 2));
-      
+
       // Add each workload file to ZIP
       workloadFiles.forEach((workload, index) => {
         const csvContent = workloadToCSV(workload);
-        zip.file(`workload_${index + 1}.csv`, csvContent);
+        zip.file(`workload_${index + 1}.wkl`, csvContent);
       });
 
       // Generate and download ZIP
-      const content = await zip.generateAsync({ 
+      const content = await zip.generateAsync({
         type: "blob",
         compression: "DEFLATE",
-        compressionOptions: { level: 6 }
+        compressionOptions: { level: 6 },
       });
-      
+
       const url = URL.createObjectURL(content);
       const link = document.createElement("a");
       link.href = url;
-      link.download = `workload_batch_${workloadFiles.length}_files_${new Date().toISOString().split('T')[0]}.zip`;
+      link.download = `workload_batch_${workloadFiles.length}_files_${new Date().toISOString().split("T")[0]}.zip`;
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
       URL.revokeObjectURL(url);
-      
     } catch (error) {
       console.error("Error creating ZIP file:", error);
       alert("Failed to create ZIP file. Please try again.");
@@ -97,32 +107,38 @@ const WorkloadPreviewTab = ({
   };
 
   const getTotalTasks = () => {
-    return workloadFiles.reduce((total, workload) => total + workload.length, 0);
+    return workloadFiles.reduce(
+      (total, workload) => total + workload.length,
+      0,
+    );
   };
 
   return (
     <div>
-      <label className="block text-sm font-medium text-gray-700 mb-2">Workload Preview</label>
-      
+      <label className="block text-sm font-medium text-gray-700 mb-2">
+        Workload Preview
+      </label>
+
       {/* Bulk Download Section */}
       {workloadFiles.length > 1 && (
         <div className="mb-4 p-4 bg-blue-50 rounded-lg border border-blue-200">
           <h3 className="font-semibold text-blue-800 mb-2">Bulk Download</h3>
           <div className="flex items-center justify-between">
             <div className="text-sm text-blue-700">
-              <span className="font-medium">{workloadFiles.length}</span> files, 
-              <span className="font-medium ml-1">{getTotalTasks()}</span> total tasks
+              <span className="font-medium">{workloadFiles.length}</span> files,
+              <span className="font-medium ml-1">{getTotalTasks()}</span> total
+              tasks
             </div>
             <button
               className={`px-4 py-2 rounded text-white font-medium ${
-                isDownloading 
-                  ? 'bg-gray-400 cursor-not-allowed' 
-                  : 'bg-green-600 hover:bg-green-700'
+                isDownloading
+                  ? "bg-gray-400 cursor-not-allowed"
+                  : "bg-green-600 hover:bg-green-700"
               }`}
               onClick={handleDownloadAllAsZip}
               disabled={workloadFiles.length === 0 || isDownloading}
             >
-              {isDownloading ? 'Creating ZIP...' : `Download All as ZIP`}
+              {isDownloading ? "Creating ZIP..." : `Download All as ZIP`}
             </button>
           </div>
         </div>
@@ -134,7 +150,7 @@ const WorkloadPreviewTab = ({
           <label className="mr-2 text-sm font-medium">Select Workload:</label>
           <select
             value={selectedWorkloadIdx}
-            onChange={e => setSelectedWorkloadIdx(Number(e.target.value))}
+            onChange={(e) => setSelectedWorkloadIdx(Number(e.target.value))}
             className="border rounded px-2 py-1"
           >
             {workloadFiles.map((workload, idx) => (
@@ -170,7 +186,10 @@ const WorkloadPreviewTab = ({
           <tbody>
             {workloadTableData.length === 0 ? (
               <tr>
-                <td className="border px-2 py-1 text-center text-gray-400" colSpan={5}>
+                <td
+                  className="border px-2 py-1 text-center text-gray-400"
+                  colSpan={5}
+                >
                   No workload generated
                 </td>
               </tr>

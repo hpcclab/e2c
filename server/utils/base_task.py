@@ -5,6 +5,7 @@ class TaskStatus(Enum):
     MAPPED = 1
     DEFERRED = 2
     CANCELLED = 3
+    DEADLINE_MISSED = 4
 
 class Task:
     def __init__(self):

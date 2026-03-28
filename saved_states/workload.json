@@ -1,0 +1,45 @@
+{
+  "nodes": [
+    {
+      "data": {},
+      "id": "dndnode_0",
+      "measured": {
+        "height": 122,
+        "width": 122
+      },
+      "position": {
+        "x": 823.4675565911294,
+        "y": 252.3672252350431
+      },
+      "type": "workloadNode"
+    },
+    {
+      "id": "LBNode_0",
+      "type": "LBNode",
+      "position": {
+        "x": 825.9675565911294,
+        "y": 96.24222523504307
+      },
+      "data": {},
+      "measured": {
+        "width": 122,
+        "height": 122
+      },
+      "selected": true,
+      "dragging": false
+    }
+  ],
+  "edges": [
+    {
+      "data": {
+        "animate": false
+      },
+      "id": "e-T3-0",
+      "source": "T3",
+      "target": "0",
+      "type": "packet"
+    }
+  ],
+  "machines": [],
+  "iot": []
+}
