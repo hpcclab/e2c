@@ -68,7 +68,6 @@ const SimDashboard = () => {
     simulationTime,
     setSimulationTime,
     selectedTask,
-    setSelectedTask,
     machines,
     setMachines,
     onDragStop,
@@ -95,12 +94,9 @@ const SimDashboard = () => {
     machinesRef,
     machineSlotsRef,
     batchSlotsRef,
-    loadBalancerRef,
-    profilingFileName,
     setProfilingFileName,
     profilingFileUploaded,
     setProfilingFileUploaded,
-    profilingTableData,
     workloadFileUploaded,
     setWorkloadFileUploaded,
     setProfilingTableData,
@@ -112,7 +108,6 @@ const SimDashboard = () => {
     setConfigFileName,
     configFileUploaded,
     setConfigFileUploaded,
-    handleProfilingUpload,
     handleWorkloadUpload,
     handleConfigUpload,
     completedTasks,
@@ -128,6 +123,9 @@ const SimDashboard = () => {
     ld_workspace,
     generateWorkload,
     generateMachineConfig,
+    isNeighbors,
+    getNeighbors,
+    getNode,
   } = useGlobalState();
   // End Global States
 
@@ -872,8 +870,9 @@ const SimDashboard = () => {
 
     if (!batchQ.queue.length) return;
     if (!taskLoaded) {
-      setTask(batchQ.queue.shift());
+      setTask(batchQ.queue[task_counter % batchQ.queue.length]);
       setTaskLoaded(true);
+      setTask_counter(task_counter + 1);
     }
 
     if (taskLoaded && simulationTime >= task.arrival_time) {
@@ -882,8 +881,13 @@ const SimDashboard = () => {
       setPrev_machine_index(machine_index);
       setIot_index(iot.findIndex((m) => m.name == task.task_type));
       let sender = task;
-      let mecha = machines[machine_index].id;
-      enqueue(mecha, sender, true, LB_ID);
+      const mecha = machines[machine_index].id;
+      const iotSrc = iot[iot_index];
+      const iID = `nd_${iotSrc.id}`;
+
+      if (isNeighbors(iID, mecha)) {
+        enqueue(mecha, sender, true, LB_ID);
+      }
 
       setTaskLoaded(false);
     }
@@ -942,7 +946,7 @@ const SimDashboard = () => {
         const parentExists = i.parentId ? nodesMap[i.parentId] : true;
 
         return {
-          id: `${i.id}`,
+          id: `nd_${i.id}`,
           type: "iotNode",
           data: { iot: i },
           position: i.position ?? { x: 0, y: 80 + index * 150 },

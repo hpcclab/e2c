@@ -55,6 +55,8 @@ export default function Sidebar() {
     workspaces,
     workspace,
     nodes,
+    loadBalancers,
+    setLoadBalancers,
   } = useGlobalState();
   const {
     setNodes,
@@ -234,9 +236,21 @@ export default function Sidebar() {
             },
           }),
         );
+      } else if (nodeType === "LBNode") {
+        let lbID = getId(nodeType);
+        const newNode = {
+          id: lbID,
+          type: nodeType,
+          position,
+          data: {},
+          parentId: parentId, // assign parent group
+          extent: parentId ? "parent" : undefined,
+        };
+        setLoadBalancers((prev) => prev.concat(lbID));
+        setNodes((nds) => nds.concat(newNode));
       } else {
         const newNode = {
-          id: getId(),
+          id: getId(nodeType),
           type: nodeType,
           position,
           data: {},
