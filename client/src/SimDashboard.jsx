@@ -126,6 +126,10 @@ const SimDashboard = () => {
     isNeighbors,
     getNeighbors,
     getNode,
+    EDGE_PROPERTIES,
+    selectedEdge,
+    setSelectedEdge,
+    getEdge,
   } = useGlobalState();
   // End Global States
 
@@ -142,10 +146,7 @@ const SimDashboard = () => {
             id: edgeId,
             type: "packet",
             data: {
-              // animate: false,
-              // onAnimationEnd: (edgeId) => stopAnimation(edgeId),
-              animationKey: 0,
-              packets: [],
+              properties: EDGE_PROPERTIES,
             },
           },
           eds,
@@ -170,6 +171,30 @@ const SimDashboard = () => {
             ? pane.height - event.clientY
             : null,
       });
+    },
+    [setMenu],
+  );
+  const onEdgeContextMenu = useCallback(
+    (event, node) => {
+      event.preventDefault();
+      const pane = reactFlowWrapper.current.getBoundingClientRect();
+
+      setMenu({
+        id: node.id,
+        top: event.clientY < pane.height - 200 ? event.clientY : null,
+        left: event.clientX < pane.width - 200 ? event.clientX : null,
+        right:
+          event.clientX >= pane.width - 200 ? pane.width - event.clientX : null,
+        bottom:
+          event.clientY >= pane.height - 200
+            ? pane.height - event.clientY
+            : null,
+        edgeSidebar: () => openSidebar("edgeProps"),
+      });
+      if (node.id[0] === "e") {
+        const selectedEdge = getEdge(node.id);
+        setSelectedEdge(selectedEdge);
+      }
     },
     [setMenu],
   );
@@ -913,7 +938,7 @@ const SimDashboard = () => {
     },
     [setMachines],
   );
-  // /* -------------------- WORKSPACE, MACHINE and IOT NODES -------------------- */
+  // /* -------------------- WORKSPACE, EDGE, MACHINE, and IOT NODES -------------------- */
   useEffect(() => {
     setNodes((prev) => {
       const nodesMap = Object.fromEntries(prev.map((n) => [n.id, n]));
@@ -1002,6 +1027,7 @@ const SimDashboard = () => {
               onConnect={onConnect}
               onPaneClick={onPaneClick}
               onNodeContextMenu={onNodeContextMenu}
+              onEdgeContextMenu={onEdgeContextMenu}
               fitView
               fitViewOptions={{
                 padding: 0.5,
@@ -1119,12 +1145,14 @@ const SimDashboard = () => {
                       : sidebarMode === "missedTasks"
                         ? "Missed Tasks"
                         : sidebarMode === "task"
-                          ? `Task: ${String(selectedTask.name)}`
-                          : sidebarMode === "machine"
-                            ? `Machine: ${selectedMachine.name?.toUpperCase()}`
-                            : sidebarMode === "IOT"
-                              ? `IOT: ${selectedIOT.name?.toUpperCase()}`
-                              : "Drag and Drop Templates"}
+                          ? "Edge Properties"
+                          : sidebarMode === "edgeProps"
+                            ? `Edge Properties`
+                            : sidebarMode === "machine"
+                              ? `Machine: ${selectedMachine.name?.toUpperCase()}`
+                              : sidebarMode === "IOT"
+                                ? `IOT: ${selectedIOT.name?.toUpperCase()}`
+                                : "Drag and Drop Templates"}
               </h2>
               <button
                 onClick={() => setShowSidebar(false)}
@@ -1136,30 +1164,10 @@ const SimDashboard = () => {
 
             {sidebarMode === "workload" && (
               <WorkloadSidebar
-                // profilingFileUploaded={profilingFileUploaded}
-                // profilingFileName={profilingFileName}
-                // profilingTableData={profilingTableData}
-                // workloadFileUploaded={workloadFileUploaded}
-                // workloadFileName={workloadFileName}
-                // workloadTableData={workloadTableData}
-                // configFileUploaded={configFileUploaded}
-                // configFileName={configFileName}
-                // handleProfilingUpload={handleProfilingUpload}
-                // handleWorkloadUpload={handleWorkloadUpload}
-                // handleConfigUpload={handleConfigUpload}
                 handleSubmitWorkloadAndProfiling={
                   handleSubmitWorkloadAndProfiling
                 }
                 handleResetWorkload={handleResetWorkload}
-                workloadSubmissionStatus={workloadSubmissionStatus}
-                // setProfilingFileName={setProfilingFileName}
-                // setProfilingFileUploaded={setProfilingFileUploaded}
-                // setProfilingTableData={setProfilingTableData}
-                // setWorkloadFileName={setWorkloadFileName}
-                // setWorkloadFileUploaded={setWorkloadFileUploaded}
-                // setWorkloadTableData={setWorkloadTableData}
-                // setConfigFileName={setConfigFileName}
-                // setConfigFileUploaded={setConfigFileUploaded}
                 selectedTask={selectedTask}
               />
             )}
@@ -1195,51 +1203,8 @@ const SimDashboard = () => {
                       <option>Uniform-Resender-Identifier</option>
                       <option>Least-Connection</option>
                     </select>
-
-                    {/*
-                    <label className="flex items-center space-x-2 mt-2">
-                      <input
-                        type="radio"
-                        name="scheduling"
-                        checked={scheduling === "batch"}
-                        onChange={() => handleSchedulingChange("batch")}
-                      />
-                      <span className="text-sm">Batch Scheduling</span>
-                    </label>
-                      
-
-                    <select
-                      disabled={scheduling !== "batch"}
-                      className="w-full border px-3 py-2 text-sm rounded bg-gray-100 disabled:opacity-60"
-                    >
-                      <option>MinCompletion-MinCompletion</option>
-                      <option>MinCompletion-SoonestDeadline</option>
-                      <option>MinCompletion-MaxUrgency</option>
-                      <option>FELARE</option>
-                      <option>ELARE</option>
-                    </select>
-                    */}
                   </div>
                 </div>
-
-                {/*
-                <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-1">
-                    Machine Queue Size
-                  </label>
-                  <input
-                    type="text"
-                    value={queueSize}
-                    onChange={(e) => setQueueSize(e.target.value)}
-                    disabled={scheduling === "immediate"} // Disable editing for immediate scheduling
-                    className={`w-full border px-3 py-2 text-sm rounded ${
-                      scheduling === "immediate"
-                        ? "bg-gray-100 opacity-60"
-                        : "bg-white"
-                    }`}
-                  />
-                </div>
-                */}
 
                 <button
                   type="button"
@@ -1412,7 +1377,44 @@ const SimDashboard = () => {
                 </table>
               </div>
             )}
-
+            {sidebarMode === "edgeProps" && (
+              <div className="space-y-6">
+                {/* Cancelled Tasks Sidebar Content */}
+                <table className="w-full text-left border-collapse">
+                  <thead>
+                    <tr className="border-b">
+                      <th className="px-4 py-2 text-sm font-semibold text-gray-700">
+                        Task ID
+                      </th>
+                      <th className="px-4 py-2 text-sm font-semibold text-gray-700">
+                        Type
+                      </th>
+                      <th className="px-4 py-2 text-sm font-semibold text-gray-700">
+                        Arrival Time
+                      </th>
+                      <th className="px-4 py-2 text-sm font-semibold text-gray-700">
+                        Cancellation Time
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr>
+                      <td
+                        colSpan="4"
+                        className="px-4 py-2 text-sm text-gray-500 text-center"
+                      >
+                        No data available yet. This is a work in progress.
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+                <p>current edge data:</p>
+                <p> id: {selectedEdge.id}</p>
+                <p> from: {selectedEdge.source}</p>
+                <p> to: {selectedEdge.target}</p>
+                <p>type: {selectedEdge.data.properties.connectionType}</p>
+              </div>
+            )}
             {sidebarMode === "dndtemplates" && (
               <div className="space-y-6">
                 {/* Drag and Drop Templates */}

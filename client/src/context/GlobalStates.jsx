@@ -15,37 +15,6 @@ const GlobalContext = createContext();
 
 export const GlobalProvider = ({ children }) => {
   const { fitView, getEdges, getNode, getEdge, getNodes } = useReactFlow();
-  // console.log(
-  //   getEdges().filter((n) => {
-  //     n.source.includes("LBNode") && getNode(n.target)?.type === "machineNode";
-  //   }),
-  // );
-  // console.log(
-  // );
-  // getEdges().filter((n) => {
-  //   console.log("outgoers:");
-  //   console.log(
-  //     getOutgoers(getNode(n?.source), getNodes(), getEdges()) || "none",
-  //   );
-  //   console.log("\n");
-
-  //   return (
-  //     n.source.includes("LBNode") && getNode(n.target)?.type === "machineNode"
-  //   );
-  // });
-  // getEdges().map((n) => {
-  //   if (outies) {
-  //     let outieLB = outies.filter((l) => l?.type === "LBNode");
-  //   }
-  // });
-
-  // console.log(
-  //   getEdges().filter(
-  //     (n) => n.source.includes("1774") && n.target.includes("LBNode"),
-  //   ),
-  // );
-  // const GetTransitiveNodes(initalNodeId)
-  // const NeighborsNodes = () => {}
 
   // Define States
   const [selectedMachine, setSelectedMachine] = useState({
@@ -102,7 +71,13 @@ export const GlobalProvider = ({ children }) => {
     iots: [],
   };
 
+  const EDGE_PROPERTIES = {
+    connectionType: "LAN",
+  };
+
   const [selectedWorkspace, setSelectedWorkspace] = useState(workspace);
+  const [selectedEdge, setSelectedEdge] = useState(EDGE_PROPERTIES);
+
   const [workspaces, setWorkspaces] = useState([]);
   const [machines, setMachines] = useState([]);
   const [iot, setIot] = useState([]);
@@ -529,6 +504,10 @@ export const GlobalProvider = ({ children }) => {
     isNeighbors,
     getNeighbors,
     getNode,
+    getEdge,
+    selectedEdge,
+    setSelectedEdge,
+    EDGE_PROPERTIES,
   };
 
   return (
