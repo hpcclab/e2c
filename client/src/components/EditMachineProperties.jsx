@@ -1,5 +1,13 @@
 import React, { useState, useEffect } from "react";
 import { useGlobalState } from "../context/GlobalStates";
+import { MACHINE_ICON_MAP } from "../utils/machineIcons";
+
+const MACHINE_PRESETS = [
+  { name: "CPU",      icon: "MdComputer" },
+  { name: "GPU",      icon: "MdMemory" },
+  { name: "ARM",      icon: "MdDeveloperBoard" },
+  { name: "Cloud VM", icon: "MdCloud" },
+];
 
 const EditMachineProperties = ({
   selectedMachine,
@@ -15,6 +23,7 @@ const EditMachineProperties = ({
     setEditedMachine({
       id: selectedMachine.id,
       name: selectedMachine.name || "",
+      icon: selectedMachine.icon,
       power: selectedMachine.power || 0,
       idle_power: selectedMachine.idle_power || 0,
       replicas: selectedMachine.replicas || 1,
@@ -26,6 +35,48 @@ const EditMachineProperties = ({
       eet: selectedMachine.eet || {},
     });
   }, [selectedMachine]);
+
+  const handlePresetSelect = async (preset) => {
+    if (editMode) {
+      setEditedMachine((prev) => ({ ...prev, name: preset.name, icon: preset.icon }));
+    } else {
+      const updated = { ...selectedMachine, name: preset.name, icon: preset.icon };
+      setSelectedMachine(updated);
+      setAnimatedMachines((prev) =>
+        prev.map((m) => (m.id === updated.id ? { ...m, ...updated } : m)),
+      );
+      await onSave(updated);
+    }
+  };
+
+  const PresetPicker = () => (
+    <div className="mb-4">
+      <p className="text-xs font-bold text-gray-500 uppercase mb-2">Hardware Preset</p>
+      <div className="grid grid-cols-4 gap-1">
+        {MACHINE_PRESETS.map((preset) => {
+          const active = editMode
+            ? editedMachine.icon === preset.icon
+            : selectedMachine.icon === preset.icon;
+          const Icon = MACHINE_ICON_MAP[preset.icon];
+          return (
+            <button
+              key={preset.name}
+              title={preset.name}
+              onClick={() => handlePresetSelect(preset)}
+              className={`flex flex-col items-center p-1.5 rounded border text-xs transition hover:bg-blue-50 ${
+                active ? "border-blue-500 bg-blue-50" : "border-gray-200"
+              }`}
+            >
+              {Icon && <Icon size={22} />}
+              <span className="mt-0.5 text-gray-600 truncate w-full text-center" style={{ fontSize: "9px" }}>
+                {preset.name}
+              </span>
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
 
   const handleEETChange = (iotName, value) => {
     setEditedMachine((prev) => ({
@@ -62,6 +113,7 @@ const EditMachineProperties = ({
     setEditedMachine({
       id: selectedMachine.id || -1,
       name: selectedMachine.name || "",
+      icon: selectedMachine.icon,
       power: selectedMachine.power || 0,
       idle_power: selectedMachine.idle_power || 0,
       replicas: selectedMachine.replicas || 1,
@@ -88,6 +140,8 @@ const EditMachineProperties = ({
         <h3 className="text-lg font-semibold text-gray-800 mb-4">
           Edit Machine Properties
         </h3>
+
+        <PresetPicker />
 
         <div>
           <label className="block text-sm font-semibold text-gray-700 mb-1">
@@ -225,6 +279,8 @@ const EditMachineProperties = ({
 
   return (
     <div className="space-y-4">
+      <PresetPicker />
+
       <div className="flex justify-between items-center">
         <h3 className="text-lg font-semibold text-gray-800">
           Machine Properties
