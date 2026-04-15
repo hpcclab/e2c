@@ -1151,7 +1151,7 @@ const SimDashboard = () => {
                       : sidebarMode === "missedTasks"
                         ? "Missed Tasks"
                         : sidebarMode === "task"
-                          ? "Edge Properties"
+                          ? "Task Properties"
                           : sidebarMode === "edgeProps"
                             ? `Edge Properties`
                             : sidebarMode === "machine"
