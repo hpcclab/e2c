@@ -1,4 +1,16 @@
 import React, { useState, useEffect } from "react";
+import { IOT_ICON_MAP } from "../utils/iotIcons";
+
+const IOT_PRESETS = [
+  { name: "Camera",         icon: "MdVideocam" },
+  { name: "Thermostat",     icon: "MdThermostat" },
+  { name: "Smart Bulb",     icon: "MdLightbulb" },
+  { name: "Smart Lock",     icon: "MdLock" },
+  { name: "Smart Speaker",  icon: "MdSpeaker" },
+  { name: "Smartphone",     icon: "MdSmartphone" },
+  { name: "Smart TV",       icon: "MdTv" },
+  { name: "Vehicle Sensor", icon: "MdDirectionsCar" },
+];
 
 const EditIoTProperties = ({
   selectedIOT,
@@ -28,6 +40,47 @@ const EditIoTProperties = ({
       queue: selectedIOT.queue || [],
     });
   }, [selectedIOT]);
+
+  const handlePresetSelect = async (preset) => {
+    if (editMode) {
+      setEditedIOT((prev) => ({ ...prev, name: preset.name, icon: preset.icon }));
+    } else {
+      const updated = { ...selectedIOT, name: preset.name, icon: preset.icon };
+      setSelectedIOT(updated);
+      setAnimatedIOTs((prev) =>
+        prev.map((iot) => (iot.id === updated.id ? { ...iot, ...updated } : iot)),
+      );
+      await onSave(updated);
+    }
+  };
+
+  const PresetPicker = () => (
+    <div className="mb-4">
+      <p className="text-xs font-bold text-gray-500 uppercase mb-2">Device Preset</p>
+      <div className="grid grid-cols-4 gap-1">
+        {IOT_PRESETS.map((preset) => {
+          const active = editMode
+            ? editedIOT.icon === preset.icon
+            : selectedIOT.icon === preset.icon;
+          return (
+            <button
+              key={preset.name}
+              title={preset.name}
+              onClick={() => handlePresetSelect(preset)}
+              className={`flex flex-col items-center p-1.5 rounded border text-xs transition hover:bg-blue-50 ${
+                active ? "border-blue-500 bg-blue-50" : "border-gray-200"
+              }`}
+            >
+              {(() => { const Icon = IOT_ICON_MAP[preset.icon]; return Icon ? <Icon size={22} /> : null; })()}
+              <span className="mt-0.5 text-gray-600 truncate w-full text-center" style={{ fontSize: "9px" }}>
+                {preset.name}
+              </span>
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
 
   const handleChange = (field, value, is_property = true) => {
     if (!is_property) setEditedIOT((prev) => ({ ...prev, [field]: value }));
@@ -83,6 +136,8 @@ const EditIoTProperties = ({
         <h3 className="text-lg font-semibold text-gray-800 mb-4">
           Edit IoT Properties
         </h3>
+
+        <PresetPicker />
 
         <div>
           <label className="block text-sm font-semibold text-gray-700 mb-1">
@@ -253,6 +308,8 @@ const EditIoTProperties = ({
 
   return (
     <div className="space-y-4">
+      <PresetPicker />
+
       <div className="flex justify-between items-center">
         <h3 className="text-lg font-semibold text-gray-800">IoT Properties</h3>
         <button
