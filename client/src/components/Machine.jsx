@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { ChevronDownIcon, ChevronRightIcon } from "@heroicons/react/24/outline";
 import TaskList from "./TaskList";
+import { MACHINE_ICON_MAP } from "../utils/machineIcons";
 
 // Define a list of colors for machines
 const machineColors = [
@@ -32,6 +33,7 @@ export const Machine = ({
       id: machine.id,
       originalId: machine.id,
       name: machine.name,
+      icon: machine.icon,
       replicaNumber: 0,
       queue: machine.queue,
       power: machine.power,
@@ -111,16 +113,29 @@ export const Machine = ({
         </div>
 
         <div className="flex flex-col items-end space-y-1">
-          <div
-            onClick={handleChildClick}
-            className={`text-white ${getMachineColor()} font-semibold w-20 h-10 rounded-full flex items-center justify-center cursor-pointer hover:scale-105 transition text-xs`}
-            title={`${totalTasks} tasks, ${utilizationHours}h × $${machine.price}/h = $${totalCost}`}
-          >
-            {machine.name}
-            {hasReplicas && (
-              <span className="ml-1 text-xs">({machine.replicas})</span>
-            )}
-          </div>
+          {machine.icon && MACHINE_ICON_MAP[machine.icon] ? (
+            <div
+              onClick={handleChildClick}
+              className="flex flex-col items-center cursor-pointer hover:scale-105 transition"
+              title={`${totalTasks} tasks, ${utilizationHours}h × $${machine.price}/h = $${totalCost}`}
+            >
+              {(() => { const Icon = MACHINE_ICON_MAP[machine.icon]; return <Icon size={28} className="text-blue-600" />; })()}
+              <span className="text-xs text-gray-700 font-semibold mt-0.5 max-w-[72px] truncate text-center">
+                {machine.name}{hasReplicas && ` (${machine.replicas})`}
+              </span>
+            </div>
+          ) : (
+            <div
+              onClick={handleChildClick}
+              className={`text-white ${getMachineColor()} font-semibold w-20 h-10 rounded-full flex items-center justify-center cursor-pointer hover:scale-105 transition text-xs`}
+              title={`${totalTasks} tasks, ${utilizationHours}h × $${machine.price}/h = $${totalCost}`}
+            >
+              {machine.name}
+              {hasReplicas && (
+                <span className="ml-1 text-xs">({machine.replicas})</span>
+              )}
+            </div>
+          )}
         </div>
       </div>
 

@@ -1,4 +1,16 @@
 import React, { useState, useEffect } from "react";
+import { IOT_ICON_MAP } from "../utils/iotIcons";
+
+const IOT_PRESETS = [
+  { name: "Camera",         icon: "MdVideocam" },
+  { name: "Thermostat",     icon: "MdThermostat" },
+  { name: "Smart Bulb",     icon: "MdLightbulb" },
+  { name: "Smart Lock",     icon: "MdLock" },
+  { name: "Smart Speaker",  icon: "MdSpeaker" },
+  { name: "Smartphone",     icon: "MdSmartphone" },
+  { name: "Smart TV",       icon: "MdTv" },
+  { name: "Vehicle Sensor", icon: "MdDirectionsCar" },
+];
 
 const EditIoTProperties = ({
   selectedIOT,
@@ -24,10 +36,59 @@ const EditIoTProperties = ({
         startTime: selectedIOT.properties.startTime || 0,
         endTime: selectedIOT.properties.endTime || 0,
         distribution: selectedIOT.properties.distribution || "uniform",
+        deviceRole: selectedIOT.properties.deviceRole || "sensor",
+        frequency: selectedIOT.properties.frequency || 0,
+        connectivity: selectedIOT.properties.connectivity || "WiFi",
+        energySource: selectedIOT.properties.energySource || "Wired",
       },
       queue: selectedIOT.queue || [],
     });
   }, [selectedIOT]);
+
+  const handlePresetSelect = async (preset) => {
+    if (editMode) {
+      setEditedIOT((prev) => ({ ...prev, name: preset.name, icon: preset.icon }));
+    } else {
+      const updated = { ...selectedIOT, name: preset.name, icon: preset.icon };
+      setSelectedIOT(updated);
+      setAnimatedIOTs((prev) =>
+        prev.map((iot) => (iot.id === updated.id ? { ...iot, ...updated } : iot)),
+      );
+      await onSave(updated);
+    }
+  };
+
+  const PresetPicker = () => (
+    <div className="mb-4">
+      <p className="text-xs font-bold text-gray-500 uppercase mb-2">Device Preset</p>
+      <div className="grid grid-cols-4 gap-1">
+        {IOT_PRESETS.map((preset) => {
+          const active = editMode
+            ? editedIOT.icon === preset.icon
+            : selectedIOT.icon === preset.icon;
+          return (
+            <button
+              key={preset.name}
+              title={preset.name}
+              onClick={() => handlePresetSelect(preset)}
+              className={`flex flex-col items-center p-1.5 rounded border text-xs transition hover:bg-blue-50 ${
+                active ? "border-blue-500 bg-blue-50" : "border-gray-200"
+              }`}
+            >
+              {(() => { const Icon = IOT_ICON_MAP[preset.icon]; return Icon ? <Icon size={22} /> : null; })()}
+              <span className="mt-0.5 text-gray-600 truncate w-full text-center" style={{ fontSize: "9px" }}>
+                {preset.name}
+              </span>
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+
+  const frequencyLabel = (role) =>
+    role === "actuator" ? "Writing Frequency (Hz)" :
+    role === "sensor"   ? "Reading Frequency (Hz)" : "Frequency (Hz)";
 
   const handleChange = (field, value, is_property = true) => {
     if (!is_property) setEditedIOT((prev) => ({ ...prev, [field]: value }));
@@ -71,6 +132,10 @@ const EditIoTProperties = ({
         startTime: selectedIOT.properties.startTime || 0,
         endTime: selectedIOT.properties.endTime || 0,
         distribution: selectedIOT.properties.distribution || "uniform",
+        deviceRole: selectedIOT.properties.deviceRole || "sensor",
+        frequency: selectedIOT.properties.frequency || 0,
+        connectivity: selectedIOT.properties.connectivity || "WiFi",
+        energySource: selectedIOT.properties.energySource || "Wired",
       },
       queue: selectedIOT.queue || [],
     });
@@ -83,6 +148,68 @@ const EditIoTProperties = ({
         <h3 className="text-lg font-semibold text-gray-800 mb-4">
           Edit IoT Properties
         </h3>
+
+        <PresetPicker />
+
+        <div className="border-t pt-3 mt-2">
+          <p className="text-xs font-bold text-gray-500 uppercase mb-2">Device Profile</p>
+
+          <div>
+            <label className="block text-sm font-semibold text-gray-700 mb-1">Device Role</label>
+            <select
+              value={editedIOT.properties.deviceRole}
+              onChange={(e) => handleChange("deviceRole", e.target.value)}
+              className="w-full border px-3 py-2 text-sm rounded"
+            >
+              <option value="sensor">Sensor</option>
+              <option value="actuator">Actuator</option>
+              <option value="both">Both</option>
+            </select>
+          </div>
+
+          <div className="mt-2">
+            <label className="block text-sm font-semibold text-gray-700 mb-1">
+              {frequencyLabel(editedIOT.properties.deviceRole)}
+            </label>
+            <input
+              type="number"
+              min="0"
+              value={editedIOT.properties.frequency}
+              onChange={(e) => handleChange("frequency", Number(e.target.value))}
+              className="w-full border px-3 py-2 text-sm rounded"
+            />
+          </div>
+
+          <div className="mt-2">
+            <label className="block text-sm font-semibold text-gray-700 mb-1">Connectivity</label>
+            <select
+              value={editedIOT.properties.connectivity}
+              onChange={(e) => handleChange("connectivity", e.target.value)}
+              className="w-full border px-3 py-2 text-sm rounded"
+            >
+              <option value="WiFi">WiFi</option>
+              <option value="Bluetooth">Bluetooth</option>
+              <option value="Ethernet">Ethernet</option>
+              <option value="5G">5G</option>
+              <option value="LTE">LTE</option>
+              <option value="Other">Other</option>
+            </select>
+          </div>
+
+          <div className="mt-2">
+            <label className="block text-sm font-semibold text-gray-700 mb-1">Energy Source</label>
+            <select
+              value={editedIOT.properties.energySource}
+              onChange={(e) => handleChange("energySource", e.target.value)}
+              className="w-full border px-3 py-2 text-sm rounded"
+            >
+              <option value="Wired">Wired</option>
+              <option value="Battery">Battery</option>
+              <option value="Solar">Solar</option>
+              <option value="Other">Other</option>
+            </select>
+          </div>
+        </div>
 
         <div>
           <label className="block text-sm font-semibold text-gray-700 mb-1">
@@ -253,6 +380,8 @@ const EditIoTProperties = ({
 
   return (
     <div className="space-y-4">
+      <PresetPicker />
+
       <div className="flex justify-between items-center">
         <h3 className="text-lg font-semibold text-gray-800">IoT Properties</h3>
         <button
@@ -270,6 +399,40 @@ const EditIoTProperties = ({
           </label>
           <div className="w-full border px-3 py-2 text-sm rounded bg-gray-100">
             {selectedIOT.name || "-"}
+          </div>
+        </div>
+
+        <div className="border-t pt-3 mt-2">
+          <p className="text-xs font-bold text-gray-500 uppercase mb-2">Device Profile</p>
+
+          <div>
+            <label className="block text-sm font-semibold text-gray-700 mb-1">Device Role</label>
+            <div className="w-full border px-3 py-2 text-sm rounded bg-gray-100 capitalize">
+              {selectedIOT.properties.deviceRole || "-"}
+            </div>
+          </div>
+
+          <div className="mt-2">
+            <label className="block text-sm font-semibold text-gray-700 mb-1">
+              {frequencyLabel(selectedIOT.properties.deviceRole || "sensor")}
+            </label>
+            <div className="w-full border px-3 py-2 text-sm rounded bg-gray-100">
+              {selectedIOT.properties.frequency !== undefined ? selectedIOT.properties.frequency : "-"}
+            </div>
+          </div>
+
+          <div className="mt-2">
+            <label className="block text-sm font-semibold text-gray-700 mb-1">Connectivity</label>
+            <div className="w-full border px-3 py-2 text-sm rounded bg-gray-100">
+              {selectedIOT.properties.connectivity || "-"}
+            </div>
+          </div>
+
+          <div className="mt-2">
+            <label className="block text-sm font-semibold text-gray-700 mb-1">Energy Source</label>
+            <div className="w-full border px-3 py-2 text-sm rounded bg-gray-100">
+              {selectedIOT.properties.energySource || "-"}
+            </div>
           </div>
         </div>
 
