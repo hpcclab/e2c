@@ -37,7 +37,11 @@ export default function TaskList({
             title={task.assigned_machine?.type?.name || "No Machine Assigned"}
           ></div>
         ) : (
-          <div className="relative min-w-[40px]" onClick={handleChildClick}>
+          <div
+            key={i}
+            className="relative min-w-[40px]"
+            onClick={handleChildClick}
+          >
             <Task
               task={task}
               setSelectedTask={setSelectedTask}

@@ -405,6 +405,7 @@ export default function Sidebar() {
             startTime: 0,
             endTime: 30,
             distribution: distributionOptions[0],
+            taskColor: "Slate",
           },
           queue: [],
           position: relativePosition,

@@ -17,6 +17,7 @@ export const GlobalProvider = ({ children }) => {
   const { fitView, getEdges, getNode, getEdge, getNodes } = useReactFlow();
 
   // Define States
+  const [colorMemory, SetcolorMemory] = useState({});
   const [selectedMachine, setSelectedMachine] = useState({
     id: -1,
     name: "",
@@ -49,6 +50,7 @@ export const GlobalProvider = ({ children }) => {
       frequency: 0,
       connectivity: "WiFi",
       energySource: "Wired",
+      taskColor: "Slate",
     },
     queue: [],
     parentId: undefined,
@@ -512,6 +514,8 @@ export const GlobalProvider = ({ children }) => {
     selectedEdge,
     setSelectedEdge,
     EDGE_PROPERTIES,
+    colorMemory,
+    SetcolorMemory,
   };
 
   return (

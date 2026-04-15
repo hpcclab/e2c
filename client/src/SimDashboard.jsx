@@ -853,8 +853,6 @@ const SimDashboard = () => {
       const job = sender;
       console.log(job);
       if (!job) return;
-      // setTask_counter(task_counter + 1);
-      job.id = job.arrival_time; // unique id for tracking animation
       // if (LB) {
       //   startAnimation(`e-${sender.id}-${LB_ID}`);
       //   startAnimation(`e-${LB_ID}-${targetId}`);
@@ -896,20 +894,28 @@ const SimDashboard = () => {
     if (!batchQ.queue.length) return;
     if (!taskLoaded) {
       setTask(batchQ.queue[task_counter % batchQ.queue.length]);
-      setTaskLoaded(true);
       setTask_counter(task_counter + 1);
+      task.id = task_counter; // unique id for tracking animation
+      setTaskLoaded(true);
+    }
+
+    if (task_counter >= batchQ.queue.length && taskLoaded) {
+      task.arrival_time += simulationTime;
+      task.deadline += simulationTime;
     }
 
     if (taskLoaded && simulationTime >= task.arrival_time) {
       machine_count = machines.length;
       setMachine_index((prev_machine_index + 1) % machine_count);
       setPrev_machine_index(machine_index);
-      setIot_index(iot.findIndex((m) => m.name == task.task_type));
+      setIot_index(
+        iot.findIndex((m) => m.properties?.task_type == task.task_type),
+      );
       let sender = task;
       const mecha = machines[machine_index].id;
       const iotSrc = iot[iot_index];
-      const iID = `nd_${iotSrc.id}`;
 
+      const iID = `nd_${iotSrc.id}`;
       if (isNeighbors(iID, mecha)) {
         enqueue(mecha, sender, true, LB_ID);
       }
