@@ -36,6 +36,10 @@ const EditIoTProperties = ({
         startTime: selectedIOT.properties.startTime || 0,
         endTime: selectedIOT.properties.endTime || 0,
         distribution: selectedIOT.properties.distribution || "uniform",
+        deviceRole: selectedIOT.properties.deviceRole || "sensor",
+        frequency: selectedIOT.properties.frequency || 0,
+        connectivity: selectedIOT.properties.connectivity || "WiFi",
+        energySource: selectedIOT.properties.energySource || "Wired",
       },
       queue: selectedIOT.queue || [],
     });
@@ -82,6 +86,10 @@ const EditIoTProperties = ({
     </div>
   );
 
+  const frequencyLabel = (role) =>
+    role === "actuator" ? "Writing Frequency (Hz)" :
+    role === "sensor"   ? "Reading Frequency (Hz)" : "Frequency (Hz)";
+
   const handleChange = (field, value, is_property = true) => {
     if (!is_property) setEditedIOT((prev) => ({ ...prev, [field]: value }));
     else
@@ -124,6 +132,10 @@ const EditIoTProperties = ({
         startTime: selectedIOT.properties.startTime || 0,
         endTime: selectedIOT.properties.endTime || 0,
         distribution: selectedIOT.properties.distribution || "uniform",
+        deviceRole: selectedIOT.properties.deviceRole || "sensor",
+        frequency: selectedIOT.properties.frequency || 0,
+        connectivity: selectedIOT.properties.connectivity || "WiFi",
+        energySource: selectedIOT.properties.energySource || "Wired",
       },
       queue: selectedIOT.queue || [],
     });
@@ -138,6 +150,66 @@ const EditIoTProperties = ({
         </h3>
 
         <PresetPicker />
+
+        <div className="border-t pt-3 mt-2">
+          <p className="text-xs font-bold text-gray-500 uppercase mb-2">Device Profile</p>
+
+          <div>
+            <label className="block text-sm font-semibold text-gray-700 mb-1">Device Role</label>
+            <select
+              value={editedIOT.properties.deviceRole}
+              onChange={(e) => handleChange("deviceRole", e.target.value)}
+              className="w-full border px-3 py-2 text-sm rounded"
+            >
+              <option value="sensor">Sensor</option>
+              <option value="actuator">Actuator</option>
+              <option value="both">Both</option>
+            </select>
+          </div>
+
+          <div className="mt-2">
+            <label className="block text-sm font-semibold text-gray-700 mb-1">
+              {frequencyLabel(editedIOT.properties.deviceRole)}
+            </label>
+            <input
+              type="number"
+              min="0"
+              value={editedIOT.properties.frequency}
+              onChange={(e) => handleChange("frequency", Number(e.target.value))}
+              className="w-full border px-3 py-2 text-sm rounded"
+            />
+          </div>
+
+          <div className="mt-2">
+            <label className="block text-sm font-semibold text-gray-700 mb-1">Connectivity</label>
+            <select
+              value={editedIOT.properties.connectivity}
+              onChange={(e) => handleChange("connectivity", e.target.value)}
+              className="w-full border px-3 py-2 text-sm rounded"
+            >
+              <option value="WiFi">WiFi</option>
+              <option value="Bluetooth">Bluetooth</option>
+              <option value="Ethernet">Ethernet</option>
+              <option value="5G">5G</option>
+              <option value="LTE">LTE</option>
+              <option value="Other">Other</option>
+            </select>
+          </div>
+
+          <div className="mt-2">
+            <label className="block text-sm font-semibold text-gray-700 mb-1">Energy Source</label>
+            <select
+              value={editedIOT.properties.energySource}
+              onChange={(e) => handleChange("energySource", e.target.value)}
+              className="w-full border px-3 py-2 text-sm rounded"
+            >
+              <option value="Wired">Wired</option>
+              <option value="Battery">Battery</option>
+              <option value="Solar">Solar</option>
+              <option value="Other">Other</option>
+            </select>
+          </div>
+        </div>
 
         <div>
           <label className="block text-sm font-semibold text-gray-700 mb-1">
@@ -327,6 +399,40 @@ const EditIoTProperties = ({
           </label>
           <div className="w-full border px-3 py-2 text-sm rounded bg-gray-100">
             {selectedIOT.name || "-"}
+          </div>
+        </div>
+
+        <div className="border-t pt-3 mt-2">
+          <p className="text-xs font-bold text-gray-500 uppercase mb-2">Device Profile</p>
+
+          <div>
+            <label className="block text-sm font-semibold text-gray-700 mb-1">Device Role</label>
+            <div className="w-full border px-3 py-2 text-sm rounded bg-gray-100 capitalize">
+              {selectedIOT.properties.deviceRole || "-"}
+            </div>
+          </div>
+
+          <div className="mt-2">
+            <label className="block text-sm font-semibold text-gray-700 mb-1">
+              {frequencyLabel(selectedIOT.properties.deviceRole || "sensor")}
+            </label>
+            <div className="w-full border px-3 py-2 text-sm rounded bg-gray-100">
+              {selectedIOT.properties.frequency !== undefined ? selectedIOT.properties.frequency : "-"}
+            </div>
+          </div>
+
+          <div className="mt-2">
+            <label className="block text-sm font-semibold text-gray-700 mb-1">Connectivity</label>
+            <div className="w-full border px-3 py-2 text-sm rounded bg-gray-100">
+              {selectedIOT.properties.connectivity || "-"}
+            </div>
+          </div>
+
+          <div className="mt-2">
+            <label className="block text-sm font-semibold text-gray-700 mb-1">Energy Source</label>
+            <div className="w-full border px-3 py-2 text-sm rounded bg-gray-100">
+              {selectedIOT.properties.energySource || "-"}
+            </div>
           </div>
         </div>
 
