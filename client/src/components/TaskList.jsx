@@ -26,7 +26,7 @@ export default function TaskList({
     <div className="flex flex-row-reverse gap-2">
       {taskSlots.map((_, i) => {
         const task = i < queue.length ? queue[i] : emptyTask;
-        return (
+        return task.task_type == "empty" ? (
           <div
             key={i}
             ref={(el) => {
@@ -35,7 +35,9 @@ export default function TaskList({
             className="relative min-w-[40px] h-10 px-2 bg-gray-300 rounded border border-gray-700 flex items-center justify-center text-s"
             onClick={handleChildClick}
             title={task.assigned_machine?.type?.name || "No Machine Assigned"}
-          >
+          ></div>
+        ) : (
+          <div className="relative min-w-[40px]" onClick={handleChildClick}>
             <Task
               task={task}
               setSelectedTask={setSelectedTask}
