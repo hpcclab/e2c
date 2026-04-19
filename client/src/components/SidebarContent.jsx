@@ -3,28 +3,9 @@ import { TrashIcon } from "@heroicons/react/24/outline";
 import { useGlobalState } from "../context/GlobalStates";
 
 export const WorkloadSidebar = ({
-  // profilingFileUploaded,
-  // profilingFileName,
-  // profilingTableData,
-  // workloadFileUploaded,
-  // workloadFileName,
-  // workloadTableData,
-  // configFileUploaded,
-  // configFileName,
-  // handleProfilingUpload,
-  // handleWorkloadUpload,
-  // handleConfigUpload,
   handleSubmitWorkloadAndProfiling,
   handleResetWorkload,
   workloadSubmissionStatus,
-  // setProfilingFileName,
-  // setProfilingFileUploaded,
-  // setProfilingTableData,
-  // setWorkloadFileName,
-  // setWorkloadFileUploaded,
-  // setWorkloadTableData,
-  // setConfigFileName,
-  // setConfigFileUploaded,
   selectedTask,
 }) => {
   const {

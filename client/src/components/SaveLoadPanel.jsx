@@ -5,6 +5,7 @@ import { useGlobalState } from "../context/GlobalStates";
 import { useReactFlow } from "@xyflow/react";
 import axios from "axios";
 import "../assets/saveload.css";
+import { colorMemory } from "./Task";
 
 Modal.setAppElement("#root");
 export default function FlowSaveLoadPanel() {
@@ -88,6 +89,7 @@ export default function FlowSaveLoadPanel() {
         machineConfig,
         taskTypes,
         scenarioRows,
+        colorMemory,
         filename: fileWithExtension,
       });
       alert(res.data.message || res.data.error);
@@ -116,6 +118,7 @@ export default function FlowSaveLoadPanel() {
         machineConfig,
         taskTypes,
         scenarioRows,
+        colorMemory,
         filename: selectedFile,
       });
       alert(res.data.message || res.data.error);
@@ -143,9 +146,8 @@ export default function FlowSaveLoadPanel() {
         const loadedMachineConfig = res.data.data.machineConfig || [];
         const loadedTaskTypes = res.data.data.taskTypes || [];
         const loadedScenarioRows = res.data.data.scenarioRows || [];
-        console.log(loadedWorkloadFileName);
-        console.log(loadedProfilingFileName);
-        console.log(loadedConfigFileName);
+        const loadedcolorMemory = res.data.data.colorMemory || [];
+
         // upload files
 
         if (loadedWorkloadFileName?.length) {
@@ -188,7 +190,10 @@ export default function FlowSaveLoadPanel() {
         alert(res.data.message || "Flow loaded successfully!");
         fetchFiles();
 
+        // load task colors:
+
         fitView({ padding: 0.5, duration: 600, interpolate: "smooth" });
+        window.dispatchEvent(new Event("taskColorChanged"));
       } else {
         alert("No data found in file.");
       }

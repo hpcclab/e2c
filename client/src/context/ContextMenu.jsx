@@ -1,6 +1,8 @@
 import React, { useCallback } from "react";
 import { useReactFlow } from "@xyflow/react";
 import { useGlobalState } from "./GlobalStates";
+import { FiCopy, FiTrash2 } from "react-icons/fi";
+import "../assets/ContextMenu.css";
 
 export default function ContextMenu({
   id,
@@ -8,6 +10,7 @@ export default function ContextMenu({
   left,
   right,
   bottom,
+  edgeSidebar,
   ...props
 }) {
   const { getNode, setNodes, setEdges, addNodes } = useReactFlow();
@@ -20,6 +23,7 @@ export default function ContextMenu({
     setTaskTypes,
     scenarioRows,
     setScenarioRows,
+    setSelectedEdge,
   } = useGlobalState();
 
   const extractNumericId = (nodeId) => {
@@ -32,8 +36,9 @@ export default function ContextMenu({
   const generateNewNumericId = (list) => {
     if (!list || list.length === 0) return 1;
     const ids = list.map((item) => Number(item.id)).filter((n) => !isNaN(n));
-    return Math.max(...ids) + 1;
+    return Date.now();
   };
+  // Node functions
 
   const duplicateNode = useCallback(() => {
     const node = getNode(id);
@@ -61,15 +66,16 @@ export default function ContextMenu({
       if (original) {
         const newMachineId = generateNewNumericId(machines);
 
-        const newMachine = {
-          ...original,
-          id: newMachineId,
-          name: `${original.name}_copy`,
-          position,
-          queue: [...original.queue],
-        };
-
-        setMachines((prev) => [...prev, newMachine]);
+        setMachines((prev) => [
+          ...prev,
+          {
+            ...original,
+            id: newMachineId,
+            name: `${original.name}_copy`,
+            position,
+            queue: [...original.queue],
+          },
+        ]);
       }
     }
 
@@ -86,6 +92,7 @@ export default function ContextMenu({
         };
 
         setIot((prev) => [...prev, newIot]);
+
         setTaskTypes((prev) => [
           ...prev,
           {
@@ -132,24 +139,37 @@ export default function ContextMenu({
     }
 
     if (node.type === "iotNode") {
-      // setIot((prev) => prev.filter((i) => Number(i.id) !== numericId));
       setIot((prev) => prev.filter((i) => Number(i.id) !== numericId));
-      setScenarioRows(scenarioRows.filter((o) => o.srcID !== numericId));
-      setTaskTypes(taskTypes.filter((o) => o.srcID !== numericId));
+      setScenarioRows((prev) => prev.filter((o) => o.srcID !== numericId));
+      setTaskTypes((prev) => prev.filter((o) => o.srcID !== numericId));
     }
   }, [id, getNode, setNodes, setEdges, setMachines, setIot]);
+  // Edge functions
 
   return (
     <div
       style={{ top, left, right, bottom }}
-      className="context-menu"
+      className="context-men"
       {...props}
     >
-      <p style={{ margin: "0.5em" }}>
-        <small>node: {id}</small>
-      </p>
-      <button onClick={duplicateNode}>duplicate</button>
-      <button onClick={deleteNode}>delete</button>
+      <div className="menu-header">Node</div>
+      <div className="menu-sub">{id}</div>
+      {id[0] === "e" ? (
+        <button className="menu-item" onClick={edgeSidebar}>
+          <FiCopy className="icon" />
+          Edge Properties
+        </button>
+      ) : (
+        <button className="menu-item" onClick={duplicateNode}>
+          <FiCopy className="icon" />
+          Duplicate
+        </button>
+      )}
+
+      <button className="menu-item danger" onClick={deleteNode}>
+        <FiTrash2 className="icon" />
+        Delete
+      </button>
     </div>
   );
 }

@@ -1,6 +1,11 @@
 // GlobalState.js
 import React, { createContext, useContext, useState, useRef } from "react";
-import { useEdgesState, useNodesState, useReactFlow } from "@xyflow/react";
+import {
+  useEdgesState,
+  useNodesState,
+  useReactFlow,
+  getOutgoers,
+} from "@xyflow/react";
 import axios from "axios";
 import { eetTable } from "../utils/exportCSV";
 import { generateWorkload } from "../workload/tabs/ScenarioTab";
@@ -9,9 +14,10 @@ import { generateMachineConfig } from "../workload/tabs/MachineTypesTab";
 const GlobalContext = createContext();
 
 export const GlobalProvider = ({ children }) => {
-  const { fitView } = useReactFlow();
+  const { fitView, getEdges, getNode, getEdge, getNodes } = useReactFlow();
 
   // Define States
+  const [colorMemory, SetcolorMemory] = useState({});
   const [selectedMachine, setSelectedMachine] = useState({
     id: -1,
     name: "",
@@ -40,6 +46,11 @@ export const GlobalProvider = ({ children }) => {
       startTime: 0,
       endTime: 0,
       distribution: "uniform",
+      deviceRole: "sensor",
+      frequency: 0,
+      connectivity: "WiFi",
+      energySource: "Wired",
+      taskColor: "Slate",
     },
     queue: [],
     parentId: undefined,
@@ -66,10 +77,17 @@ export const GlobalProvider = ({ children }) => {
     iots: [],
   };
 
+  const EDGE_PROPERTIES = {
+    connectionType: "LAN",
+  };
+
   const [selectedWorkspace, setSelectedWorkspace] = useState(workspace);
+  const [selectedEdge, setSelectedEdge] = useState(EDGE_PROPERTIES);
+
   const [workspaces, setWorkspaces] = useState([]);
   const [machines, setMachines] = useState([]);
   const [iot, setIot] = useState([]);
+  const [loadBalancers, setLoadBalancers] = useState([]);
   const [batchQ, setBatchQ] = useState({
     id: -2,
     name: "Batch Queue",
@@ -80,6 +98,31 @@ export const GlobalProvider = ({ children }) => {
   const [edges, setEdges, onEdgesChange] = useEdgesState([]);
   const [menu, setMenu] = useState(null);
 
+  const getNeighbors = (sourceID) => {
+    let outies =
+      getOutgoers(getNode(sourceID) ?? "", getNodes(), getEdges()) || [];
+    let allOuties = outies;
+    if (outies) {
+      outies.map((n) => {
+        if (n.type !== "LBNode") return;
+        const lbOuties = getOutgoers(getNode(n.id), getNodes(), getEdges());
+        allOuties = allOuties.concat(lbOuties);
+      });
+    }
+
+    allOuties = allOuties.filter((n) => n.type !== "LBNode");
+    return allOuties;
+  };
+  const isNeighbors = (sourceID, targetID) => {
+    const reached = getNeighbors(sourceID);
+    let isWithin = false;
+    reached.map((n) => {
+      if (n.id == targetID) {
+        isWithin = true;
+      }
+    });
+    return isWithin;
+  };
   const onDragStop = (event, node) => {
     // Adjust viewport nicely after drag
     fitView({ padding: 0.5, duration: 600, interpolate: "smooth" });
@@ -88,10 +131,13 @@ export const GlobalProvider = ({ children }) => {
     if (node.type !== "machineNode" && node.type !== "iotNode") return;
 
     const updater = node.type === "machineNode" ? setMachines : setIot;
-
     updater((prev) =>
-      prev.map((item) =>
-        `${item.id}` === node.id
+      prev.map((item) => {
+        let oID;
+        node.type === "machineNode"
+          ? (oID = `${item.id}`)
+          : (oID = `nd_${item.id}`);
+        return oID === node.id
           ? {
               ...item,
               // Keep the node position relative to its current parent
@@ -100,8 +146,8 @@ export const GlobalProvider = ({ children }) => {
               parentId: item.parentId,
               extent: item.extent,
             }
-          : item,
-      ),
+          : item;
+      }),
     );
   };
   // Workload generator states
@@ -268,10 +314,6 @@ export const GlobalProvider = ({ children }) => {
         const iotNode = {
           id: Date.now(),
           type: "iotNode",
-          // position: {
-          //   x: col * horizontalSpacing,
-          //   y: row * verticalSpacing + 100,
-          // },
           data: { iot: iotObj },
           parentId: iotObj.parentId,
           extent: iotObj.parentId ? "parent" : undefined,
@@ -358,9 +400,7 @@ export const GlobalProvider = ({ children }) => {
       });
       const machinesWithIds = Object.values(machineMap);
       console.log("Processed machines with replicas:", machinesWithIds);
-      // setMachines((prev) => [...prev]);
-      // setMachines((prev) => [...prev, ...machinesWithIds]);
-      // setAnimatedMachines(machinesWithIds);
+      setMachines((prev) => [...prev]);
       machinesRef.current = machinesWithIds;
       fitView({ padding: 0.5, duration: 600, interpolate: "smooth" });
     } catch (err) {
@@ -369,31 +409,7 @@ export const GlobalProvider = ({ children }) => {
     }
   };
   const [machineTypes, setMachineTypes] = useState([]);
-  const handleNodesChange = (changes) => {
-    setNodes((nds) => {
-      return nds.map((node) => {
-        const change = changes.find((c) => c.id === node.id);
-        if (!change) return node;
 
-        let updatedNode = { ...node, ...change };
-
-        if (node.parentId) {
-          const parent = nds.find((n) => n.id === node.parentId);
-          if (parent) {
-            // Keep node inside parent's bounds
-            const width = parent.style?.width ?? 280;
-            const height = parent.style?.height ?? 250;
-            updatedNode.position = {
-              x: Math.min(Math.max(updatedNode.position.x, 0), width),
-              y: Math.min(Math.max(updatedNode.position.y, 0), height),
-            };
-          }
-        }
-
-        return updatedNode;
-      });
-    });
-  };
   const ld_workspace = () => {
     const stuff = generateWorkload(scenarioRows, taskTypes);
     setBatchQ({ id: -2, name: "Batch Queue", queue: [...stuff] });
@@ -404,29 +420,8 @@ export const GlobalProvider = ({ children }) => {
 
     return batchQ;
   };
+
   const [nodes, setNodes, onNodesChange] = useNodesState([]);
-  /* future Node reference
-{
-      id: "edgeType",
-      type: "edgeSpace",
-      position: { x: -100, y: 200 },
-      data: { label: "edges" },
-    },
-    {
-      id: "cloudType",
-      type: "cloudSpace",
-      position: { x: 230, y: 200 },
-      data: { label: "edges" },
-    },
-    {
-      id: "A-2",
-      type: "edgeLockedNode",
-      data: { label: "Child Node 2" },
-      position: { x: 10, y: 90 },
-      parentId: "edgeType",
-      extent: "parent",
-    },
-  */
   const [submissionStatus, setSubmissionStatus] = useState(""); // Track submission status
   const [workloadSubmissionStatus, setWorkloadSubmissionStatus] = useState(""); // Track workload submission status
   const machinesRef = useRef([]);
@@ -510,6 +505,17 @@ export const GlobalProvider = ({ children }) => {
     setMachineConfig,
     generateWorkload,
     generateMachineConfig,
+    loadBalancers,
+    setLoadBalancers,
+    isNeighbors,
+    getNeighbors,
+    getNode,
+    getEdge,
+    selectedEdge,
+    setSelectedEdge,
+    EDGE_PROPERTIES,
+    colorMemory,
+    SetcolorMemory,
   };
 
   return (

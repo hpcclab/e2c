@@ -1,0 +1,81 @@
+{
+  "nodes": [
+    {
+      "id": "nd_1776226001957",
+      "type": "iotNode",
+      "data": {
+        "iot": {
+          "id": 1776226001957,
+          "name": "Camera",
+          "icon": "MdVideocam",
+          "queue": [],
+          "properties": {
+            "task_type": "IOT 1957",
+            "dataInput": "default",
+            "meanSize": 6,
+            "urgency": "BestEffort",
+            "slack": 0,
+            "numTasks": 10,
+            "startTime": 0,
+            "endTime": 30,
+            "distribution": "uniform"
+          }
+        }
+      },
+      "position": {
+        "x": 0,
+        "y": 80
+      },
+      "draggable": true,
+      "measured": {
+        "width": 98,
+        "height": 102
+      }
+    }
+  ],
+  "edges": [],
+  "machines": [],
+  "iot": [
+    {
+      "id": 1776226001957,
+      "name": "Camera",
+      "icon": "MdVideocam",
+      "queue": [],
+      "properties": {
+        "task_type": "IOT 1957",
+        "dataInput": "default",
+        "meanSize": 6,
+        "urgency": "BestEffort",
+        "slack": 0,
+        "numTasks": 10,
+        "startTime": 0,
+        "endTime": 30,
+        "distribution": "uniform"
+      }
+    }
+  ],
+  "workloadFileName": "",
+  "profilingFileName": "",
+  "configFileName": "",
+  "machineConfig": "",
+  "taskTypes": [
+    {
+      "srcID": 1776226001957,
+      "name": "Camera",
+      "dataInput": "default",
+      "meanSize": 6,
+      "urgency": "BestEffort",
+      "slack": 0
+    }
+  ],
+  "scenarioRows": [
+    {
+      "srcID": 1776226001957,
+      "taskType": "IOT 1957",
+      "numTasks": 10,
+      "startTime": 0,
+      "endTime": 30,
+      "distribution": "uniform"
+    }
+  ]
+}

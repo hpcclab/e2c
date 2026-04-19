@@ -7,7 +7,7 @@ import WorkloadGenerator from "./WorkloadGenerator";
 const App = () => {
   return (
     <Router>
-      <div className="container bg-gray-50 overflow-hidden">
+      <div className="max-w-screen max-h-screen bg-gray-50 overflow-x-hidden">
         <header className="bg-blue-500 text-white p-3 shadow-md overflow-hidden">
           <nav className="max-w-7xl mx-auto flex justify-between items-center overflow-hidden ">
             <h1 className="text-3xl font-bold">E2C</h1>
