@@ -3,6 +3,7 @@ import { BrowserRouter as Router, Routes, Route, Link } from "react-router-dom";
 import SimDashboard from "./SimDashboard";
 import "./assets/index.css";
 import WorkloadGenerator from "./WorkloadGenerator";
+import Reports from "./Reports";
 
 const App = () => {
   return (
@@ -23,8 +24,8 @@ const App = () => {
                 </Link>
               </li>
               <li>
-                <Link to="/e2c/generate" className="hover:underline">
-                  Workload Generator
+                <Link to="/e2c/reports" className="hover:underline">
+                  Reports
                 </Link>
               </li>
             </ul>
@@ -35,7 +36,7 @@ const App = () => {
           <Routes>
             <Route path="/e2c" element={<Home />} />
             <Route path="/e2c/simulate" element={<SimDashboard />} />
-            <Route path="/e2c/generate" element={<WorkloadGenerator />} />
+            <Route path="/e2c/reports" element={<Reports />} />
           </Routes>
         </main>
       </div>

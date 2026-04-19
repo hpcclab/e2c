@@ -45,12 +45,6 @@ const MachineNode = memo(({ data, isConnectable }) => {
           <div className="text-gray-500 text-sm p-4">No machine data</div>
         )}
       </div>
-
-      <Handle
-        type="source"
-        position={Position.Right}
-        isConnectable={isConnectable}
-      />
     </>
   );
 });

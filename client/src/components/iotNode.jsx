@@ -19,12 +19,6 @@ export default memo(({ data, isConnectable }) => {
   const iot = data.iot;
   return (
     <>
-      <Handle
-        type="target"
-        position={Position.Left}
-        onConnect={(params) => console.log("handle onConnect", params)}
-        isConnectable={isConnectable}
-      />
       <div>
         {iot ? (
           <IoT

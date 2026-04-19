@@ -130,6 +130,14 @@ const SimDashboard = () => {
     selectedEdge,
     setSelectedEdge,
     getEdge,
+    showReport,
+    setShowReport,
+    unassignedTasks,
+    setUnassignedTasks,
+    missedTasks,
+    setMissedTasks,
+    dataResults,
+    setDataResults,
   } = useGlobalState();
   // End Global States
 
@@ -290,12 +298,10 @@ const SimDashboard = () => {
 
   // - Sim results handlers
   const simulationIntervalRef = useRef(null);
-  const [dataResults, setDataResults] = useState([]);
+
   const [animatedMachines, setAnimatedMachines] = useState(machines); // ANIMATION
   const [animatedIOTs, setAnimatedIOTs] = useState(iot);
   const [flyers, setFlyers] = useState([]);
-  const [missedTasks, setMissedTasks] = useState([]);
-  const [unassignedTasks, setUnassignedTasks] = useState([]);
   const [animatedTaskIds, setAnimatedTaskIds] = useState([]);
   const [isRunning, setIsRunning] = useState(false);
   const [machine_index, setMachine_index] = useState(0);
@@ -303,7 +309,6 @@ const SimDashboard = () => {
   const [iot_index, setIot_index] = useState(0);
   const [task_counter, setTask_counter] = useState(0);
   const [taskLoaded, setTaskLoaded] = useState(false);
-  const [showReport, setShowReport] = useState(false);
 
   const [task, setTask] = useState({
     id: -1,
@@ -542,16 +547,6 @@ const SimDashboard = () => {
           Object.values(m.eet).some((v) => v !== "" && v !== undefined),
       );
       const canvasHasWorkload = scenarioRows.length > 0;
-      // if (
-      //   (!workloadFileUploaded && !canvasHasWorkload) ||
-      //   (!profilingFileUploaded && !machinesHaveEET) ||
-      //   !configFileUploaded
-      // ) {
-      //   alert(
-      //     "Please provide a workload (upload a .wkl file or add IoT nodes with scenario data), a configuration (.json) file, and either a profiling table (.eet) or set EET values on machines.",
-      //   );
-      //   return;
-      // }
 
       // Clear any existing simulation interval
       if (simulationIntervalRef.current) {
@@ -590,99 +585,6 @@ const SimDashboard = () => {
           : generateWorkload(scenarioRows, taskTypes),
       };
 
-      // const animateAdmissions = (admissionEvents, baseMachines) => {
-      //   const resetMachines = baseMachines.map((m) => ({
-      //     ...m,
-      //     queue: [],
-      //     replica_instances:
-      //       m.replica_instances?.map((r) => ({ ...r, queue: [] })) ?? [],
-      //   }));
-      //   animatedMachinesRef.current = resetMachines;
-      //   setAnimatedMachines(resetMachines); // Reset queues
-
-      //   // Returns true if this machine group owns the target replica ID
-      //   const machineOwnsReplica = (machine, targetId) =>
-      //     machine.id === targetId ||
-      //     machine.replica_instances?.some((r) => r.id === targetId);
-
-      //   // Add task to the correct replica_instance queue within its machine group
-      //   const addTaskToMachine = (prev, targetId, event) =>
-      //     prev.map((machine) => {
-      //       if (!machineOwnsReplica(machine, targetId)) return machine;
-      //       if (machine.replica_instances?.length > 0) {
-      //         const updatedReplicas = machine.replica_instances.map((r) =>
-      //           r.id === targetId ? { ...r, queue: [...r.queue, event] } : r,
-      //         );
-      //         return { ...machine, replica_instances: updatedReplicas };
-      //       }
-      //       return { ...machine, queue: [...machine.queue, event] };
-      //     });
-
-      //   const play = (idx, currentQueues) => {
-      //     if (idx >= admissionEvents.length) return;
-
-      //     const event = admissionEvents[idx];
-      //     const targetMachineId = event.machineId;
-      //     const nextSlotIndex = currentQueues[targetMachineId] || 0;
-
-      //     const fromEl = loadBalancerRef.current;
-      //     const toEl = (machineSlotsRef.current[targetMachineId] || [])[
-      //       nextSlotIndex
-      //     ];
-
-      //     const from = getCenter(fromEl);
-      //     const to = getCenter(toEl);
-
-      //     if (!from || !to) {
-      //       setAnimatedMachines((prev) =>
-      //         addTaskToMachine(prev, targetMachineId, event),
-      //       );
-      //       const updated = {
-      //         ...currentQueues,
-      //         [targetMachineId]: nextSlotIndex + 1,
-      //       };
-      //       setTimeout(() => play(idx + 1, updated), 50);
-      //       return;
-      //     }
-
-      //     const flyerKey = `${event.taskId}-${idx}-${Date.now()}`;
-      //     const flyer = {
-      //       key: flyerKey,
-      //       from,
-      //       to,
-      //       label: event.taskId,
-      //       onComplete: () => {
-      //         setFlyers((fs) => fs.filter((f) => f.key !== flyerKey));
-      //         setAnimatedMachines((prev) =>
-      //           addTaskToMachine(prev, targetMachineId, event),
-      //         );
-      //         const updated = {
-      //           ...currentQueues,
-      //           [targetMachineId]: nextSlotIndex + 1,
-      //         };
-      //         setTimeout(() => play(idx + 1, updated), 50);
-      //       },
-      //     };
-
-      //     setFlyers((fs) => [...fs, flyer]);
-      //   };
-
-      //   setTimeout(() => {
-      //     const initialQueues = {};
-      //     baseMachines.forEach((m) => {
-      //       // Register all replica IDs so slot tracking works per physical machine
-      //       if (m.replica_instances?.length > 0) {
-      //         m.replica_instances.forEach((r) => {
-      //           initialQueues[r.id] = 0;
-      //         });
-      //       } else {
-      //         initialQueues[m.id] = 0;
-      //       }
-      //     });
-      //     play(0, initialQueues);
-      //   }, 100);
-      // };
-
       const response = await axios.post(
         "http://localhost:5001/api/workload/simulate/data",
         simulationData,
@@ -695,14 +597,6 @@ const SimDashboard = () => {
       } = response.data;
       setDataResults(results);
       setShowReport(true); // Show the report when results are ready
-
-      // const admissionEvents = [...results]
-      //   .filter((task) => task.start != null)
-      //   .sort((a, b) => a.start - b.start);
-
-      // const baseMachines = machinesRef.current.filter((m) => m.id !== -1);
-
-      // animateAdmissions(admissionEvents, baseMachines);
 
       // Simulation loop with EET-based dequeue
       let current = 0;
@@ -1045,62 +939,29 @@ const SimDashboard = () => {
               <Background />
               {menu && <ContextMenu onClick={onPaneClick} {...menu} />}
               <SaveLoadPanel />
-              {/* View Report Button - Top Right */}
-              {dataResults.length > 0 && (
-                <Panel position="top-right">
-                  <button
-                    onClick={() => setShowReport(!showReport)}
-                    className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg shadow-lg font-semibold transition"
-                  >
-                    {showReport ? "Hide Report" : "View Report"}
-                  </button>
-                </Panel>
-              )}
             </ReactFlow>
           </div>
           <Sidebar setNodes={setNodes} />
         </div>
-
-        {/* Simulation Report Component */}
-        {showReport && dataResults.length > 0 && (
-          <SimulationReport
-            dataResults={dataResults}
-            completedTasks={completedTasks}
-            missedTasks={missedTasks}
-            unassignedTasks={unassignedTasks}
-            simulationTime={simulationTime}
-            machines={machines}
-            onClose={() => {
-              setDataResults([]);
-              setShowReport(false);
-            }}
-            onMinimize={() => setShowReport(false)}
-            onRunSimulation={runDataSimulation}
-          />
-        )}
-
-        {/* Play Button Overlay - Bottom Center (when no report) */}
-        {!showReport && (
-          <div className="absolute bottom-8 left-1/2 transform -translate-x-1/2 z-10">
-            <div className="flex space-x-4 bg-white rounded-full shadow-lg px-6 py-3">
-              <button
-                className="bg-gray-400 hover:bg-gray-500 text-white rounded-full w-12 h-12 flex items-center justify-center transition"
-                onClick={handleResetSim}
-              >
-                ⟲
-              </button>
-              <button
-                onClick={runDataSimulation}
-                className="bg-green-600 hover:bg-green-700 text-white rounded-full w-12 h-12 flex items-center justify-center transition shadow-md"
-              >
-                ▶
-              </button>
-              <button className="bg-gray-400 hover:bg-gray-500 text-white rounded-full w-12 h-12 flex items-center justify-center transition">
-                ⏸
-              </button>
-            </div>
+        <div className="absolute bottom-8 left-1/2 transform -translate-x-1/2 z-10">
+          <div className="flex space-x-4 bg-white rounded-full shadow-lg px-6 py-3">
+            <button
+              className="bg-gray-400 hover:bg-gray-500 text-white rounded-full w-12 h-12 flex items-center justify-center transition"
+              onClick={handleResetSim}
+            >
+              ⟲
+            </button>
+            <button
+              onClick={runDataSimulation}
+              className="bg-green-600 hover:bg-green-700 text-white rounded-full w-12 h-12 flex items-center justify-center transition shadow-md"
+            >
+              ▶
+            </button>
+            <button className="bg-gray-400 hover:bg-gray-500 text-white rounded-full w-12 h-12 flex items-center justify-center transition">
+              ⏸
+            </button>
           </div>
-        )}
+        </div>
       </div>
       {/* Main Simulation Area */}
 
@@ -1120,19 +981,15 @@ const SimDashboard = () => {
                   ? "Workload & Profiling Table"
                   : sidebarMode === "loadBalancer"
                     ? "Load Balancer"
-                    : sidebarMode === "cancelledTasks"
-                      ? "Cancelled Tasks"
-                      : sidebarMode === "missedTasks"
-                        ? "Missed Tasks"
-                        : sidebarMode === "task"
-                          ? "Task Properties"
-                          : sidebarMode === "edgeProps"
-                            ? `Edge Properties`
-                            : sidebarMode === "machine"
-                              ? `Machine: ${selectedMachine.name?.toUpperCase()}`
-                              : sidebarMode === "IOT"
-                                ? `IOT: ${selectedIOT.name?.toUpperCase()}`
-                                : "Drag and Drop Templates"}
+                    : sidebarMode === "task"
+                      ? "Task Properties"
+                      : sidebarMode === "edgeProps"
+                        ? `Edge Properties`
+                        : sidebarMode === "machine"
+                          ? `Machine: ${selectedMachine.name?.toUpperCase()}`
+                          : sidebarMode === "IOT"
+                            ? `IOT: ${selectedIOT.name?.toUpperCase()}`
+                            : "Drag and Drop Templates"}
               </h2>
               <button
                 onClick={() => setShowSidebar(false)}
@@ -1323,40 +1180,6 @@ const SimDashboard = () => {
                 </div>
               </div>
             )}
-
-            {sidebarMode === "cancelledTasks" && (
-              <div className="space-y-6">
-                {/* Cancelled Tasks Sidebar Content */}
-                <table className="w-full text-left border-collapse">
-                  <thead>
-                    <tr className="border-b">
-                      <th className="px-4 py-2 text-sm font-semibold text-gray-700">
-                        Task ID
-                      </th>
-                      <th className="px-4 py-2 text-sm font-semibold text-gray-700">
-                        Type
-                      </th>
-                      <th className="px-4 py-2 text-sm font-semibold text-gray-700">
-                        Arrival Time
-                      </th>
-                      <th className="px-4 py-2 text-sm font-semibold text-gray-700">
-                        Cancellation Time
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    <tr>
-                      <td
-                        colSpan="4"
-                        className="px-4 py-2 text-sm text-gray-500 text-center"
-                      >
-                        No data available yet. The simulation has not occurred.
-                      </td>
-                    </tr>
-                  </tbody>
-                </table>
-              </div>
-            )}
             {sidebarMode === "edgeProps" && (
               <div className="space-y-6">
                 {/* Cancelled Tasks Sidebar Content */}
@@ -1393,12 +1216,6 @@ const SimDashboard = () => {
                 <p> from: {selectedEdge.source}</p>
                 <p> to: {selectedEdge.target}</p>
                 <p>type: {selectedEdge.data.properties.connectionType}</p>
-              </div>
-            )}
-            {sidebarMode === "dndtemplates" && (
-              <div className="space-y-6">
-                {/* Drag and Drop Templates */}
-                {/* <SidebarTemplates /> */}
               </div>
             )}
             {sidebarMode === "IOT" && (
@@ -1471,67 +1288,6 @@ const SimDashboard = () => {
                     </div>
                   </div>
                 )}
-              </div>
-            )}
-            {sidebarMode === "missedTasks" && (
-              <div className="space-y-6">
-                {/* Missed Tasks Sidebar Content */}
-                <table className="w-full text-left border-collapse">
-                  <thead>
-                    <tr className="border-b">
-                      <th className="px-4 py-2 text-sm font-semibold text-gray-700">
-                        Task ID
-                      </th>
-                      <th className="px-4 py-2 text-sm font-semibold text-gray-700">
-                        Type
-                      </th>
-                      <th className="px-4 py-2 text-sm font-semibold text-gray-700">
-                        Assigned Machine
-                      </th>
-                      <th className="px-4 py-2 text-sm font-semibold text-gray-700">
-                        Arrival Time
-                      </th>
-                      <th className="px-4 py-2 text-sm font-semibold text-gray-700">
-                        Start Time
-                      </th>
-                      <th className="px-4 py-2 text-sm font-semibold text-gray-700">
-                        Missed Time
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {missedTasks.length === 0 ? (
-                      <tr>
-                        <td
-                          colSpan="7"
-                          className="px-4 py-2 text-sm text-gray-500 text-center"
-                        >
-                          No missed tasks.
-                        </td>
-                      </tr>
-                    ) : (
-                      missedTasks.map((task, index) => (
-                        <tr key={`missed-task-${task.taskId}-${index}`}>
-                          <td className="px-4 py-2 border">{task.taskId}</td>
-                          <td className="px-4 py-2 border">{task.task_type}</td>
-                          <td className="px-4 py-2 border">
-                            {task.assigned_machine ?? "N/A"}
-                          </td>
-                          <td className="px-4 py-2 border">
-                            {task.arrival_time}
-                          </td>
-                          <td className="px-4 py-2 border">
-                            {task.start ?? "N/A"}
-                          </td>
-                          <td className="px-4 py-2 border">
-                            {task.deadline ?? "N/A"}
-                          </td>
-                          <td className="px-4 py-2 border">{task.status}</td>
-                        </tr>
-                      ))
-                    )}
-                  </tbody>
-                </table>
               </div>
             )}
           </motion.div>
