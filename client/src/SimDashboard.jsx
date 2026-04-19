@@ -1056,32 +1056,6 @@ const SimDashboard = () => {
                   </button>
                 </Panel>
               )}
-
-              {/* Cancelled Tasks Panel - Bottom Left */}
-              <Panel position="bottom-left">
-                <div
-                  className="flex flex-col items-center cursor-pointer hover:scale-105 transition bg-white rounded-lg shadow-lg p-4"
-                  onClick={() => openSidebar("cancelledTasks")}
-                >
-                  <TrashIcon className="w-10 h-10 text-red-600" />
-                  <span className="text-gray-800 text-sm font-semibold mt-2">
-                    Cancelled Tasks
-                  </span>
-                </div>
-              </Panel>
-
-              {/* Missed Tasks Panel - Bottom Right */}
-              <Panel position="bottom-right">
-                <div
-                  className="flex flex-col items-center cursor-pointer hover:scale-105 transition bg-white rounded-lg shadow-lg p-4"
-                  onClick={() => openSidebar("missedTasks")}
-                >
-                  <TrashIcon className="w-10 h-10 text-orange-600" />
-                  <span className="text-gray-800 text-sm font-semibold mt-2">
-                    Missed Tasks
-                  </span>
-                </div>
-              </Panel>
             </ReactFlow>
           </div>
           <Sidebar setNodes={setNodes} />
