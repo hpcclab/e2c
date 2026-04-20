@@ -71,8 +71,9 @@ export default function Task({ task, setSelectedTask }) {
     data_size: String(task.data_size),
     arrival_time: String(task.arrival_time),
     deadline: String(task.deadline),
-    start: String(task.start),
-    end: String(task.end),
+    start_time: String(task.start_time),
+    end_time: String(task.end_time),
+    missed_time: String(task.missed_time),
     status: String(task.status),
   };
 

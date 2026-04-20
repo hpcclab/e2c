@@ -43,6 +43,8 @@ import LBNode from "./components/LBNode";
 import QueueNode from "./components/QueueNode";
 import SaveLoadPanel from "./components/SaveLoadPanel";
 import AnimatedEdge from "./components/AnimatedEdge";
+import { FCFS } from "./schedulers/FCFS";
+
 const edgeTypes = {
   packet: AnimatedEdge,
 };
@@ -240,6 +242,30 @@ const SimDashboard = () => {
 
   // State assignments and functions
   // - Load balancer handlers
+  const schedulerRef = useRef(null);
+
+  useEffect(() => {
+    schedulerRef.current = new FCFS({
+      machines,
+      iot,
+      enqueue,
+      dequeue,
+      isNeighbors,
+      config: { LB_ID },
+    });
+  }, []);
+  useEffect(() => {
+    if (!schedulerRef.current) return;
+
+    const scheduler = schedulerRef.current;
+
+    batchQ.queue.forEach((task) => {
+      scheduler.addTask(task);
+    });
+
+    // Clear original queue so tasks aren't duplicated
+    batchQ.queue = [];
+  }, [batchQ.queue]);
 
   // End EET Parse
 
@@ -260,8 +286,8 @@ const SimDashboard = () => {
     data_size: "",
     arrival_time: "",
     deadline: "",
-    start: "",
-    end: "",
+    start_time: "",
+    end_time: "",
     status: "",
   });
   const [metricParams, setMetricParams] = useState({
@@ -376,8 +402,8 @@ const SimDashboard = () => {
       data_size: selectedTask.data_size,
       arrival_time: selectedTask.arrival_time,
       deadline: selectedTask.deadline,
-      start: selectedTask.start,
-      end: selectedTask.end,
+      start_time: selectedTask.start_time,
+      end_time: selectedTask.end_time,
       status: selectedTask.status,
     }));
   }, [selectedTask]);
@@ -741,18 +767,10 @@ const SimDashboard = () => {
 
   /*queue fns */
   const enqueue = useCallback(
-    (targetId, sender, LB = false, LB_ID = "LBNode_2") => {
-      // TODO fix hard coded LB id
-      // const job = sender?.queue?.shift();
+    (targetId, sender) => {
       const job = sender;
-      console.log(job);
+      // job.id = task_counter;
       if (!job) return;
-      // if (LB) {
-      //   startAnimation(`e-${sender.id}-${LB_ID}`);
-      //   startAnimation(`e-${LB_ID}-${targetId}`);
-      // } else {
-      //   startAnimation(`e-${sender}-${targetId}`);
-      // }
       setMachines((prevMachines) =>
         prevMachines.map((machine) =>
           machine.id === targetId
@@ -762,67 +780,8 @@ const SimDashboard = () => {
       );
       return;
     },
-    [setEdges, setMachines],
+    [setMachines],
   );
-  // Cleanup interval on unmount
-  useEffect(() => {
-    return () => {
-      if (simulationIntervalRef.current) {
-        clearInterval(simulationIntervalRef.current);
-      }
-    };
-  }, []);
-
-  // Update Machines
-  useEffect(() => {
-    // TODO get policy
-    // based on batch Q run policy
-    // for example first-come-first-served hard coded. FIXME
-    if (!isRunning) {
-      setTask_counter(0);
-      setMachine_index(0);
-      setIot_index(0);
-      return;
-    }
-
-    if (!batchQ.queue.length) return;
-    if (!taskLoaded) {
-      setTask(batchQ.queue[task_counter % batchQ.queue.length]);
-      setTask_counter(task_counter + 1);
-      task.id = task_counter; // unique id for tracking animation
-      setTaskLoaded(true);
-    }
-
-    if (task_counter >= batchQ.queue.length && taskLoaded) {
-      task.arrival_time += simulationTime;
-      task.deadline += simulationTime;
-    }
-
-    if (taskLoaded && simulationTime >= task.arrival_time) {
-      machine_count = machines.length;
-      setMachine_index((prev_machine_index + 1) % machine_count);
-      setPrev_machine_index(machine_index);
-      setIot_index(
-        iot.findIndex((m) => m.properties?.task_type == task.task_type),
-      );
-      let sender = task;
-      const mecha = machines[machine_index].id;
-      const iotSrc = iot[iot_index];
-
-      const iID = `nd_${iotSrc.id}`;
-      if (isNeighbors(iID, mecha)) {
-        enqueue(mecha, sender, true, LB_ID);
-      }
-
-      setTaskLoaded(false);
-    }
-
-    machines.forEach((m) => {
-      if (!m.queue?.length) return;
-      let task_life = simulationTime - m.queue[0].arrival_time;
-      if (task_life >= m.eet?.[task.task_type]) dequeue(m.id);
-    });
-  }, [simulationTime, isRunning]);
   const dequeue = useCallback(
     (machineId) => {
       setMachines((prevMachines) =>
@@ -838,6 +797,36 @@ const SimDashboard = () => {
     },
     [setMachines],
   );
+  // Cleanup interval on unmount
+  useEffect(() => {
+    return () => {
+      if (simulationIntervalRef.current) {
+        clearInterval(simulationIntervalRef.current);
+      }
+    };
+  }, []);
+
+  // Update schedular
+  useEffect(() => {
+    if (!isRunning || !schedulerRef.current) {
+      setTask_counter(0);
+      return;
+    }
+
+    const scheduler = schedulerRef.current;
+
+    // Sync simulation time
+    scheduler.setTime(simulationTime);
+    scheduler.setMachines(machines);
+    scheduler.setIot(iot);
+
+    // Run ONE scheduling step
+    scheduler.schedule();
+
+    // Process running tasks (completion)
+    scheduler.processMachines();
+  }, [simulationTime, isRunning]);
+
   // /* -------------------- WORKSPACE, EDGE, MACHINE, and IOT NODES -------------------- */
   useEffect(() => {
     setNodes((prev) => {
@@ -944,22 +933,35 @@ const SimDashboard = () => {
           <Sidebar setNodes={setNodes} />
         </div>
         <div className="absolute bottom-8 left-1/2 transform -translate-x-1/2 z-10">
-          <div className="flex space-x-4 bg-white rounded-full shadow-lg px-6 py-3">
-            <button
-              className="bg-gray-400 hover:bg-gray-500 text-white rounded-full w-12 h-12 flex items-center justify-center transition"
-              onClick={handleResetSim}
-            >
-              ⟲
-            </button>
-            <button
-              onClick={runDataSimulation}
-              className="bg-green-600 hover:bg-green-700 text-white rounded-full w-12 h-12 flex items-center justify-center transition shadow-md"
-            >
-              ▶
-            </button>
-            <button className="bg-gray-400 hover:bg-gray-500 text-white rounded-full w-12 h-12 flex items-center justify-center transition">
-              ⏸
-            </button>
+          <div className="flex flex-col gap-1">
+            {isRunning ? (
+              <div className="bg-white rounded-full shadow-lg px-6 py-3">
+                <h3 className="text-xl font-bold text-gray-800 bg-white">
+                  Sim Time: {simulationTime.toFixed(2)} seconds
+                </h3>
+              </div>
+            ) : (
+              ""
+            )}
+            <div className="flex justify-between space-x-4 bg-white rounded-full shadow-lg px-6 py-3">
+              <>
+                <button
+                  className="bg-gray-400 hover:bg-gray-500 text-white rounded-full w-12 h-12 flex items-center justify-center transition"
+                  onClick={handleResetSim}
+                >
+                  ⟲
+                </button>
+                <button
+                  onClick={runDataSimulation}
+                  className="bg-green-600 hover:bg-green-700 text-white rounded-full w-12 h-12 flex items-center justify-center transition shadow-md"
+                >
+                  ▶
+                </button>
+                <button className="bg-gray-400 hover:bg-gray-500 text-white rounded-full w-12 h-12 flex items-center justify-center transition">
+                  ⏸
+                </button>
+              </>
+            </div>
           </div>
         </div>
       </div>
@@ -1146,6 +1148,9 @@ const SimDashboard = () => {
                           Type
                         </th>
                         <th className="px-4 py-2 text-sm font-semibold text-gray-700">
+                          Status
+                        </th>
+                        <th className="px-4 py-2 text-sm font-semibold text-gray-700">
                           Assigned Machine
                         </th>
                         <th className="px-4 py-2 text-sm font-semibold text-gray-700">
@@ -1155,7 +1160,10 @@ const SimDashboard = () => {
                           Start Time
                         </th>
                         <th className="px-4 py-2 text-sm font-semibold text-gray-700">
-                          Missed Time
+                          End Time
+                        </th>
+                        <th className="px-4 py-2 text-sm font-semibold text-gray-700">
+                          Deadline
                         </th>
                       </tr>
                     </thead>
@@ -1163,10 +1171,12 @@ const SimDashboard = () => {
                       {[
                         "ID",
                         "task_type",
+                        "status",
                         "assigned_machine",
                         "arrival_time",
-                        "start",
-                        "missed_time",
+                        "start_time",
+                        "end_time",
+                        "deadline",
                       ].map((key, index) => (
                         <td
                           key={`task-param-${key}-${index}`}
