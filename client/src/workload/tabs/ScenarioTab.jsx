@@ -91,6 +91,10 @@ export function generateWorkload(scenarioRows, taskTypes, seedOffset = 0) {
         arrival_time,
         distribution: row.distribution,
         data_size: dataSizes[i],
+        status: "NEW",
+        deadline: arrival_time + 30 + typeObj?.slack,
+        start_time: arrival_time,
+        end_time: 0,
       });
     });
   });

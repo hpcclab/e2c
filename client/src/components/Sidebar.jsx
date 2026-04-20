@@ -646,7 +646,7 @@ export default function Sidebar() {
         </div>
 
         <div className="sb-section">
-          <div className="sb-section-label">Infrastructure</div>
+          {/* <div className="sb-section-label">Infrastructure</div>
           <div className="sb-node-list">
             {NODE_CONFIG.slice(0, 2).map((cfg) => (
               <DraggableNode
@@ -657,7 +657,7 @@ export default function Sidebar() {
             ))}
           </div>
 
-          <div className="sb-divider" />
+          <div className="sb-divider" /> */}
 
           <div className="sb-section-label">Compute</div>
           <div className="sb-node-list">
