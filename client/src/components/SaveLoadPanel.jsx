@@ -3,7 +3,17 @@ import { Panel } from "@xyflow/react";
 import Modal from "react-modal";
 import { useGlobalState } from "../context/GlobalStates";
 import { useReactFlow } from "@xyflow/react";
-import axios from "axios";
+import * as localStore from "../utils/localStore";
+import { VscFiles } from "react-icons/vsc";
+import {
+  MdDriveFileRenameOutline,
+  MdDeleteOutline,
+  MdSave,
+  MdSaveAs,
+  MdClose,
+  MdUploadFile,
+  MdDownload,
+} from "react-icons/md";
 import "../assets/saveload.css";
 import { colorMemory } from "./Task";
 
@@ -18,10 +28,8 @@ export default function FlowSaveLoadPanel() {
     iot,
     setMachines,
     setIot,
-    setBatchQ,
     handleProfilingUpload,
     handleWorkloadUpload,
-    handleConfigUpload,
     workloadFileName,
     profilingFileName,
     configFileName,
@@ -41,17 +49,25 @@ export default function FlowSaveLoadPanel() {
   const [selectedFile, setSelectedFile] = useState("");
   const [newFileName, setNewFileName] = useState("");
   const [dragging, setDragging] = useState(false);
+  const [status, setStatus] = useState(null); // { msg, error }
+  const statusTimer = useRef(null);
   const [modalPosition, setModalPosition] = useState({
-    top: 50,
+    top: 100,
     left: window.innerWidth / 2 - 250,
   });
   const dragStartPos = useRef({ x: 0, y: 0 });
 
+  const notify = (msg, error = false) => {
+    clearTimeout(statusTimer.current);
+    setStatus({ msg, error });
+    statusTimer.current = setTimeout(() => setStatus(null), 2000);
+  };
+
   // Fetch existing files
   const fetchFiles = async () => {
     try {
-      const res = await axios.get("http://localhost:5001/flow/list_states");
-      setFiles(res.data.files || []);
+      const keys = await localStore.listStates();
+      setFiles(keys);
     } catch (err) {
       console.error("Error fetching files:", err);
     }
@@ -67,7 +83,7 @@ export default function FlowSaveLoadPanel() {
   // Save / Save As
   const saveAs = async () => {
     const filename = newFileName.trim();
-    if (!filename) return alert("Enter a filename");
+    if (!filename) return notify("Enter a filename", true);
 
     const fileWithExtension = filename.toLowerCase().endsWith(".json")
       ? filename
@@ -77,8 +93,7 @@ export default function FlowSaveLoadPanel() {
       if (!machineConfig) {
         generateMachineConfig(machines, taskTypes);
       }
-      //
-      const res = await axios.post("http://localhost:5001/flow/save_as", {
+      await localStore.saveAs(fileWithExtension, {
         nodes,
         edges,
         machines,
@@ -92,22 +107,21 @@ export default function FlowSaveLoadPanel() {
         colorMemory,
         filename: fileWithExtension,
       });
-      alert(res.data.message || res.data.error);
+      notify("Saved!");
       fetchFiles();
       setNewFileName("");
     } catch (err) {
-      alert(err.response?.data?.error || "Network Error: " + err.message);
+      notify("Save failed: " + err.message, true);
     }
   };
 
   const save = async () => {
-    if (!selectedFile) return alert("Select a file to save");
+    if (!selectedFile) return notify("Select a file to save", true);
     try {
       if (!machineConfig) {
         generateMachineConfig(machines, taskTypes);
       }
-      //
-      const res = await axios.post("http://localhost:5001/flow/save_state", {
+      await localStore.saveState(selectedFile, {
         nodes,
         edges,
         machines,
@@ -121,43 +135,35 @@ export default function FlowSaveLoadPanel() {
         colorMemory,
         filename: selectedFile,
       });
-      alert(res.data.message || res.data.error);
+      notify("Saved!");
       fetchFiles();
     } catch (err) {
-      alert(err.response?.data?.error || "Network Error: " + err.message);
+      notify("Save failed: " + err.message, true);
     }
   };
 
   // Load
   const load = async (file) => {
     try {
-      const res = await axios.post("http://localhost:5001/flow/load_state", {
-        filename: file,
-      });
+      const data = await localStore.loadState(file);
 
-      if (res.data.data) {
-        const loadedMachines = res.data.data.machines || [];
-        const loadedIots = res.data.data.iot || [];
-        const loadedEdges = res.data.data.edges || [];
-        const loadedNodes = res.data.data.nodes || [];
-        const loadedWorkloadFileName = res.data.data.workloadFileName || [];
-        const loadedProfilingFileName = res.data.data.profilingFileName || [];
-        const loadedConfigFileName = res.data.data.configFileName || [];
-        const loadedMachineConfig = res.data.data.machineConfig || [];
-        const loadedTaskTypes = res.data.data.taskTypes || [];
-        const loadedScenarioRows = res.data.data.scenarioRows || [];
-        const loadedcolorMemory = res.data.data.colorMemory || [];
-
-        // upload files
-
+      if (data) {
+        const loadedMachines = data.machines || [];
+        const loadedIots = data.iot || [];
+        const loadedEdges = data.edges || [];
+        const loadedNodes = data.nodes || [];
+        const loadedWorkloadFileName = data.workloadFileName || [];
+        const loadedProfilingFileName = data.profilingFileName || [];
+        const loadedMachineConfig = data.machineConfig || [];
+        const loadedTaskTypes = data.taskTypes || [];
+        const loadedScenarioRows = data.scenarioRows || [];
+        const loadedcolorMemory = data.colorMemory || [];
         if (loadedWorkloadFileName?.length) {
           handleWorkloadUpload(loadedWorkloadFileName[0]);
-          // setWorkloadFileUploaded(true);
         }
 
         if (loadedProfilingFileName?.length) {
           handleProfilingUpload(loadedProfilingFileName[0]);
-          // setProfilingFileUploaded(true);
         }
 
         // Separate other nodes (non-machine / non-iot)
@@ -187,7 +193,7 @@ export default function FlowSaveLoadPanel() {
         setEdges(loadedEdges);
         setMachines(loadedMachines);
         setIot(loadedIots);
-        alert(res.data.message || "Flow loaded successfully!");
+        notify("Loaded!");
         fetchFiles();
 
         // load task colors:
@@ -195,10 +201,10 @@ export default function FlowSaveLoadPanel() {
         fitView({ padding: 0.5, duration: 600, interpolate: "smooth" });
         window.dispatchEvent(new Event("taskColorChanged"));
       } else {
-        alert("No data found in file.");
+        notify("No data found in file.", true);
       }
     } catch (err) {
-      alert(err.response?.data?.error || "Network Error: " + err.message);
+      notify("Load failed: " + err.message, true);
     }
   };
 
@@ -209,7 +215,7 @@ export default function FlowSaveLoadPanel() {
     if (!file) return;
 
     const reader = new FileReader();
-    reader.onload = (event) => {
+    reader.onload = async (event) => {
       try {
         const data = JSON.parse(event.target.result);
         if (data.machines && data.iot && data.edges) {
@@ -237,14 +243,15 @@ export default function FlowSaveLoadPanel() {
           setMachines(data.machines);
           setIot(data.iot);
 
-          alert("File loaded successfully!");
+          await localStore.saveAs(file.name, data);
+          notify("Loaded and saved!");
           closeModal();
           fetchFiles();
         } else {
-          alert("Invalid file format!");
+          notify("Invalid file format.", true);
         }
       } catch (err) {
-        alert("Error parsing file: " + err.message);
+        notify("Error parsing file: " + err.message, true);
       }
     };
     reader.readAsText(file);
@@ -270,36 +277,63 @@ export default function FlowSaveLoadPanel() {
   // Rename / Delete
   const renameFile = async () => {
     if (!selectedFile || !newFileName.trim())
-      return alert("Select file and enter new name");
+      return notify("Select a file and enter a new name", true);
 
     let newName = newFileName.trim();
     if (!newName.toLowerCase().endsWith(".json")) newName += ".json";
 
     try {
-      const res = await axios.post("http://localhost:5001/flow/rename_state", {
-        old_name: selectedFile,
-        new_name: newName,
-      });
-      alert(res.data.message || res.data.error);
+      await localStore.renameState(selectedFile, newName);
+      notify("Renamed!");
       fetchFiles();
       setSelectedFile("");
       setNewFileName("");
     } catch (err) {
-      alert(err.response?.data?.error || "Network Error: " + err.message);
+      notify("Rename failed: " + err.message, true);
     }
   };
 
+  const triggerDownload = (filename, data) => {
+    const blob = new Blob([JSON.stringify(data, null, 2)], {
+      type: "application/json",
+    });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = filename;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const exportWorkspace = () => {
+    const filename = (newFileName.trim() || "workspace") + ".json";
+    triggerDownload(filename, {
+      nodes,
+      edges,
+      machines,
+      iot,
+      taskTypes,
+      scenarioRows,
+      machineConfig,
+    });
+    notify("Exported!");
+  };
+
+  const exportSaved = async (file, e) => {
+    e.stopPropagation();
+    const data = await localStore.loadState(file);
+    if (data) triggerDownload(file, data);
+  };
+
   const deleteFile = async () => {
-    if (!selectedFile) return alert("Select a file to delete");
+    if (!selectedFile) return notify("Select a file to delete", true);
     try {
-      const res = await axios.post("http://localhost:5001/flow/delete_state", {
-        filename: selectedFile,
-      });
-      alert(res.data.message || res.data.error);
+      await localStore.deleteState(selectedFile);
+      notify("Deleted!");
       fetchFiles();
       setSelectedFile("");
     } catch (err) {
-      alert(err.response?.data?.error || "Network Error: " + err.message);
+      notify("Delete failed: " + err.message, true);
     }
   };
 
@@ -307,11 +341,14 @@ export default function FlowSaveLoadPanel() {
   return (
     <>
       <Panel position="top-left">
-        <div className="xy-theme__button-group">
-          <button className="xy-theme__button" onClick={openModal}>
-            Open Save/Load
-          </button>
-        </div>
+        <button
+          onClick={openModal}
+          title="Save / Load"
+          className="xy-theme__button"
+          style={{ padding: "6px 8px", display: "flex", alignItems: "center" }}
+        >
+          <VscFiles size={32} />
+        </button>
       </Panel>
 
       <Modal
@@ -325,12 +362,13 @@ export default function FlowSaveLoadPanel() {
             top: modalPosition.top,
             left: modalPosition.left,
             transform: "none",
-            width: "500px",
-            maxHeight: "80vh",
+            width: "560px",
+            maxHeight: "85vh",
             padding: "0",
           },
         }}
       >
+        {/* Header */}
         <div
           className="modal-header"
           onMouseDown={startDrag}
@@ -338,15 +376,29 @@ export default function FlowSaveLoadPanel() {
           onMouseUp={stopDrag}
           onMouseLeave={stopDrag}
         >
-          <h2>React Flow States</h2>
+          <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+            <VscFiles size={16} />
+            <span>Saved States</span>
+          </div>
           <button className="close-btn" onClick={closeModal}>
-            ×
+            <MdClose size={18} />
           </button>
         </div>
 
         <div className="modal-body">
-          <div className="file-section">
-            <h3>Existing Files</h3>
+          {status && (
+            <div
+              className={`status-bar ${status.error ? "status-error" : "status-ok"}`}
+            >
+              {status.msg}
+            </div>
+          )}
+
+          {/* File list */}
+          <p className="section-label">Saved workspaces</p>
+          {files.length === 0 ? (
+            <p className="empty-state">No saved states yet.</p>
+          ) : (
             <ul className="file-list">
               {files.map((file) => (
                 <li
@@ -354,41 +406,99 @@ export default function FlowSaveLoadPanel() {
                   className={selectedFile === file ? "selected" : ""}
                   onClick={() => setSelectedFile(file)}
                 >
-                  {file}
-                  <button className="file-btn" onClick={() => load(file)}>
-                    Load
-                  </button>
+                  <span className="file-name">
+                    <VscFiles
+                      size={13}
+                      style={{ flexShrink: 0, opacity: 0.6 }}
+                    />
+                    {file}
+                  </span>
+                  <div style={{ display: "flex", gap: "5px", flexShrink: 0 }}>
+                    <button
+                      className="file-btn"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        load(file);
+                      }}
+                    >
+                      Load
+                    </button>
+                    <button
+                      className="file-btn file-btn-export"
+                      onClick={(e) => exportSaved(file, e)}
+                      title="Download as file"
+                    >
+                      <MdDownload size={13} />
+                    </button>
+                  </div>
                 </li>
               ))}
             </ul>
+          )}
+
+          {/* Actions */}
+          <p className="section-label" style={{ marginTop: "16px" }}>
+            Actions
+          </p>
+          <input
+            className="filename-input"
+            type="text"
+            placeholder="Filename (e.g. my-workspace)"
+            value={newFileName}
+            onChange={(e) => setNewFileName(e.target.value)}
+          />
+          <div className="btn-group">
+            <button
+              className="action-btn btn-saveas"
+              onClick={saveAs}
+              title="Save as new file"
+            >
+              <MdSaveAs size={14} /> Save As
+            </button>
+            <button
+              className="action-btn btn-save"
+              onClick={save}
+              title="Save to selected file"
+            >
+              <MdSave size={14} /> Overwrite Save
+            </button>
+            <button
+              className="action-btn btn-rename"
+              onClick={renameFile}
+              title="Rename selected file"
+            >
+              <MdDriveFileRenameOutline size={14} /> Rename
+            </button>
+            <button
+              className="action-btn btn-delete"
+              onClick={deleteFile}
+              title="Delete selected file"
+            >
+              <MdDeleteOutline size={14} /> Delete
+            </button>
           </div>
 
-          <div className="save-section">
-            <h3>Save / Save As / Rename / Delete</h3>
-            <input
-              type="text"
-              placeholder="Enter filename"
-              value={newFileName}
-              onChange={(e) => setNewFileName(e.target.value)}
-            />
-            <div className="btn-group">
-              <button className="save-btn" onClick={save}>
-                Save
-              </button>
-              <button className="save-btn" onClick={saveAs}>
-                Save As
-              </button>
-              <button className="rename-btn" onClick={renameFile}>
-                Rename Selected
-              </button>
-              <button className="delete-btn" onClick={deleteFile}>
-                Delete Selected
-              </button>
-            </div>
-          </div>
+          {/* Export */}
+          <p className="section-label" style={{ marginTop: "16px" }}>
+            Export
+          </p>
+          <button
+            className="action-btn btn-export"
+            onClick={exportWorkspace}
+            style={{ width: "100%" }}
+          >
+            <MdDownload size={14} /> Download workspace as .json
+          </button>
 
-          <div className="drop-zone" onDrop={handleDrop} onDragOver={allowDrop}>
-            Drag & Drop a saved flow JSON file here to load
+          {/* Drop zone */}
+          <div
+            className="drop-zone"
+            onDrop={handleDrop}
+            onDragOver={allowDrop}
+            style={{ marginTop: "12px" }}
+          >
+            <MdUploadFile size={22} style={{ opacity: 0.4 }} />
+            <span>Drop a JSON state file to load</span>
           </div>
         </div>
       </Modal>

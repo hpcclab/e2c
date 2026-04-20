@@ -1,0 +1,337 @@
+{
+  "nodes": [
+    {
+      "data": {},
+      "dragging": false,
+      "id": "LBNode_0",
+      "measured": {
+        "height": 122,
+        "width": 122
+      },
+      "position": {
+        "x": 287.9430408627817,
+        "y": 140.3105499055053
+      },
+      "selected": false,
+      "type": "LBNode"
+    },
+    {
+      "id": "nd_1776241866164",
+      "type": "iotNode",
+      "data": {
+        "iot": {
+          "id": 1776241866164,
+          "name": "Camera",
+          "icon": "MdVideocam",
+          "queue": [],
+          "properties": {
+            "task_type": "top_cam",
+            "dataInput": "default",
+            "meanSize": 6,
+            "urgency": "BestEffort",
+            "slack": 0,
+            "numTasks": 10,
+            "startTime": 0,
+            "endTime": 30,
+            "distribution": "uniform",
+            "deviceRole": "sensor",
+            "frequency": 0,
+            "connectivity": "WiFi",
+            "energySource": "Wired",
+            "taskColor": "Rose"
+          }
+        }
+      },
+      "position": {
+        "x": 0,
+        "y": 80
+      },
+      "draggable": true,
+      "measured": {
+        "width": 102,
+        "height": 102
+      }
+    },
+    {
+      "id": "nd_1776295547237",
+      "type": "iotNode",
+      "data": {
+        "iot": {
+          "id": 1776295547237,
+          "name": "Camera",
+          "properties": {
+            "task_type": "bottom_cam",
+            "dataInput": "default",
+            "meanSize": 6,
+            "urgency": "BestEffort",
+            "slack": 0,
+            "numTasks": 10,
+            "startTime": 0,
+            "endTime": 30,
+            "distribution": "uniform",
+            "deviceRole": "sensor",
+            "frequency": 0,
+            "connectivity": "WiFi",
+            "energySource": "Wired",
+            "taskColor": "Teal"
+          },
+          "queue": [],
+          "icon": "MdVideocam"
+        }
+      },
+      "position": {
+        "x": 0,
+        "y": 230
+      },
+      "draggable": true,
+      "measured": {
+        "width": 102,
+        "height": 102
+      }
+    },
+    {
+      "id": "1776241867131",
+      "type": "machineNode",
+      "data": {
+        "machine": {
+          "id": 1776241867131,
+          "name": "ARM",
+          "icon": "MdDeveloperBoard",
+          "power": 5,
+          "idle_power": 1,
+          "replicas": 1,
+          "price": 0.5,
+          "cost": 0,
+          "utilization_time": 0,
+          "total_cost": 0,
+          "total_tasks": 0,
+          "eet": {
+            "IOT 6164": "100",
+            "IOT 7237": "",
+            "top_cam": "10",
+            "bottom_cam": "10"
+          }
+        }
+      },
+      "position": {
+        "x": 600,
+        "y": 80
+      },
+      "draggable": true,
+      "measured": {
+        "width": 386,
+        "height": 108
+      }
+    },
+    {
+      "id": "1776241868276",
+      "type": "machineNode",
+      "data": {
+        "machine": {
+          "id": 1776241868276,
+          "name": "GPU",
+          "icon": "MdMemory",
+          "power": 10,
+          "idle_power": 2,
+          "replicas": 1,
+          "price": 1,
+          "cost": 0,
+          "utilization_time": 0,
+          "total_cost": 0,
+          "total_tasks": 0,
+          "eet": {
+            "IOT 6164": "100",
+            "IOT 7237": "",
+            "top_cam": "5",
+            "bottom_cam": "5"
+          }
+        }
+      },
+      "position": {
+        "x": 600,
+        "y": 230
+      },
+      "draggable": true,
+      "measured": {
+        "width": 386,
+        "height": 108
+      }
+    }
+  ],
+  "edges": [
+    {
+      "data": {
+        "properties": {
+          "connectionType": "LAN"
+        }
+      },
+      "id": "e-nd_1776241866164-LBNode_0",
+      "source": "nd_1776241866164",
+      "target": "LBNode_0",
+      "type": "packet"
+    },
+    {
+      "data": {
+        "properties": {
+          "connectionType": "LAN"
+        }
+      },
+      "id": "e-LBNode_0-1776241867131",
+      "source": "LBNode_0",
+      "target": "1776241867131",
+      "type": "packet"
+    },
+    {
+      "data": {
+        "properties": {
+          "connectionType": "LAN"
+        }
+      },
+      "id": "e-LBNode_0-1776241868276",
+      "source": "LBNode_0",
+      "target": "1776241868276",
+      "type": "packet"
+    },
+    {
+      "source": "nd_1776295547237",
+      "target": "LBNode_0",
+      "id": "e-nd_1776295547237-LBNode_0",
+      "type": "packet",
+      "data": {
+        "properties": {
+          "connectionType": "LAN"
+        }
+      }
+    }
+  ],
+  "machines": [
+    {
+      "id": 1776241867131,
+      "name": "ARM",
+      "icon": "MdDeveloperBoard",
+      "power": 5,
+      "idle_power": 1,
+      "replicas": 1,
+      "price": 0.5,
+      "cost": 0,
+      "utilization_time": 0,
+      "total_cost": 0,
+      "total_tasks": 0,
+      "eet": {
+        "IOT 6164": "100",
+        "IOT 7237": "",
+        "top_cam": "10",
+        "bottom_cam": "10"
+      }
+    },
+    {
+      "id": 1776241868276,
+      "name": "GPU",
+      "icon": "MdMemory",
+      "power": 10,
+      "idle_power": 2,
+      "replicas": 1,
+      "price": 1,
+      "cost": 0,
+      "utilization_time": 0,
+      "total_cost": 0,
+      "total_tasks": 0,
+      "eet": {
+        "IOT 6164": "100",
+        "IOT 7237": "",
+        "top_cam": "5",
+        "bottom_cam": "5"
+      }
+    }
+  ],
+  "iot": [
+    {
+      "id": 1776241866164,
+      "name": "Camera",
+      "icon": "MdVideocam",
+      "queue": [],
+      "properties": {
+        "task_type": "top_cam",
+        "dataInput": "default",
+        "meanSize": 6,
+        "urgency": "BestEffort",
+        "slack": 0,
+        "numTasks": 10,
+        "startTime": 0,
+        "endTime": 30,
+        "distribution": "uniform",
+        "deviceRole": "sensor",
+        "frequency": 0,
+        "connectivity": "WiFi",
+        "energySource": "Wired",
+        "taskColor": "Rose"
+      }
+    },
+    {
+      "id": 1776295547237,
+      "name": "Camera",
+      "properties": {
+        "task_type": "bottom_cam",
+        "dataInput": "default",
+        "meanSize": 6,
+        "urgency": "BestEffort",
+        "slack": 0,
+        "numTasks": 10,
+        "startTime": 0,
+        "endTime": 30,
+        "distribution": "uniform",
+        "deviceRole": "sensor",
+        "frequency": 0,
+        "connectivity": "WiFi",
+        "energySource": "Wired",
+        "taskColor": "Teal"
+      },
+      "queue": [],
+      "icon": "MdVideocam"
+    }
+  ],
+  "workloadFileName": "",
+  "profilingFileName": "",
+  "configFileName": "",
+  "machineConfig": [],
+  "taskTypes": [
+    {
+      "srcID": 1776241866164,
+      "name": "Camera",
+      "dataInput": "default",
+      "meanSize": 6,
+      "urgency": "BestEffort",
+      "slack": 0
+    },
+    {
+      "srcID": 1776295547237,
+      "name": "Camera",
+      "dataInput": "default",
+      "meanSize": 6,
+      "urgency": "BestEffort",
+      "slack": 0
+    }
+  ],
+  "scenarioRows": [
+    {
+      "srcID": 1776241866164,
+      "taskType": "top_cam",
+      "numTasks": 10,
+      "startTime": 0,
+      "endTime": 30,
+      "distribution": "uniform"
+    },
+    {
+      "srcID": 1776295547237,
+      "taskType": "bottom_cam",
+      "numTasks": 10,
+      "startTime": 0,
+      "endTime": 30,
+      "distribution": "uniform"
+    }
+  ],
+  "colorMemory": {
+    "IOT 7237": 2,
+    "IOT 6164": 5
+  }
+}

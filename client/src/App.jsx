@@ -3,6 +3,7 @@ import { BrowserRouter as Router, Routes, Route, Link } from "react-router-dom";
 import SimDashboard from "./SimDashboard";
 import "./assets/index.css";
 import WorkloadGenerator from "./WorkloadGenerator";
+import Reports from "./Reports";
 
 const App = () => {
   return (
@@ -23,8 +24,8 @@ const App = () => {
                 </Link>
               </li>
               <li>
-                <Link to="/e2c/generate" className="hover:underline">
-                  Workload Generator
+                <Link to="/e2c/reports" className="hover:underline">
+                  Reports
                 </Link>
               </li>
             </ul>
@@ -35,7 +36,7 @@ const App = () => {
           <Routes>
             <Route path="/e2c" element={<Home />} />
             <Route path="/e2c/simulate" element={<SimDashboard />} />
-            <Route path="/e2c/generate" element={<WorkloadGenerator />} />
+            <Route path="/e2c/reports" element={<Reports />} />
           </Routes>
         </main>
       </div>
@@ -44,9 +45,9 @@ const App = () => {
 };
 
 const Home = () => (
-  <div className="max-w-4xl mx-auto bg-white rounded-2xl shadow p-10">
+  <div className="max-w-4xl h-screen mx-auto bg-white rounded-2xl shadow p-10">
     <h2 className="text-4xl font-bold text-gray-800 mb-4">
-      Welcome to E2C-Revamp
+      Welcome To E2C By The HPCC Lab
     </h2>
     <p className="text-lg text-gray-700">Try our Sim!</p>
   </div>

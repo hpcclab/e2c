@@ -97,6 +97,10 @@ export const GlobalProvider = ({ children }) => {
   const [sidebarMode, setSidebarMode] = useState(null);
   const [edges, setEdges, onEdgesChange] = useEdgesState([]);
   const [menu, setMenu] = useState(null);
+  const [dataResults, setDataResults] = useState([]);
+  const [missedTasks, setMissedTasks] = useState([]);
+  const [unassignedTasks, setUnassignedTasks] = useState([]);
+  const [showReport, setShowReport] = useState(false);
 
   const getNeighbors = (sourceID) => {
     let outies =
@@ -516,6 +520,14 @@ export const GlobalProvider = ({ children }) => {
     EDGE_PROPERTIES,
     colorMemory,
     SetcolorMemory,
+    showReport,
+    setShowReport,
+    unassignedTasks,
+    setUnassignedTasks,
+    missedTasks,
+    setMissedTasks,
+    dataResults,
+    setDataResults,
   };
 
   return (
