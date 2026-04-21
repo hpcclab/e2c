@@ -92,7 +92,7 @@ export function generateWorkload(scenarioRows, taskTypes, seedOffset = 0) {
         distribution: row.distribution,
         data_size: dataSizes[i],
         status: "NEW",
-        deadline: arrival_time + 30 + typeObj?.slack,
+        deadline: arrival_time + 5 + (typeObj?.slack ?? 0),
         start_time: arrival_time,
         end_time: 0,
       });

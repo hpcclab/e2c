@@ -320,8 +320,6 @@ const SimDashboard = () => {
 
   const [workloadFileContents, setWorkloadFileContents] = useState("");
 
-
-
   const filesReady =
     workloadFileUploaded && profilingFileUploaded && configFileUploaded;
 
@@ -569,13 +567,11 @@ const SimDashboard = () => {
   // End Data Update handlers
   const runDataSimulation = async () => {
     try {
-      // Ensure required files are uploaded
-      const machinesHaveEET = machines.some(
-        (m) =>
-          m.eet &&
-          Object.values(m.eet).some((v) => v !== "" && v !== undefined),
-      );
-      const canvasHasWorkload = scenarioRows.length > 0;
+      // ensure possible to run
+      if (!iot?.length || !machines?.length) {
+        alert("Failed to run simulation. Missing IoTs or Machines");
+        return;
+      }
 
       // Clear any existing simulation interval
       if (simulationIntervalRef.current) {
@@ -584,47 +580,6 @@ const SimDashboard = () => {
       setIsRunning(true);
       const workspace = ld_workspace();
 
-      // console.log(workload);
-      console.log(workspace);
-
-      // Build EET table from machine canvas data if no .eet file was uploaded
-      if (!profilingFileUploaded && machinesHaveEET) {
-        const eetObj = {};
-        machines.forEach((machine) => {
-          if (machine.eet && Object.keys(machine.eet).length > 0) {
-            eetObj[machine.name] = machine.eet;
-          }
-        });
-        eetTable.loadFromObject(eetObj);
-        setEetLoaded(true);
-      }
-
-      // Auto-map machine names (EET CSV machines to config machines by order)
-      const configMachines = machinesRef.current.filter((m) => m.id !== -1);
-      autoMapMachineNames(configMachines);
-
-      // // Prepare data for the simulation
-      const simulationData = {
-        schedulingPolicy: policy, // Load balancing policy type
-        configFilename: configFileName, // Configuration file name
-        machineConfig: generateMachineConfig(machines, taskTypes), // Configuration file name
-        // profilingData: profilingTableData, // Profiling data parsed from the .eet file
-        tasks: workloadFileUploaded
-          ? workloadTableData
-          : generateWorkload(scenarioRows, taskTypes),
-      };
-
-      const response = await axios.post(
-        "http://localhost:5001/api/workload/simulate/data",
-        simulationData,
-      );
-
-      const {
-        results,
-        simulationTime: totalSimTime,
-        machine_stats,
-      } = response.data;
-      setDataResults(results);
       setShowReport(true); // Show the report when results are ready
 
       // Simulation loop with EET-based dequeue
@@ -635,50 +590,13 @@ const SimDashboard = () => {
       setSimulationTime(0);
       setCompletedTasks([]);
       setUnassignedTasks([]);
+      setMissedTasks([]);
+      const scheduler = schedulerRef.current;
+      const totalSimTime = scheduler.getBatchQ()[-1]?.end_time || Infinity;
 
       simulationIntervalRef.current = setInterval(() => {
         current = parseFloat((current + step).toFixed(3));
         setSimulationTime(current);
-
-        // Process dequeue based on EET if loaded
-        // Read from ref (not functional updater) so StrictMode double-invocation
-        // doesn't cause setCompletedTasks / setMissedTasks to fire twice per tick.
-        if (eetLoaded) {
-          const {
-            machines: updated,
-            completed,
-            deadlineMissed,
-          } = processDequeue(animatedMachinesRef.current, current);
-          animatedMachinesRef.current = updated;
-          setAnimatedMachines(updated);
-
-          if (completed.length > 0) {
-            setCompletedTasks((prev) => [...prev, ...completed]);
-            console.log(
-              `Completed ${completed.length} task(s) at t=${current.toFixed(3)}`,
-            );
-          }
-
-          if (deadlineMissed.length > 0) {
-            setMissedTasks((prev) => [...prev, ...deadlineMissed]);
-            console.log(
-              `Deadline missed: ${deadlineMissed.length} task(s) at t=${current.toFixed(3)}`,
-            );
-          }
-        }
-
-        // Surface CANCELLED/unstarted tasks as simulation time passes their deadline
-        const nowMissed = [];
-        while (
-          pendingMissedRef.current.length > 0 &&
-          (pendingMissedRef.current[0].deadline ?? Infinity) <= current
-        ) {
-          nowMissed.push(pendingMissedRef.current.shift());
-        }
-        if (nowMissed.length > 0) {
-          setMissedTasks((prev) => [...prev, ...nowMissed]);
-        }
-
         if (current >= totalSimTime) {
           // Flush any remaining tasks that never met their deadline by end of simulation
           if (pendingMissedRef.current.length > 0) {
@@ -692,71 +610,68 @@ const SimDashboard = () => {
         }
       }, intervalMs);
 
-      // Update machines with stats from simulation
-      const updatedMachines = machines.map((machine) => {
-        const stats = machine_stats?.find((s) => s.base_name === machine.name);
+      // // Update machines with stats from simulation
+      // const updatedMachines = machines.map((machine) => {
+      //   const stats = machine_stats?.find((s) => s.base_name === machine.name);
 
-        if (stats) {
-          const totalUtilization = stats.replicas.reduce(
-            (sum, r) => sum + r.utilization_hours,
-            0,
-          );
-          const totalCost = stats.replicas.reduce((sum, r) => sum + r.cost, 0);
-          const totalTasks = stats.replicas.reduce(
-            (sum, r) => sum + r.tasks_completed,
-            0,
-          );
+      //   if (stats) {
+      //     const totalUtilization = stats.replicas.reduce(
+      //       (sum, r) => sum + r.utilization_hours,
+      //       0,
+      //     );
+      //     const totalCost = stats.replicas.reduce((sum, r) => sum + r.cost, 0);
+      //     const totalTasks = stats.replicas.reduce(
+      //       (sum, r) => sum + r.tasks_completed,
+      //       0,
+      //     );
 
-          return {
-            ...machine,
-            utilization_time: totalUtilization,
-            total_cost: totalCost,
-            total_tasks: totalTasks,
-            replica_stats: stats.replicas,
-          };
-        }
+      //     return {
+      //       ...machine,
+      //       utilization_time: totalUtilization,
+      //       total_cost: totalCost,
+      //       total_tasks: totalTasks,
+      //       replica_stats: stats.replicas,
+      //     };
+      //   }
 
-        return machine;
-      });
+      //   return machine;
+      // });
 
-      // Update all machine states
-      setMachines(updatedMachines);
-      setAnimatedMachines(updatedMachines);
-      machinesRef.current = updatedMachines;
+      // // Update all machine states
+      // setMachines(updatedMachines);
+      // setAnimatedMachines(updatedMachines);
+      // machinesRef.current = updatedMachines;
 
       // If a machine is currently selected, update it with new data
-      if (selectedMachine && selectedMachine.id !== undefined) {
-        const updatedSelectedMachine = updatedMachines.find(
-          (m) => m.id === selectedMachine.id,
-        );
-        if (updatedSelectedMachine) {
-          setSelectedMachine(updatedSelectedMachine);
+      // if (selectedMachine && selectedMachine.id !== undefined) {
+      //   const updatedSelectedMachine = updatedMachines.find(
+      //     (m) => m.id === selectedMachine.id,
+      //   );
+      //   if (updatedSelectedMachine) {
+      //     setSelectedMachine(updatedSelectedMachine);
 
-          // Also update performance params
-          setPerformanceParams({
-            id: updatedSelectedMachine.id,
-            name: updatedSelectedMachine.name,
-            // queue: updatedSelectedMachine.queue,
-            power: updatedSelectedMachine.power,
-            idle_power: updatedSelectedMachine.idle_power,
-            replicas: updatedSelectedMachine.replicas,
-            price: updatedSelectedMachine.price,
-            cost: updatedSelectedMachine.cost,
-            utilization_time: updatedSelectedMachine.utilization_time,
-            total_cost: updatedSelectedMachine.total_cost,
-            total_tasks: updatedSelectedMachine.total_tasks,
-          });
-        }
-      }
+      //     // Also update performance params
+      //     setPerformanceParams({
+      //       id: updatedSelectedMachine.id,
+      //       name: updatedSelectedMachine.name,
+      //       // queue: updatedSelectedMachine.queue,
+      //       power: updatedSelectedMachine.power,
+      //       idle_power: updatedSelectedMachine.idle_power,
+      //       replicas: updatedSelectedMachine.replicas,
+      //       price: updatedSelectedMachine.price,
+      //       cost: updatedSelectedMachine.cost,
+      //       utilization_time: updatedSelectedMachine.utilization_time,
+      //       total_cost: updatedSelectedMachine.total_cost,
+      //       total_tasks: updatedSelectedMachine.total_tasks,
+      //     });
+      //   }
+      // }
 
-      // Tasks never assigned to any machine (queue was full / size constraint)
-      setUnassignedTasks(results.filter((t) => t.machineId === null));
+      // // Late-completion misses come from processDequeue; no static list needed
+      // pendingMissedRef.current = [];
+      // setMissedTasks([]); // accumulates dynamically during the simulation loop
 
-      // Late-completion misses come from processDequeue; no static list needed
-      pendingMissedRef.current = [];
-      setMissedTasks([]); // accumulates dynamically during the simulation loop
-
-      console.log("Simulation results:", results);
+      // console.log("Simulation results:", results);
     } catch (error) {
       console.error("Error running simulation:", error);
       alert("Failed to run simulation.");
@@ -772,7 +687,6 @@ const SimDashboard = () => {
   const enqueue = useCallback(
     (targetId, sender) => {
       const job = sender;
-      // job.id = task_counter;
       if (!job) return;
       setMachines((prevMachines) =>
         prevMachines.map((machine) =>
@@ -828,6 +742,12 @@ const SimDashboard = () => {
 
     // Process running tasks (completion)
     scheduler.processMachines();
+    setCompletedTasks([...scheduler.getStats().completed]);
+    setUnassignedTasks(
+      scheduler.getBatchQ().filter((t) => t.machineId === null),
+    );
+    setMissedTasks([...scheduler.getStats().missed]);
+    setDataResults([...unassignedTasks, ...completedTasks, ...missedTasks]);
   }, [simulationTime, isRunning]);
 
   // /* -------------------- WORKSPACE, EDGE, MACHINE, and IOT NODES -------------------- */
