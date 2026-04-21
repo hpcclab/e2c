@@ -65,7 +65,7 @@ function getDataSizes(mean, stdv, num_of_tasks) {
     let v = Math.random();
     let z = Math.sqrt(-2.0 * Math.log(u)) * Math.cos(2.0 * Math.PI * v);
     let sample = mean + stdv * z;
-    sizes.push(Number(sample.toFixed(2)));
+    sizes.push(Number(Math.abs(sample).toFixed(2)));
   }
   return sizes;
 }
@@ -91,6 +91,10 @@ export function generateWorkload(scenarioRows, taskTypes, seedOffset = 0) {
         arrival_time,
         distribution: row.distribution,
         data_size: dataSizes[i],
+        status: "NEW",
+        deadline: arrival_time + 5 + (typeObj?.slack ?? 0),
+        start_time: arrival_time,
+        end_time: 0,
       });
     });
   });

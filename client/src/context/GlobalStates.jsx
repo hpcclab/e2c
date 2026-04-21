@@ -368,13 +368,13 @@ export const GlobalProvider = ({ children }) => {
     const formData = new FormData();
     formData.append("file", file);
     try {
-      const res = await axios.post(
-        "http://localhost:5001/api/workload/upload/config",
-        formData,
-        {
-          headers: { "Content-Type": "multipart/form-data" },
-        },
-      );
+      //   const res = await axios.post(
+      //     "http://localhost:5001/api/workload/upload/config",
+      //     formData,
+      //     {
+      //       headers: { "Content-Type": "multipart/form-data" },
+      //     },
+      //   );
       console.log("Config upload success:", res.data);
       // Group machines by base name and track replicas
       const machineMap = {};
