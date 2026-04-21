@@ -5,6 +5,17 @@ import {
 } from "../utils/exportCSV";
 import TaskLifecycle from "./TaskLifecycle";
 import Collapsible from "./Collapsible";
+import {
+  PieChart,
+  Pie,
+  Cell,
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  Tooltip,
+  ResponsiveContainer,
+} from "recharts";
 
 const SimulationReport = ({
   dataResults,
@@ -556,6 +567,142 @@ const SimulationReport = ({
             </div>
           </div>
         </Collapsible>
+        {/* CHARTS SECTION */}
+        <Collapsible title="Charts & Visualizations">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-4">
+            {/* Chart 1: Task Status Breakdown (Pie) */}
+            <div className="bg-white rounded-lg border p-4">
+              <h5 className="text-sm font-semibold text-gray-700 mb-3 text-center">
+                Task Status Breakdown
+              </h5>
+              <ResponsiveContainer width="100%" height={260}>
+                <PieChart>
+                  <Pie
+                    data={[
+                      { name: "Completed", value: summaryStats.tasksCompleted },
+                      { name: "Missed", value: summaryStats.totalMissed },
+                      { name: "Cancelled", value: summaryStats.tasksCancelled },
+                      { name: "Unassigned", value: summaryStats.tasksUnassigned },
+                    ].filter((d) => d.value > 0)}
+                    cx="50%"
+                    cy="50%"
+                    outerRadius={90}
+                    dataKey="value"
+                    label={({ name, percent }) =>
+                      `${name} ${(percent * 100).toFixed(0)}%`
+                    }
+                  >
+                    {[
+                      "#22c55e", // green - completed
+                      "#ef4444", // red - missed
+                      "#f97316", // orange - cancelled
+                      "#f59e0b", // amber - unassigned
+                    ].map((color, i) => (
+                      <Cell key={i} fill={color} />
+                    ))}
+                  </Pie>
+                  <Tooltip />
+                </PieChart>
+              </ResponsiveContainer>
+            </div>
+
+            {/* Chart 2: Tasks per Machine (Bar) */}
+            <div className="bg-white rounded-lg border p-4">
+              <h5 className="text-sm font-semibold text-gray-700 mb-3 text-center">
+                Tasks per Machine
+              </h5>
+              <ResponsiveContainer width="100%" height={260}>
+                <BarChart
+                  data={machines
+                    .filter((m) => m.id !== -1)
+                    .map((m) => ({
+                      name: m.name,
+                      Tasks: summaryStats.tasksPerMachine[m.name] || 0,
+                    }))}
+                  margin={{ top: 5, right: 10, left: 0, bottom: 5 }}
+                >
+                  <XAxis dataKey="name" tick={{ fontSize: 11 }} />
+                  <YAxis allowDecimals={false} tick={{ fontSize: 11 }} />
+                  <Tooltip />
+                  <Bar dataKey="Tasks" fill="#3b82f6" radius={[4, 4, 0, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+
+            {/* Chart 3: Energy Consumption per Machine (Bar) */}
+            <div className="bg-white rounded-lg border p-4">
+              <h5 className="text-sm font-semibold text-gray-700 mb-3 text-center">
+                Energy Consumption per Machine (kWh)
+              </h5>
+              <ResponsiveContainer width="100%" height={260}>
+                <BarChart
+                  data={machines
+                    .filter((m) => m.id !== -1)
+                    .map((m) => ({
+                      name: m.name,
+                      "Energy (kWh)": parseFloat(
+                        (((m.power || 0) * (m.utilization_time || 0)) / 1000).toFixed(4)
+                      ),
+                    }))}
+                  margin={{ top: 5, right: 10, left: 0, bottom: 5 }}
+                >
+                  <XAxis dataKey="name" tick={{ fontSize: 11 }} />
+                  <YAxis tick={{ fontSize: 11 }} />
+                  <Tooltip />
+                  <Bar dataKey="Energy (kWh)" fill="#eab308" radius={[4, 4, 0, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+
+            {/* Chart 4: Cost per Machine (Bar) */}
+            <div className="bg-white rounded-lg border p-4">
+              <h5 className="text-sm font-semibold text-gray-700 mb-3 text-center">
+                Cost per Machine ($)
+              </h5>
+              <ResponsiveContainer width="100%" height={260}>
+                <BarChart
+                  data={machines
+                    .filter((m) => m.id !== -1)
+                    .map((m) => ({
+                      name: m.name,
+                      "Cost ($)": parseFloat(
+                        ((m.price || 0) * (m.utilization_time || 0)).toFixed(2)
+                      ),
+                    }))}
+                  margin={{ top: 5, right: 10, left: 0, bottom: 5 }}
+                >
+                  <XAxis dataKey="name" tick={{ fontSize: 11 }} />
+                  <YAxis tick={{ fontSize: 11 }} />
+                  <Tooltip formatter={(val) => `$${val.toFixed(2)}`} />
+                  <Bar dataKey="Cost ($)" fill="#22c55e" radius={[4, 4, 0, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+
+            {/* Chart 5: Missed Tasks by Type (Bar) — only shown if there are missed tasks */}
+            {summaryStats.totalMissed > 0 && (
+              <div className="bg-white rounded-lg border p-4">
+                <h5 className="text-sm font-semibold text-gray-700 mb-3 text-center">
+                  Missed Tasks by Type
+                </h5>
+                <ResponsiveContainer width="100%" height={260}>
+                  <BarChart
+                    data={Object.entries(summaryStats.missedByType).map(
+                      ([type, count]) => ({ name: type, Missed: count })
+                    )}
+                    margin={{ top: 5, right: 10, left: 0, bottom: 5 }}
+                  >
+                    <XAxis dataKey="name" tick={{ fontSize: 11 }} />
+                    <YAxis allowDecimals={false} tick={{ fontSize: 11 }} />
+                    <Tooltip />
+                    <Bar dataKey="Missed" fill="#ef4444" radius={[4, 4, 0, 0]} />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            )}
+          </div>
+        </Collapsible>
+
         {/* MACHINE STATISTICS SECTION */}
         {machines.length > 0 && (
           <Collapsible title="Machine Statistics">

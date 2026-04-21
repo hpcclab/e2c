@@ -12,6 +12,7 @@ import { WorkloadSidebar } from "./components/SidebarContent";
 import AdmissionsOverlay from "./components/AdmissionsOverlay";
 import EditMachineProperties from "./components/EditMachineProperties";
 import EditIoTProperties from "./components/EditIoTProperties";
+import EditEdgeProperties from "./components/EditEdgeProperties";
 import SimulationReport from "./components/SimulationReport";
 import { processDequeue, autoMapMachineNames } from "./utils/dequeueProcess";
 import { eetTable } from "./utils/exportCSV";
@@ -145,6 +146,12 @@ const SimDashboard = () => {
 
   // DND
   const reactFlowWrapper = useRef(null);
+
+  const openSidebar = (mode) => {
+    setSidebarMode(mode);
+    setShowSidebar(true);
+    setSubmissionStatus("");
+  };
 
   const onConnect = useCallback(
     (params) => {
@@ -313,11 +320,7 @@ const SimDashboard = () => {
 
   const [workloadFileContents, setWorkloadFileContents] = useState("");
 
-  const openSidebar = (mode) => {
-    setSidebarMode(mode);
-    setShowSidebar(true);
-    setSubmissionStatus(""); // Reset submission status when opening the sidebar
-  };
+
 
   const filesReady =
     workloadFileUploaded && profilingFileUploaded && configFileUploaded;
@@ -1191,42 +1194,7 @@ const SimDashboard = () => {
               </div>
             )}
             {sidebarMode === "edgeProps" && (
-              <div className="space-y-6">
-                {/* Cancelled Tasks Sidebar Content */}
-                <table className="w-full text-left border-collapse">
-                  <thead>
-                    <tr className="border-b">
-                      <th className="px-4 py-2 text-sm font-semibold text-gray-700">
-                        Task ID
-                      </th>
-                      <th className="px-4 py-2 text-sm font-semibold text-gray-700">
-                        Type
-                      </th>
-                      <th className="px-4 py-2 text-sm font-semibold text-gray-700">
-                        Arrival Time
-                      </th>
-                      <th className="px-4 py-2 text-sm font-semibold text-gray-700">
-                        Cancellation Time
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    <tr>
-                      <td
-                        colSpan="4"
-                        className="px-4 py-2 text-sm text-gray-500 text-center"
-                      >
-                        No data available yet. This is a work in progress.
-                      </td>
-                    </tr>
-                  </tbody>
-                </table>
-                <p>current edge data:</p>
-                <p> id: {selectedEdge.id}</p>
-                <p> from: {selectedEdge.source}</p>
-                <p> to: {selectedEdge.target}</p>
-                <p>type: {selectedEdge.data.properties.connectionType}</p>
-              </div>
+              <EditEdgeProperties selectedEdge={selectedEdge} />
             )}
             {sidebarMode === "IOT" && (
               <div className="space-y-6">
