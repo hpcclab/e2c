@@ -158,13 +158,6 @@ export default function FlowSaveLoadPanel() {
         const loadedTaskTypes = data.taskTypes || [];
         const loadedScenarioRows = data.scenarioRows || [];
         const loadedcolorMemory = data.colorMemory || [];
-        if (loadedWorkloadFileName?.length) {
-          handleWorkloadUpload(loadedWorkloadFileName[0]);
-        }
-
-        if (loadedProfilingFileName?.length) {
-          handleProfilingUpload(loadedProfilingFileName[0]);
-        }
 
         // Separate other nodes (non-machine / non-iot)
         const otherNodes = loadedNodes.filter(

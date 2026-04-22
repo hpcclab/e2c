@@ -582,7 +582,10 @@ const SimulationReport = ({
                       { name: "Completed", value: summaryStats.tasksCompleted },
                       { name: "Missed", value: summaryStats.totalMissed },
                       { name: "Cancelled", value: summaryStats.tasksCancelled },
-                      { name: "Unassigned", value: summaryStats.tasksUnassigned },
+                      {
+                        name: "Unassigned",
+                        value: summaryStats.tasksUnassigned,
+                      },
                     ].filter((d) => d.value > 0)}
                     cx="50%"
                     cy="50%"
@@ -641,7 +644,10 @@ const SimulationReport = ({
                     .map((m) => ({
                       name: m.name,
                       "Energy (kWh)": parseFloat(
-                        (((m.power || 0) * (m.utilization_time || 0)) / 1000).toFixed(4)
+                        (
+                          ((m.power || 0) * (m.utilization_time || 0)) /
+                          1000
+                        ).toFixed(4),
                       ),
                     }))}
                   margin={{ top: 5, right: 10, left: 0, bottom: 5 }}
@@ -649,7 +655,11 @@ const SimulationReport = ({
                   <XAxis dataKey="name" tick={{ fontSize: 11 }} />
                   <YAxis tick={{ fontSize: 11 }} />
                   <Tooltip />
-                  <Bar dataKey="Energy (kWh)" fill="#eab308" radius={[4, 4, 0, 0]} />
+                  <Bar
+                    dataKey="Energy (kWh)"
+                    fill="#eab308"
+                    radius={[4, 4, 0, 0]}
+                  />
                 </BarChart>
               </ResponsiveContainer>
             </div>
@@ -666,7 +676,7 @@ const SimulationReport = ({
                     .map((m) => ({
                       name: m.name,
                       "Cost ($)": parseFloat(
-                        ((m.price || 0) * (m.utilization_time || 0)).toFixed(2)
+                        ((m.price || 0) * (m.utilization_time || 0)).toFixed(2),
                       ),
                     }))}
                   margin={{ top: 5, right: 10, left: 0, bottom: 5 }}
@@ -674,7 +684,11 @@ const SimulationReport = ({
                   <XAxis dataKey="name" tick={{ fontSize: 11 }} />
                   <YAxis tick={{ fontSize: 11 }} />
                   <Tooltip formatter={(val) => `$${val.toFixed(2)}`} />
-                  <Bar dataKey="Cost ($)" fill="#22c55e" radius={[4, 4, 0, 0]} />
+                  <Bar
+                    dataKey="Cost ($)"
+                    fill="#22c55e"
+                    radius={[4, 4, 0, 0]}
+                  />
                 </BarChart>
               </ResponsiveContainer>
             </div>
@@ -688,14 +702,18 @@ const SimulationReport = ({
                 <ResponsiveContainer width="100%" height={260}>
                   <BarChart
                     data={Object.entries(summaryStats.missedByType).map(
-                      ([type, count]) => ({ name: type, Missed: count })
+                      ([type, count]) => ({ name: type, Missed: count }),
                     )}
                     margin={{ top: 5, right: 10, left: 0, bottom: 5 }}
                   >
                     <XAxis dataKey="name" tick={{ fontSize: 11 }} />
                     <YAxis allowDecimals={false} tick={{ fontSize: 11 }} />
                     <Tooltip />
-                    <Bar dataKey="Missed" fill="#ef4444" radius={[4, 4, 0, 0]} />
+                    <Bar
+                      dataKey="Missed"
+                      fill="#ef4444"
+                      radius={[4, 4, 0, 0]}
+                    />
                   </BarChart>
                 </ResponsiveContainer>
               </div>
@@ -940,7 +958,7 @@ const SimulationReport = ({
                           onClick={() => setLifecycleTask(task)}
                           className={`cursor-pointer hover:bg-blue-50 transition ${
                             lifecycleTask?.taskId === task.taskId
-                              ? "ring-2 ring-inset ring-blue-400"
+                              ? "active:ring-2 active:ring-inset active:ring-blue-400"
                               : isUnassigned
                                 ? "bg-amber-50"
                                 : task.status === "CANCELLED"
@@ -963,10 +981,10 @@ const SimulationReport = ({
                             {task.arrival_time?.toFixed(3) ?? "-"}
                           </td>
                           <td className="border border-gray-300 px-3 py-2">
-                            {task.start?.toFixed(3) ?? "-"}
+                            {task.start_time?.toFixed(3) ?? "-"}
                           </td>
                           <td className="border border-gray-300 px-3 py-2">
-                            {task.end?.toFixed(3) ?? "-"}
+                            {task.end_time?.toFixed(3) ?? "-"}
                           </td>
                           <td className="border border-gray-300 px-3 py-2 text-purple-700 font-medium">
                             {task.execution_time?.toFixed(3) ?? "-"}

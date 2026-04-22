@@ -35,6 +35,10 @@ export class BaseScheduler {
     this.batchQueue.push(task);
   }
 
+  getBatchQ() {
+    return this.batchQueue;
+  }
+
   getTime() {
     return this.currentTime;
   }
@@ -82,7 +86,6 @@ export class BaseScheduler {
 
     this.enqueue(machine.id, task);
     this.stats.mapped.push(task);
-    console.log(this.stats);
   }
 
   processMachines() {
@@ -100,7 +103,8 @@ export class BaseScheduler {
         task.status = "MISSED";
         this.stats.missed.push(task);
         this.dequeue(m.id);
-      } else if (life >= eet && life < task.deadline) {
+      }
+      if (life >= eet && life < task.deadline) {
         task.status = "COMPLETED";
         this.stats.completed.push(task);
         this.dequeue(m.id);
