@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { ChevronDownIcon, ChevronRightIcon } from "@heroicons/react/24/outline";
 import TaskList from "./TaskList";
+import { formatUtilizationTime } from "../utils/formatTime";
 
 // Define a list of colors for machines
 const machineColors = [
@@ -38,29 +39,33 @@ export default function MachineList({
   };
 
   const getMachineReplicas = (machine, machineIndex) => {
-    const replicas = machine.replicas || 1;
-    return Array.from({ length: replicas }, (_, replicaIndex) => ({
+    const replicaCount = machine.replicas || 1;
+    const queue = machine.queue || [];
+    return Array.from({ length: replicaCount }, (_, replicaIndex) => ({
       ...machine,
       id: `${machine.id}-replica-${replicaIndex}`,
       originalId: machine.id,
       replicaNumber: replicaIndex + 1,
       displayName: `${machine.name} #${replicaIndex + 1}`,
       colorIndex: machineIndex,
+      queue: queue.filter((_, taskIndex) => taskIndex % replicaCount === replicaIndex),
     }));
   };
 
   // Calculate cost: price/hour × hours utilized (from simulation results)
   const calculateCost = (machine) => {
-    const hours = machine.utilization_time || 0; // actual utilization hours from simulation
+    const hours = machine.utilization_time || 0;
     const pricePerHour = machine.price || 0;
     return (pricePerHour * hours).toFixed(2);
   };
-  function handleChildClick(event) {
+
+  const handleMachineClick = (event, machine) => {
     event.stopPropagation();
     setSelectedMachine({
       id: machine.id,
       originalId: machine.id,
       name: machine.name,
+      icon: machine.icon,
       replicaNumber: 0,
       queue: machine.queue,
       power: machine.power,
@@ -74,7 +79,8 @@ export default function MachineList({
       eet: machine.eet || {},
     });
     onClicked();
-  }
+  };
+
   return (
     <div className="max-h-96 overflow-y-auto pr-2 space-y-4">
       {machs.map((machine, machineIndex) => {
@@ -82,7 +88,7 @@ export default function MachineList({
         const isExpanded = expandedMachines[machine.id];
         const replicas = getMachineReplicas(machine, machineIndex);
         const totalCost = calculateCost(machine);
-        const utilizationHours = (machine.utilization_time || 0).toFixed(3);
+        const utilDisplay = formatUtilizationTime(machine.utilization_time || 0);
         const totalTasks = machine.total_tasks || 0;
 
         return (
@@ -118,9 +124,9 @@ export default function MachineList({
 
               <div className="flex flex-col items-end space-y-1">
                 <div
-                  onClick={handleChildClick}
+                  onClick={(e) => handleMachineClick(e, machine)}
                   className={`text-white ${getMachineColor(machineIndex)} font-semibold w-20 h-10 rounded-full flex items-center justify-center cursor-pointer hover:scale-105 transition text-xs`}
-                  title={`${totalTasks} tasks, ${utilizationHours}h × $${machine.price}/h = $${totalCost}`}
+                  title={`${totalTasks} tasks, ${utilDisplay.value}${utilDisplay.unit} × $${machine.price}/h = $${totalCost}`}
                 >
                   {machine.name}
                   {hasReplicas && (
@@ -135,9 +141,7 @@ export default function MachineList({
               <div className="ml-8 mt-2 space-y-2">
                 {replicas.map((replica) => {
                   const replicaCost = calculateCost(replica);
-                  const replicaHours = (replica.utilization_time || 0).toFixed(
-                    3,
-                  );
+                  const replicaDisplay = formatUtilizationTime(replica.utilization_time || 0);
                   const replicaTasks = replica.total_tasks || 0;
 
                   return (
@@ -159,9 +163,9 @@ export default function MachineList({
 
                       <div className="flex flex-col items-end space-y-1">
                         <div
-                          onClick={handleChildClick}
+                          onClick={(e) => handleMachineClick(e, replica)}
                           className={`text-white ${getMachineColor(replica.colorIndex)} font-semibold w-20 h-8 rounded-full flex items-center justify-center cursor-pointer hover:scale-105 transition text-xs`}
-                          title={`${replicaTasks} tasks, ${replicaHours}h × $${replica.price}/h = $${replicaCost}`}
+                          title={`${replicaTasks} tasks, ${replicaDisplay.value}${replicaDisplay.unit} × $${replica.price}/h = $${replicaCost}`}
                         >
                           {replica.displayName}
                         </div>

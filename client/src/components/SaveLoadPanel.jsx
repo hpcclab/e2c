@@ -157,7 +157,7 @@ export default function FlowSaveLoadPanel() {
         const loadedMachineConfig = data.machineConfig || [];
         const loadedTaskTypes = data.taskTypes || [];
         const loadedScenarioRows = data.scenarioRows || [];
-        const loadedcolorMemory = data.colorMemory || [];
+        const loadedcolorMemory = data.colorMemory || {};
 
         // Separate other nodes (non-machine / non-iot)
         const otherNodes = loadedNodes.filter(
@@ -186,10 +186,13 @@ export default function FlowSaveLoadPanel() {
         setEdges(loadedEdges);
         setMachines(loadedMachines);
         setIot(loadedIots);
+
+        // Restore the module-level colorMemory object used by Task.jsx
+        Object.keys(colorMemory).forEach((k) => delete colorMemory[k]);
+        Object.assign(colorMemory, loadedcolorMemory);
+
         notify("Loaded!");
         fetchFiles();
-
-        // load task colors:
 
         fitView({ padding: 0.5, duration: 600, interpolate: "smooth" });
         window.dispatchEvent(new Event("taskColorChanged"));
@@ -235,6 +238,14 @@ export default function FlowSaveLoadPanel() {
           setEdges(data.edges);
           setMachines(data.machines);
           setIot(data.iot);
+          if (data.taskTypes) setTaskTypes(data.taskTypes);
+          if (data.scenarioRows) setScenarioRows(data.scenarioRows);
+          if (data.machineConfig) setMachineConfig(data.machineConfig);
+
+          const droppedColorMemory = data.colorMemory || {};
+          Object.keys(colorMemory).forEach((k) => delete colorMemory[k]);
+          Object.assign(colorMemory, droppedColorMemory);
+          window.dispatchEvent(new Event("taskColorChanged"));
 
           await localStore.saveAs(file.name, data);
           notify("Loaded and saved!");
