@@ -1,0 +1,318 @@
+{
+  "nodes": [
+    {
+      "data": {},
+      "id": "LBNode_0",
+      "measured": { "height": 122, "width": 122 },
+      "position": { "x": 350, "y": 230 },
+      "type": "LBNode"
+    },
+    {
+      "id": "nd_1001",
+      "type": "iotNode",
+      "data": {
+        "iot": {
+          "id": 1001,
+          "name": "Camera",
+          "icon": "MdVideocam",
+          "queue": [],
+          "properties": {
+            "task_type": "patient_cam",
+            "dataInput": "default",
+            "meanSize": 8,
+            "urgency": "BestEffort",
+            "slack": 0,
+            "numTasks": 20,
+            "startTime": 0,
+            "endTime": 60,
+            "distribution": "uniform",
+            "deviceRole": "sensor",
+            "frequency": 0,
+            "connectivity": "WiFi",
+            "energySource": "Wired",
+            "taskColor": "Sky"
+          }
+        }
+      },
+      "position": { "x": 0, "y": 80 },
+      "draggable": true,
+      "measured": { "width": 102, "height": 102 }
+    },
+    {
+      "id": "nd_1002",
+      "type": "iotNode",
+      "data": {
+        "iot": {
+          "id": 1002,
+          "name": "Thermometer",
+          "icon": "MdThermostat",
+          "queue": [],
+          "properties": {
+            "task_type": "vital_signs",
+            "dataInput": "default",
+            "meanSize": 2,
+            "urgency": "BestEffort",
+            "slack": 0,
+            "numTasks": 40,
+            "startTime": 0,
+            "endTime": 60,
+            "distribution": "exponential",
+            "deviceRole": "sensor",
+            "frequency": 0,
+            "connectivity": "WiFi",
+            "energySource": "Wired",
+            "taskColor": "Teal"
+          }
+        }
+      },
+      "position": { "x": 0, "y": 230 },
+      "draggable": true,
+      "measured": { "width": 102, "height": 102 }
+    },
+    {
+      "id": "nd_1003",
+      "type": "iotNode",
+      "data": {
+        "iot": {
+          "id": 1003,
+          "name": "Smartphone",
+          "icon": "MdSmartphone",
+          "queue": [],
+          "properties": {
+            "task_type": "nurse_alert",
+            "dataInput": "default",
+            "meanSize": 1,
+            "urgency": "BestEffort",
+            "slack": 0,
+            "numTasks": 15,
+            "startTime": 0,
+            "endTime": 60,
+            "distribution": "exponential",
+            "deviceRole": "actuator",
+            "frequency": 0,
+            "connectivity": "WiFi",
+            "energySource": "Battery",
+            "taskColor": "Violet"
+          }
+        }
+      },
+      "position": { "x": 0, "y": 380 },
+      "draggable": true,
+      "measured": { "width": 102, "height": 102 }
+    },
+    {
+      "id": "2001",
+      "type": "machineNode",
+      "data": {
+        "machine": {
+          "id": 2001,
+          "name": "Bedside Edge",
+          "icon": "MdDeveloperBoard",
+          "power": 5,
+          "idle_power": 1,
+          "replicas": 2,
+          "price": 0.5,
+          "cost": 0,
+          "utilization_time": 0,
+          "total_cost": 0,
+          "total_tasks": 0,
+          "eet": {
+            "patient_cam": "15",
+            "vital_signs": "5",
+            "nurse_alert": "3"
+          }
+        },
+        "machineIndex": 0
+      },
+      "position": { "x": 700, "y": 80 },
+      "draggable": true,
+      "measured": { "width": 386, "height": 108 }
+    },
+    {
+      "id": "2002",
+      "type": "machineNode",
+      "data": {
+        "machine": {
+          "id": 2002,
+          "name": "Hospital Cloud",
+          "icon": "MdCloud",
+          "power": 80,
+          "idle_power": 10,
+          "replicas": 3,
+          "price": 2.0,
+          "cost": 0,
+          "utilization_time": 0,
+          "total_cost": 0,
+          "total_tasks": 0,
+          "eet": {
+            "patient_cam": "8",
+            "vital_signs": "2",
+            "nurse_alert": "1"
+          }
+        },
+        "machineIndex": 1
+      },
+      "position": { "x": 700, "y": 230 },
+      "draggable": true,
+      "measured": { "width": 386, "height": 108 }
+    }
+  ],
+  "edges": [
+    {
+      "id": "e-nd_1001-LBNode_0",
+      "source": "nd_1001",
+      "target": "LBNode_0",
+      "type": "packet",
+      "data": { "properties": { "connectionType": "WiFi" } }
+    },
+    {
+      "id": "e-nd_1002-LBNode_0",
+      "source": "nd_1002",
+      "target": "LBNode_0",
+      "type": "packet",
+      "data": { "properties": { "connectionType": "WiFi" } }
+    },
+    {
+      "id": "e-nd_1003-LBNode_0",
+      "source": "nd_1003",
+      "target": "LBNode_0",
+      "type": "packet",
+      "data": { "properties": { "connectionType": "WiFi" } }
+    },
+    {
+      "id": "e-LBNode_0-2001",
+      "source": "LBNode_0",
+      "target": "2001",
+      "type": "packet",
+      "data": { "properties": { "connectionType": "LAN" } }
+    },
+    {
+      "id": "e-LBNode_0-2002",
+      "source": "LBNode_0",
+      "target": "2002",
+      "type": "packet",
+      "data": { "properties": { "connectionType": "LAN" } }
+    }
+  ],
+  "machines": [
+    {
+      "id": 2001,
+      "name": "Bedside Edge",
+      "icon": "MdDeveloperBoard",
+      "power": 5,
+      "idle_power": 1,
+      "replicas": 2,
+      "price": 0.5,
+      "cost": 0,
+      "utilization_time": 0,
+      "total_cost": 0,
+      "total_tasks": 0,
+      "eet": {
+        "patient_cam": "15",
+        "vital_signs": "5",
+        "nurse_alert": "3"
+      }
+    },
+    {
+      "id": 2002,
+      "name": "Hospital Cloud",
+      "icon": "MdCloud",
+      "power": 80,
+      "idle_power": 10,
+      "replicas": 3,
+      "price": 2.0,
+      "cost": 0,
+      "utilization_time": 0,
+      "total_cost": 0,
+      "total_tasks": 0,
+      "eet": {
+        "patient_cam": "8",
+        "vital_signs": "2",
+        "nurse_alert": "1"
+      }
+    }
+  ],
+  "iot": [
+    {
+      "id": 1001,
+      "name": "Camera",
+      "icon": "MdVideocam",
+      "queue": [],
+      "properties": {
+        "task_type": "patient_cam",
+        "dataInput": "default",
+        "meanSize": 8,
+        "urgency": "BestEffort",
+        "slack": 0,
+        "numTasks": 20,
+        "startTime": 0,
+        "endTime": 60,
+        "distribution": "uniform",
+        "deviceRole": "sensor",
+        "frequency": 0,
+        "connectivity": "WiFi",
+        "energySource": "Wired",
+        "taskColor": "Sky"
+      }
+    },
+    {
+      "id": 1002,
+      "name": "Thermometer",
+      "icon": "MdThermostat",
+      "queue": [],
+      "properties": {
+        "task_type": "vital_signs",
+        "dataInput": "default",
+        "meanSize": 2,
+        "urgency": "BestEffort",
+        "slack": 0,
+        "numTasks": 40,
+        "startTime": 0,
+        "endTime": 60,
+        "distribution": "exponential",
+        "deviceRole": "sensor",
+        "frequency": 0,
+        "connectivity": "WiFi",
+        "energySource": "Wired",
+        "taskColor": "Teal"
+      }
+    },
+    {
+      "id": 1003,
+      "name": "Smartphone",
+      "icon": "MdSmartphone",
+      "queue": [],
+      "properties": {
+        "task_type": "nurse_alert",
+        "dataInput": "default",
+        "meanSize": 1,
+        "urgency": "BestEffort",
+        "slack": 0,
+        "numTasks": 15,
+        "startTime": 0,
+        "endTime": 60,
+        "distribution": "exponential",
+        "deviceRole": "actuator",
+        "frequency": 0,
+        "connectivity": "WiFi",
+        "energySource": "Battery",
+        "taskColor": "Violet"
+      }
+    }
+  ],
+  "workloadFileName": "",
+  "profilingFileName": "",
+  "configFileName": "",
+  "machineConfig": [],
+  "taskTypes": [
+    { "srcID": 1001, "name": "Camera", "dataInput": "default", "meanSize": 8, "urgency": "BestEffort", "slack": 0 },
+    { "srcID": 1002, "name": "Thermometer", "dataInput": "default", "meanSize": 2, "urgency": "BestEffort", "slack": 0 },
+    { "srcID": 1003, "name": "Smartphone", "dataInput": "default", "meanSize": 1, "urgency": "BestEffort", "slack": 0 }
+  ],
+  "scenarioRows": [
+    { "srcID": 1001, "taskType": "patient_cam", "numTasks": 20, "startTime": 0, "endTime": 60, "distribution": "uniform" },
+    { "srcID": 1002, "taskType": "vital_signs", "numTasks": 40, "startTime": 0, "endTime": 60, "distribution": "exponential" },
+    { "srcID": 1003, "taskType": "nurse_alert", "numTasks": 15, "startTime": 0, "endTime": 60, "distribution": "exponential" }
+  ],
+  "colorMemory": {}
+}

@@ -365,6 +365,7 @@ const SimDashboard = () => {
   const simCurrentRef = useRef(0);
   const totalSimTimeRef = useRef(Infinity);
   const totalTasksRef = useRef(0);
+  const displayTickRef = useRef(0);
 
   // Resume simulation if it was running when user navigated away
   useEffect(() => {
@@ -679,6 +680,7 @@ const SimDashboard = () => {
       setShowReport(true); // Show the report when results are ready
 
       simCurrentRef.current = 0;
+      displayTickRef.current = 0;
       setSimulationTime(0);
       setCompletedTasks([]);
       setUnassignedTasks([]);
