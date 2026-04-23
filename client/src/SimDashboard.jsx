@@ -330,6 +330,7 @@ const SimDashboard = () => {
   const simCurrentRef = useRef(0);
   const totalSimTimeRef = useRef(Infinity);
   const totalTasksRef = useRef(0);
+  const displayTickRef = useRef(0);
 
   // Resume simulation if it was running when user navigated away
   useEffect(() => {
@@ -644,6 +645,7 @@ const SimDashboard = () => {
       setShowReport(true); // Show the report when results are ready
 
       simCurrentRef.current = 0;
+      displayTickRef.current = 0;
       setSimulationTime(0);
       setCompletedTasks([]);
       setUnassignedTasks([]);
@@ -788,29 +790,32 @@ const SimDashboard = () => {
     // Process running tasks (completion)
     scheduler.processMachines();
 
-    // Sync per-machine utilization and task counts accumulated in the scheduler
-    const machineStats = scheduler.getMachineStats();
-    if (machineStats.size > 0) {
-      setMachines((prev) =>
-        prev.map((m) => {
-          const stats = machineStats.get(m.id);
-          if (!stats) return m;
-          return {
-            ...m,
-            utilization_time: stats.utilization_time,
-            total_tasks: stats.total_tasks,
-            total_cost: (m.price || 0) * stats.utilization_time * 3600,
-          };
-        }),
-      );
-    }
+    // Only push display updates every 25 ticks (~250ms) to prevent canvas flicker
+    displayTickRef.current += 1;
+    if (displayTickRef.current % 25 === 0) {
+      const machineStats = scheduler.getMachineStats();
+      if (machineStats.size > 0) {
+        setMachines((prev) =>
+          prev.map((m) => {
+            const stats = machineStats.get(m.id);
+            if (!stats) return m;
+            return {
+              ...m,
+              utilization_time: stats.utilization_time,
+              total_tasks: stats.total_tasks,
+              total_cost: (m.price || 0) * stats.utilization_time * 3600,
+            };
+          }),
+        );
+      }
 
-    setCompletedTasks([...scheduler.getStats().completed]);
-    setUnassignedTasks(
-      scheduler.getBatchQ().filter((t) => t.machineId === null),
-    );
-    setMissedTasks([...scheduler.getStats().missed]);
-    setDataResults([...unassignedTasks, ...completedTasks, ...missedTasks]);
+      setCompletedTasks([...scheduler.getStats().completed]);
+      setUnassignedTasks(
+        scheduler.getBatchQ().filter((t) => t.machineId === null),
+      );
+      setMissedTasks([...scheduler.getStats().missed]);
+      setDataResults([...unassignedTasks, ...completedTasks, ...missedTasks]);
+    }
 
     const finished = scheduler.getStats().completed.length + scheduler.getStats().missed.length;
     if (totalTasksRef.current > 0 && finished >= totalTasksRef.current) {

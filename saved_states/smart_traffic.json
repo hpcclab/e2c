@@ -1,0 +1,318 @@
+{
+  "nodes": [
+    {
+      "data": {},
+      "id": "LBNode_0",
+      "measured": { "height": 122, "width": 122 },
+      "position": { "x": 350, "y": 230 },
+      "type": "LBNode"
+    },
+    {
+      "id": "nd_3001",
+      "type": "iotNode",
+      "data": {
+        "iot": {
+          "id": 3001,
+          "name": "Camera",
+          "icon": "MdVideocam",
+          "queue": [],
+          "properties": {
+            "task_type": "traffic_cam",
+            "dataInput": "default",
+            "meanSize": 10,
+            "urgency": "BestEffort",
+            "slack": 0,
+            "numTasks": 30,
+            "startTime": 0,
+            "endTime": 60,
+            "distribution": "uniform",
+            "deviceRole": "sensor",
+            "frequency": 0,
+            "connectivity": "LAN",
+            "energySource": "Wired",
+            "taskColor": "Sky"
+          }
+        }
+      },
+      "position": { "x": 0, "y": 80 },
+      "draggable": true,
+      "measured": { "width": 102, "height": 102 }
+    },
+    {
+      "id": "nd_3002",
+      "type": "iotNode",
+      "data": {
+        "iot": {
+          "id": 3002,
+          "name": "Car",
+          "icon": "MdDirectionsCar",
+          "queue": [],
+          "properties": {
+            "task_type": "vehicle_data",
+            "dataInput": "default",
+            "meanSize": 4,
+            "urgency": "BestEffort",
+            "slack": 0,
+            "numTasks": 50,
+            "startTime": 0,
+            "endTime": 60,
+            "distribution": "exponential",
+            "deviceRole": "sensor",
+            "frequency": 0,
+            "connectivity": "WiFi",
+            "energySource": "Battery",
+            "taskColor": "Emerald"
+          }
+        }
+      },
+      "position": { "x": 0, "y": 230 },
+      "draggable": true,
+      "measured": { "width": 102, "height": 102 }
+    },
+    {
+      "id": "nd_3003",
+      "type": "iotNode",
+      "data": {
+        "iot": {
+          "id": 3003,
+          "name": "Smartphone",
+          "icon": "MdSmartphone",
+          "queue": [],
+          "properties": {
+            "task_type": "pedestrian_app",
+            "dataInput": "default",
+            "meanSize": 2,
+            "urgency": "BestEffort",
+            "slack": 0,
+            "numTasks": 20,
+            "startTime": 0,
+            "endTime": 60,
+            "distribution": "uniform",
+            "deviceRole": "sensor",
+            "frequency": 0,
+            "connectivity": "WiFi",
+            "energySource": "Battery",
+            "taskColor": "Violet"
+          }
+        }
+      },
+      "position": { "x": 0, "y": 380 },
+      "draggable": true,
+      "measured": { "width": 102, "height": 102 }
+    },
+    {
+      "id": "4001",
+      "type": "machineNode",
+      "data": {
+        "machine": {
+          "id": 4001,
+          "name": "Roadside Edge",
+          "icon": "MdDeveloperBoard",
+          "power": 8,
+          "idle_power": 2,
+          "replicas": 2,
+          "price": 0.8,
+          "cost": 0,
+          "utilization_time": 0,
+          "total_cost": 0,
+          "total_tasks": 0,
+          "eet": {
+            "traffic_cam": "20",
+            "vehicle_data": "8",
+            "pedestrian_app": "4"
+          }
+        },
+        "machineIndex": 0
+      },
+      "position": { "x": 700, "y": 80 },
+      "draggable": true,
+      "measured": { "width": 386, "height": 108 }
+    },
+    {
+      "id": "4002",
+      "type": "machineNode",
+      "data": {
+        "machine": {
+          "id": 4002,
+          "name": "Traffic Cloud",
+          "icon": "MdCloud",
+          "power": 120,
+          "idle_power": 20,
+          "replicas": 4,
+          "price": 3.0,
+          "cost": 0,
+          "utilization_time": 0,
+          "total_cost": 0,
+          "total_tasks": 0,
+          "eet": {
+            "traffic_cam": "10",
+            "vehicle_data": "4",
+            "pedestrian_app": "2"
+          }
+        },
+        "machineIndex": 1
+      },
+      "position": { "x": 700, "y": 230 },
+      "draggable": true,
+      "measured": { "width": 386, "height": 108 }
+    }
+  ],
+  "edges": [
+    {
+      "id": "e-nd_3001-LBNode_0",
+      "source": "nd_3001",
+      "target": "LBNode_0",
+      "type": "packet",
+      "data": { "properties": { "connectionType": "LAN" } }
+    },
+    {
+      "id": "e-nd_3002-LBNode_0",
+      "source": "nd_3002",
+      "target": "LBNode_0",
+      "type": "packet",
+      "data": { "properties": { "connectionType": "WiFi" } }
+    },
+    {
+      "id": "e-nd_3003-LBNode_0",
+      "source": "nd_3003",
+      "target": "LBNode_0",
+      "type": "packet",
+      "data": { "properties": { "connectionType": "WiFi" } }
+    },
+    {
+      "id": "e-LBNode_0-4001",
+      "source": "LBNode_0",
+      "target": "4001",
+      "type": "packet",
+      "data": { "properties": { "connectionType": "LAN" } }
+    },
+    {
+      "id": "e-LBNode_0-4002",
+      "source": "LBNode_0",
+      "target": "4002",
+      "type": "packet",
+      "data": { "properties": { "connectionType": "LAN" } }
+    }
+  ],
+  "machines": [
+    {
+      "id": 4001,
+      "name": "Roadside Edge",
+      "icon": "MdDeveloperBoard",
+      "power": 8,
+      "idle_power": 2,
+      "replicas": 2,
+      "price": 0.8,
+      "cost": 0,
+      "utilization_time": 0,
+      "total_cost": 0,
+      "total_tasks": 0,
+      "eet": {
+        "traffic_cam": "20",
+        "vehicle_data": "8",
+        "pedestrian_app": "4"
+      }
+    },
+    {
+      "id": 4002,
+      "name": "Traffic Cloud",
+      "icon": "MdCloud",
+      "power": 120,
+      "idle_power": 20,
+      "replicas": 4,
+      "price": 3.0,
+      "cost": 0,
+      "utilization_time": 0,
+      "total_cost": 0,
+      "total_tasks": 0,
+      "eet": {
+        "traffic_cam": "10",
+        "vehicle_data": "4",
+        "pedestrian_app": "2"
+      }
+    }
+  ],
+  "iot": [
+    {
+      "id": 3001,
+      "name": "Camera",
+      "icon": "MdVideocam",
+      "queue": [],
+      "properties": {
+        "task_type": "traffic_cam",
+        "dataInput": "default",
+        "meanSize": 10,
+        "urgency": "BestEffort",
+        "slack": 0,
+        "numTasks": 30,
+        "startTime": 0,
+        "endTime": 60,
+        "distribution": "uniform",
+        "deviceRole": "sensor",
+        "frequency": 0,
+        "connectivity": "LAN",
+        "energySource": "Wired",
+        "taskColor": "Sky"
+      }
+    },
+    {
+      "id": 3002,
+      "name": "Car",
+      "icon": "MdDirectionsCar",
+      "queue": [],
+      "properties": {
+        "task_type": "vehicle_data",
+        "dataInput": "default",
+        "meanSize": 4,
+        "urgency": "BestEffort",
+        "slack": 0,
+        "numTasks": 50,
+        "startTime": 0,
+        "endTime": 60,
+        "distribution": "exponential",
+        "deviceRole": "sensor",
+        "frequency": 0,
+        "connectivity": "WiFi",
+        "energySource": "Battery",
+        "taskColor": "Emerald"
+      }
+    },
+    {
+      "id": 3003,
+      "name": "Smartphone",
+      "icon": "MdSmartphone",
+      "queue": [],
+      "properties": {
+        "task_type": "pedestrian_app",
+        "dataInput": "default",
+        "meanSize": 2,
+        "urgency": "BestEffort",
+        "slack": 0,
+        "numTasks": 20,
+        "startTime": 0,
+        "endTime": 60,
+        "distribution": "uniform",
+        "deviceRole": "sensor",
+        "frequency": 0,
+        "connectivity": "WiFi",
+        "energySource": "Battery",
+        "taskColor": "Violet"
+      }
+    }
+  ],
+  "workloadFileName": "",
+  "profilingFileName": "",
+  "configFileName": "",
+  "machineConfig": [],
+  "taskTypes": [
+    { "srcID": 3001, "name": "Camera", "dataInput": "default", "meanSize": 10, "urgency": "BestEffort", "slack": 0 },
+    { "srcID": 3002, "name": "Car", "dataInput": "default", "meanSize": 4, "urgency": "BestEffort", "slack": 0 },
+    { "srcID": 3003, "name": "Smartphone", "dataInput": "default", "meanSize": 2, "urgency": "BestEffort", "slack": 0 }
+  ],
+  "scenarioRows": [
+    { "srcID": 3001, "taskType": "traffic_cam", "numTasks": 30, "startTime": 0, "endTime": 60, "distribution": "uniform" },
+    { "srcID": 3002, "taskType": "vehicle_data", "numTasks": 50, "startTime": 0, "endTime": 60, "distribution": "exponential" },
+    { "srcID": 3003, "taskType": "pedestrian_app", "numTasks": 20, "startTime": 0, "endTime": 60, "distribution": "uniform" }
+  ],
+  "colorMemory": {}
+}
