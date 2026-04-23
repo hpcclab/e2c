@@ -69,7 +69,7 @@ export const exportToCSV = (data, filename = 'report.csv') => {
 
     const totalCost = machines
         .filter(m => m.id !== -1)
-        .reduce((sum, m) => sum + ((m.price || 0) * (m.utilization_time || 0)), 0);
+        .reduce((sum, m) => sum + ((m.price || 0) * (m.utilization_time || 0) * 3600), 0);
 
     // Group missed tasks by type
     const missedByType = missedTasks.reduce((acc, task) => {
@@ -112,7 +112,7 @@ export const exportToCSV = (data, filename = 'report.csv') => {
     .filter(m => m.id !== -1)
     .forEach(machine => {
       const energyKWh = ((machine.power || 0) * (machine.utilization_time || 0)) / 1000;
-      const cost = (machine.price || 0) * (machine.utilization_time || 0);
+      const cost = (machine.price || 0) * (machine.utilization_time || 0) * 3600;
       csvContent += `${machine.name},${machine.power || 0},${(machine.utilization_time || 0).toFixed(4)},${energyKWh.toFixed(4)},${cost.toFixed(2)}\n`;
     });
   csvContent += `Total,,,${totalEnergyConsumed.toFixed(4)},${totalCost.toFixed(2)}\n`;
@@ -218,9 +218,9 @@ export const exportToCSV = (data, filename = 'report.csv') => {
           'Power': machine.power || 0,
           'Idle Power': machine.idle_power || 0,
           'Replicas': machine.replicas || 1,
-          'Price ($/hr)': machine.price || 0,
+          'Price ($/s)': machine.price || 0,
           'Utilization Time (hr)': machine.utilization_time || 0,
-          'Total Cost ($)': ((machine.price || 0) * (machine.utilization_time || 0)).toFixed(2),
+          'Total Cost ($)': ((machine.price || 0) * (machine.utilization_time || 0) * 3600).toFixed(2),
           'Tasks Processed': machine.queue?.length || 0,
         }));
       exportToCSV(machineData, `machine_stats_${timestamp}.csv`);
@@ -235,7 +235,7 @@ export const exportToCSV = (data, filename = 'report.csv') => {
       'Total Machines': machines.filter(m => m.id !== -1).length,
       'Total Cost': machines
         .filter(m => m.id !== -1)
-        .reduce((sum, m) => sum + ((m.price || 0) * (m.utilization_time || 0)), 0)
+        .reduce((sum, m) => sum + ((m.price || 0) * (m.utilization_time || 0) * 3600), 0)
         .toFixed(2),
     }];
     exportToCSV(summaryData, `simulation_summary_${timestamp}.csv`);

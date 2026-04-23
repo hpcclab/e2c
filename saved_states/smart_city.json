@@ -1,0 +1,371 @@
+{
+  "nodes": [
+    {
+      "data": {},
+      "id": "LBNode_0",
+      "measured": { "height": 122, "width": 122 },
+      "position": { "x": 350, "y": 230 },
+      "type": "LBNode"
+    },
+    {
+      "id": "nd_9001",
+      "type": "iotNode",
+      "data": {
+        "iot": {
+          "id": 9001,
+          "name": "Camera",
+          "icon": "MdVideocam",
+          "queue": [],
+          "properties": {
+            "task_type": "city_cam",
+            "dataInput": "default",
+            "meanSize": 15,
+            "urgency": "BestEffort",
+            "slack": 0,
+            "numTasks": 40,
+            "startTime": 0,
+            "endTime": 60,
+            "distribution": "uniform",
+            "deviceRole": "sensor",
+            "frequency": 0,
+            "connectivity": "LAN",
+            "energySource": "Wired",
+            "taskColor": "Sky"
+          }
+        }
+      },
+      "position": { "x": 0, "y": 80 },
+      "draggable": true,
+      "measured": { "width": 102, "height": 102 }
+    },
+    {
+      "id": "nd_9002",
+      "type": "iotNode",
+      "data": {
+        "iot": {
+          "id": 9002,
+          "name": "Emergency Vehicle",
+          "icon": "MdDirectionsCar",
+          "queue": [],
+          "properties": {
+            "task_type": "emergency_dispatch",
+            "dataInput": "default",
+            "meanSize": 3,
+            "urgency": "BestEffort",
+            "slack": 0,
+            "numTasks": 20,
+            "startTime": 0,
+            "endTime": 60,
+            "distribution": "exponential",
+            "deviceRole": "sensor",
+            "frequency": 0,
+            "connectivity": "WiFi",
+            "energySource": "Battery",
+            "taskColor": "Violet"
+          }
+        }
+      },
+      "position": { "x": 0, "y": 230 },
+      "draggable": true,
+      "measured": { "width": 102, "height": 102 }
+    },
+    {
+      "id": "nd_9003",
+      "type": "iotNode",
+      "data": {
+        "iot": {
+          "id": 9003,
+          "name": "Public Display",
+          "icon": "MdTv",
+          "queue": [],
+          "properties": {
+            "task_type": "public_alert",
+            "dataInput": "default",
+            "meanSize": 5,
+            "urgency": "BestEffort",
+            "slack": 0,
+            "numTasks": 10,
+            "startTime": 0,
+            "endTime": 60,
+            "distribution": "uniform",
+            "deviceRole": "actuator",
+            "frequency": 0,
+            "connectivity": "LAN",
+            "energySource": "Wired",
+            "taskColor": "Teal"
+          }
+        }
+      },
+      "position": { "x": 0, "y": 380 },
+      "draggable": true,
+      "measured": { "width": 102, "height": 102 }
+    },
+    {
+      "id": "10001",
+      "type": "machineNode",
+      "data": {
+        "machine": {
+          "id": 10001,
+          "name": "City Edge Node",
+          "icon": "MdDeveloperBoard",
+          "power": 6,
+          "idle_power": 1,
+          "replicas": 3,
+          "price": 0.6,
+          "cost": 0,
+          "utilization_time": 0,
+          "total_cost": 0,
+          "total_tasks": 0,
+          "eet": {
+            "city_cam": "30",
+            "emergency_dispatch": "6",
+            "public_alert": "10"
+          }
+        },
+        "machineIndex": 0
+      },
+      "position": { "x": 700, "y": 80 },
+      "draggable": true,
+      "measured": { "width": 386, "height": 108 }
+    },
+    {
+      "id": "10002",
+      "type": "machineNode",
+      "data": {
+        "machine": {
+          "id": 10002,
+          "name": "City Server",
+          "icon": "MdComputer",
+          "power": 50,
+          "idle_power": 8,
+          "replicas": 2,
+          "price": 1.5,
+          "cost": 0,
+          "utilization_time": 0,
+          "total_cost": 0,
+          "total_tasks": 0,
+          "eet": {
+            "city_cam": "15",
+            "emergency_dispatch": "3",
+            "public_alert": "5"
+          }
+        },
+        "machineIndex": 1
+      },
+      "position": { "x": 700, "y": 230 },
+      "draggable": true,
+      "measured": { "width": 386, "height": 108 }
+    },
+    {
+      "id": "10003",
+      "type": "machineNode",
+      "data": {
+        "machine": {
+          "id": 10003,
+          "name": "City Cloud GPU",
+          "icon": "MdCloud",
+          "power": 200,
+          "idle_power": 30,
+          "replicas": 4,
+          "price": 5.0,
+          "cost": 0,
+          "utilization_time": 0,
+          "total_cost": 0,
+          "total_tasks": 0,
+          "eet": {
+            "city_cam": "8",
+            "emergency_dispatch": "2",
+            "public_alert": "3"
+          }
+        },
+        "machineIndex": 2
+      },
+      "position": { "x": 700, "y": 380 },
+      "draggable": true,
+      "measured": { "width": 386, "height": 108 }
+    }
+  ],
+  "edges": [
+    {
+      "id": "e-nd_9001-LBNode_0",
+      "source": "nd_9001",
+      "target": "LBNode_0",
+      "type": "packet",
+      "data": { "properties": { "connectionType": "LAN" } }
+    },
+    {
+      "id": "e-nd_9002-LBNode_0",
+      "source": "nd_9002",
+      "target": "LBNode_0",
+      "type": "packet",
+      "data": { "properties": { "connectionType": "WiFi" } }
+    },
+    {
+      "id": "e-nd_9003-LBNode_0",
+      "source": "nd_9003",
+      "target": "LBNode_0",
+      "type": "packet",
+      "data": { "properties": { "connectionType": "LAN" } }
+    },
+    {
+      "id": "e-LBNode_0-10001",
+      "source": "LBNode_0",
+      "target": "10001",
+      "type": "packet",
+      "data": { "properties": { "connectionType": "LAN" } }
+    },
+    {
+      "id": "e-LBNode_0-10002",
+      "source": "LBNode_0",
+      "target": "10002",
+      "type": "packet",
+      "data": { "properties": { "connectionType": "LAN" } }
+    },
+    {
+      "id": "e-LBNode_0-10003",
+      "source": "LBNode_0",
+      "target": "10003",
+      "type": "packet",
+      "data": { "properties": { "connectionType": "LAN" } }
+    }
+  ],
+  "machines": [
+    {
+      "id": 10001,
+      "name": "City Edge Node",
+      "icon": "MdDeveloperBoard",
+      "power": 6,
+      "idle_power": 1,
+      "replicas": 3,
+      "price": 0.6,
+      "cost": 0,
+      "utilization_time": 0,
+      "total_cost": 0,
+      "total_tasks": 0,
+      "eet": {
+        "city_cam": "30",
+        "emergency_dispatch": "6",
+        "public_alert": "10"
+      }
+    },
+    {
+      "id": 10002,
+      "name": "City Server",
+      "icon": "MdComputer",
+      "power": 50,
+      "idle_power": 8,
+      "replicas": 2,
+      "price": 1.5,
+      "cost": 0,
+      "utilization_time": 0,
+      "total_cost": 0,
+      "total_tasks": 0,
+      "eet": {
+        "city_cam": "15",
+        "emergency_dispatch": "3",
+        "public_alert": "5"
+      }
+    },
+    {
+      "id": 10003,
+      "name": "City Cloud GPU",
+      "icon": "MdCloud",
+      "power": 200,
+      "idle_power": 30,
+      "replicas": 4,
+      "price": 5.0,
+      "cost": 0,
+      "utilization_time": 0,
+      "total_cost": 0,
+      "total_tasks": 0,
+      "eet": {
+        "city_cam": "8",
+        "emergency_dispatch": "2",
+        "public_alert": "3"
+      }
+    }
+  ],
+  "iot": [
+    {
+      "id": 9001,
+      "name": "Camera",
+      "icon": "MdVideocam",
+      "queue": [],
+      "properties": {
+        "task_type": "city_cam",
+        "dataInput": "default",
+        "meanSize": 15,
+        "urgency": "BestEffort",
+        "slack": 0,
+        "numTasks": 40,
+        "startTime": 0,
+        "endTime": 60,
+        "distribution": "uniform",
+        "deviceRole": "sensor",
+        "frequency": 0,
+        "connectivity": "LAN",
+        "energySource": "Wired",
+        "taskColor": "Sky"
+      }
+    },
+    {
+      "id": 9002,
+      "name": "Emergency Vehicle",
+      "icon": "MdDirectionsCar",
+      "queue": [],
+      "properties": {
+        "task_type": "emergency_dispatch",
+        "dataInput": "default",
+        "meanSize": 3,
+        "urgency": "BestEffort",
+        "slack": 0,
+        "numTasks": 20,
+        "startTime": 0,
+        "endTime": 60,
+        "distribution": "exponential",
+        "deviceRole": "sensor",
+        "frequency": 0,
+        "connectivity": "WiFi",
+        "energySource": "Battery",
+        "taskColor": "Violet"
+      }
+    },
+    {
+      "id": 9003,
+      "name": "Public Display",
+      "icon": "MdTv",
+      "queue": [],
+      "properties": {
+        "task_type": "public_alert",
+        "dataInput": "default",
+        "meanSize": 5,
+        "urgency": "BestEffort",
+        "slack": 0,
+        "numTasks": 10,
+        "startTime": 0,
+        "endTime": 60,
+        "distribution": "uniform",
+        "deviceRole": "actuator",
+        "frequency": 0,
+        "connectivity": "LAN",
+        "energySource": "Wired",
+        "taskColor": "Teal"
+      }
+    }
+  ],
+  "workloadFileName": "",
+  "profilingFileName": "",
+  "configFileName": "",
+  "machineConfig": [],
+  "taskTypes": [
+    { "srcID": 9001, "name": "Camera", "dataInput": "default", "meanSize": 15, "urgency": "BestEffort", "slack": 0 },
+    { "srcID": 9002, "name": "Emergency Vehicle", "dataInput": "default", "meanSize": 3, "urgency": "BestEffort", "slack": 0 },
+    { "srcID": 9003, "name": "Public Display", "dataInput": "default", "meanSize": 5, "urgency": "BestEffort", "slack": 0 }
+  ],
+  "scenarioRows": [
+    { "srcID": 9001, "taskType": "city_cam", "numTasks": 40, "startTime": 0, "endTime": 60, "distribution": "uniform" },
+    { "srcID": 9002, "taskType": "emergency_dispatch", "numTasks": 20, "startTime": 0, "endTime": 60, "distribution": "exponential" },
+    { "srcID": 9003, "taskType": "public_alert", "numTasks": 10, "startTime": 0, "endTime": 60, "distribution": "uniform" }
+  ],
+  "colorMemory": {}
+}

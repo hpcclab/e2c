@@ -45,6 +45,10 @@ import QueueNode from "./components/QueueNode";
 import SaveLoadPanel from "./components/SaveLoadPanel";
 import AnimatedEdge from "./components/AnimatedEdge";
 import { FCFS } from "./schedulers/FCFS";
+import { LC } from "./schedulers/LC";
+import { RAND } from "./schedulers/RAND";
+import { URI } from "./schedulers/URI";
+import { SCHEDULER_REGISTRY } from "./schedulers/registry";
 
 const edgeTypes = {
   packet: AnimatedEdge,
@@ -103,16 +107,12 @@ const SimDashboard = () => {
     workloadFileUploaded,
     setWorkloadFileUploaded,
     setProfilingTableData,
-    workloadFileName,
     setWorkloadFileName,
     workloadTableData,
     setWorkloadTableData,
-    configFileName,
     setConfigFileName,
     configFileUploaded,
     setConfigFileUploaded,
-    handleWorkloadUpload,
-    handleConfigUpload,
     completedTasks,
     setCompletedTasks,
     eetLoaded,
@@ -141,6 +141,12 @@ const SimDashboard = () => {
     setMissedTasks,
     dataResults,
     setDataResults,
+    isRunning,
+    setIsRunning,
+    isPaused,
+    setIsPaused,
+    simTotal,
+    setSimTotal,
   } = useGlobalState();
   // End Global States
 
@@ -250,9 +256,43 @@ const SimDashboard = () => {
   // State assignments and functions
   // - Load balancer handlers
   const schedulerRef = useRef(null);
+  const [scheduling, setScheduling] = useState("immediate");
+  const [policy, setPolicy] = useState("FirstCome-FirstServe");
+  const [policyAlias, setPolicyAlias] = useState("FCFS");
+  const [queueSize, setQueueSize] = useState("unlimited");
+  const policyNames = [
+    "FirstCome-FirstServe",
+    // "Min-Expected-Completion-Time",
+    // "Min-Expected-Execution-Time",
+    // "Weighted-Round-Robin",
+    "Random",
+    "Uniform-Resender-Identifier",
+    "Least-Connection",
+  ];
+  function generateAlias(name) {
+    const specialCases = {
+      Random: "RAND",
+      "FirstCome-FirstServe": "FCFS",
+    };
 
+    if (specialCases[name]) return specialCases[name];
+    return name
+      .split("-")
+      .map((w) => w[0])
+      .join("")
+      .toUpperCase();
+  }
+  function createScheduler(alias, opts) {
+    const SchedulerClass = SCHEDULER_REGISTRY[alias];
+
+    if (!SchedulerClass) {
+      throw new Error(`Unknown scheduler: ${alias}`);
+    }
+
+    return new SchedulerClass(opts);
+  }
   useEffect(() => {
-    schedulerRef.current = new FCFS({
+    schedulerRef.current = new createScheduler(policyAlias, {
       machines,
       iot,
       enqueue,
@@ -260,7 +300,7 @@ const SimDashboard = () => {
       isNeighbors,
       config: { LB_ID },
     });
-  }, []);
+  }, [policyAlias]);
   useEffect(() => {
     if (!schedulerRef.current) return;
 
@@ -276,9 +316,6 @@ const SimDashboard = () => {
 
   // End EET Parse
 
-  const [scheduling, setScheduling] = useState("immediate");
-  const [policy, setPolicy] = useState("FirstCome-FirstServe");
-  const [queueSize, setQueueSize] = useState("unlimited");
   // - Data parameter handlers
   const [runtimeModel, setRuntimeModel] = useState("Constant");
   const [performanceParams, setPerformanceParams] = useState({
@@ -325,12 +362,29 @@ const SimDashboard = () => {
 
   // - Sim results handlers
   const simulationIntervalRef = useRef(null);
+  const simCurrentRef = useRef(0);
+  const totalSimTimeRef = useRef(Infinity);
+  const totalTasksRef = useRef(0);
+  const displayTickRef = useRef(0);
+
+  // Resume simulation if it was running when user navigated away
+  useEffect(() => {
+    if (isRunning && !isPaused && simulationTime < simTotal) {
+      simCurrentRef.current = simulationTime;
+      totalSimTimeRef.current = simTotal;
+      startSimInterval();
+    }
+    return () => {
+      clearInterval(simulationIntervalRef.current);
+      simulationIntervalRef.current = null;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const [animatedMachines, setAnimatedMachines] = useState(machines); // ANIMATION
   const [animatedIOTs, setAnimatedIOTs] = useState(iot);
   const [flyers, setFlyers] = useState([]);
   const [animatedTaskIds, setAnimatedTaskIds] = useState([]);
-  const [isRunning, setIsRunning] = useState(false);
   const [machine_index, setMachine_index] = useState(0);
   const [prev_machine_index, setPrev_machine_index] = useState(-1);
   const [iot_index, setIot_index] = useState(0);
@@ -441,16 +495,41 @@ const SimDashboard = () => {
     }
   };
 
-  const handleResetSim = () => {
-    // Clear the batch queue visually
-    setBatchQ({});
-    setMachines([]);
-    setIot([]);
-    handleConfigUpload(configFileName);
-    handleWorkloadUpload(workloadFileName);
-
-    // handleWorkloadUpload()
+  const handlePauseSim = () => {
+    clearInterval(simulationIntervalRef.current);
+    simulationIntervalRef.current = null;
+    setIsPaused(true);
   };
+
+  const handleResumeSim = () => {
+    setIsPaused(false);
+    startSimInterval();
+  };
+
+  const handleRestartSim = () => {
+    clearInterval(simulationIntervalRef.current);
+    simulationIntervalRef.current = null;
+    simCurrentRef.current = 0;
+    setIsPaused(false);
+
+    // Fresh scheduler clears all stats, queues, and unmapped tasks
+    schedulerRef.current = new FCFS({
+      machines: [],
+      iot: [],
+      enqueue,
+      dequeue,
+      isNeighbors,
+      config: { LB_ID },
+    });
+
+    // Clear machine queues from the previous run
+    const clearedMachines = machines.map((m) => ({ ...m, queue: [] }));
+    setMachines(clearedMachines);
+    machinesRef.current = clearedMachines;
+
+    runDataSimulation();
+  };
+
   const handleResetWorkload = () => {
     // Clear all uploaded file information
     setWorkloadFileName("");
@@ -476,12 +555,17 @@ const SimDashboard = () => {
     try {
       console.log("Saving machine properties:", updatedMachine);
       // Update React state so canvas and sidebar re-render
+      // Spread existing machine first to preserve fields not in the edit form (position, parentId, etc.)
       setMachines((prev) =>
-        prev.map((m) => (m.id === updatedMachine.id ? updatedMachine : m)),
+        prev.map((m) =>
+          m.id === updatedMachine.id ? { ...m, ...updatedMachine } : m,
+        ),
       );
       // Update the machines ref
       machinesRef.current = machinesRef.current.map((machine) =>
-        machine.id === updatedMachine.id ? updatedMachine : machine,
+        machine.id === updatedMachine.id
+          ? { ...machine, ...updatedMachine }
+          : machine,
       );
       // Generate updated config - make sure all machines are included
       const allMachines = machinesRef.current.filter((m) => m.id !== -1);
@@ -521,12 +605,6 @@ const SimDashboard = () => {
       };
       console.log("Sending config update:", updatedConfig);
       // Send updated config to backend
-      const response = await axios.post(
-        "http://localhost:5001/api/config/update",
-        updatedConfig,
-      );
-      console.log("Config update response:", response.data);
-      console.log("Machine properties updated successfully");
     } catch (error) {
       // Config sync failed (e.g. server not running) — state already updated, just warn
       console.warn("Config sync failed (non-fatal):", error.message);
@@ -534,7 +612,7 @@ const SimDashboard = () => {
   };
   const handleIOTPropertySave = async (updatedIOT) => {
     setIot((prev) =>
-      prev.map((i) => (i.id === updatedIOT.id ? updatedIOT : i)),
+      prev.map((i) => (i.id === updatedIOT.id ? { ...i, ...updatedIOT } : i)),
     );
     const updatedIotType = {
       srcID: updatedIOT.id,
@@ -565,6 +643,28 @@ const SimDashboard = () => {
     // generate new workload and save to workload Q
   };
   // End Data Update handlers
+  const startSimInterval = () => {
+    clearInterval(simulationIntervalRef.current);
+    simulationIntervalRef.current = setInterval(() => {
+      simCurrentRef.current = parseFloat(
+        (simCurrentRef.current + 0.01).toFixed(3),
+      );
+      setSimulationTime(simCurrentRef.current);
+      if (simCurrentRef.current >= totalSimTimeRef.current) {
+        if (pendingMissedRef.current.length > 0) {
+          setMissedTasks((prev) => [...prev, ...pendingMissedRef.current]);
+          pendingMissedRef.current = [];
+        }
+        setSimulationTime(Number(totalSimTimeRef.current));
+        clearInterval(simulationIntervalRef.current);
+        simulationIntervalRef.current = null;
+        setIsRunning(false);
+        setIsPaused(false);
+        console.log("Simulation complete!");
+      }
+    }, 10);
+  };
+
   const runDataSimulation = async () => {
     try {
       // ensure possible to run
@@ -573,105 +673,25 @@ const SimDashboard = () => {
         return;
       }
 
-      // Clear any existing simulation interval
-      if (simulationIntervalRef.current) {
-        clearInterval(simulationIntervalRef.current);
-      }
       setIsRunning(true);
-      const workspace = ld_workspace();
+      setIsPaused(false);
+      ld_workspace();
 
       setShowReport(true); // Show the report when results are ready
 
-      // Simulation loop with EET-based dequeue
-      let current = 0;
-      const step = 0.01;
-      const intervalMs = 10;
-
+      simCurrentRef.current = 0;
+      displayTickRef.current = 0;
       setSimulationTime(0);
       setCompletedTasks([]);
       setUnassignedTasks([]);
       setMissedTasks([]);
       const scheduler = schedulerRef.current;
-      const totalSimTime = scheduler.getBatchQ()[-1]?.end_time || Infinity;
+      totalTasksRef.current = scheduler.getBatchQ().length;
+      totalSimTimeRef.current =
+        scheduler.getBatchQ().at(-1)?.end_time || Infinity;
+      setSimTotal(totalSimTimeRef.current);
 
-      simulationIntervalRef.current = setInterval(() => {
-        current = parseFloat((current + step).toFixed(3));
-        setSimulationTime(current);
-        if (current >= totalSimTime) {
-          // Flush any remaining tasks that never met their deadline by end of simulation
-          if (pendingMissedRef.current.length > 0) {
-            setMissedTasks((prev) => [...prev, ...pendingMissedRef.current]);
-            pendingMissedRef.current = [];
-          }
-          setSimulationTime(Number(totalSimTime));
-          clearInterval(simulationIntervalRef.current);
-          simulationIntervalRef.current = null;
-          console.log("Simulation complete!");
-        }
-      }, intervalMs);
-
-      // // Update machines with stats from simulation
-      // const updatedMachines = machines.map((machine) => {
-      //   const stats = machine_stats?.find((s) => s.base_name === machine.name);
-
-      //   if (stats) {
-      //     const totalUtilization = stats.replicas.reduce(
-      //       (sum, r) => sum + r.utilization_hours,
-      //       0,
-      //     );
-      //     const totalCost = stats.replicas.reduce((sum, r) => sum + r.cost, 0);
-      //     const totalTasks = stats.replicas.reduce(
-      //       (sum, r) => sum + r.tasks_completed,
-      //       0,
-      //     );
-
-      //     return {
-      //       ...machine,
-      //       utilization_time: totalUtilization,
-      //       total_cost: totalCost,
-      //       total_tasks: totalTasks,
-      //       replica_stats: stats.replicas,
-      //     };
-      //   }
-
-      //   return machine;
-      // });
-
-      // // Update all machine states
-      // setMachines(updatedMachines);
-      // setAnimatedMachines(updatedMachines);
-      // machinesRef.current = updatedMachines;
-
-      // If a machine is currently selected, update it with new data
-      // if (selectedMachine && selectedMachine.id !== undefined) {
-      //   const updatedSelectedMachine = updatedMachines.find(
-      //     (m) => m.id === selectedMachine.id,
-      //   );
-      //   if (updatedSelectedMachine) {
-      //     setSelectedMachine(updatedSelectedMachine);
-
-      //     // Also update performance params
-      //     setPerformanceParams({
-      //       id: updatedSelectedMachine.id,
-      //       name: updatedSelectedMachine.name,
-      //       // queue: updatedSelectedMachine.queue,
-      //       power: updatedSelectedMachine.power,
-      //       idle_power: updatedSelectedMachine.idle_power,
-      //       replicas: updatedSelectedMachine.replicas,
-      //       price: updatedSelectedMachine.price,
-      //       cost: updatedSelectedMachine.cost,
-      //       utilization_time: updatedSelectedMachine.utilization_time,
-      //       total_cost: updatedSelectedMachine.total_cost,
-      //       total_tasks: updatedSelectedMachine.total_tasks,
-      //     });
-      //   }
-      // }
-
-      // // Late-completion misses come from processDequeue; no static list needed
-      // pendingMissedRef.current = [];
-      // setMissedTasks([]); // accumulates dynamically during the simulation loop
-
-      // console.log("Simulation results:", results);
+      startSimInterval();
     } catch (error) {
       console.error("Error running simulation:", error);
       alert("Failed to run simulation.");
@@ -701,15 +721,21 @@ const SimDashboard = () => {
   );
   const dequeue = useCallback(
     (machineId) => {
-      setMachines((prevMachines) =>
-        prevMachines.map((machine) =>
-          machine.id === machineId
-            ? {
-                ...machine,
-                queue: (machine.queue || []).slice(1),
-              }
-            : machine,
-        ),
+      // Sync machine utilization and task counts accumulated in the scheduler on dequeue
+      const scheduler = schedulerRef.current;
+      const machineStats = scheduler.getMachineStats();
+      setMachines((prev) =>
+        prev.map((m) => {
+          if (m.id !== machineId) return m;
+          const stats = machineStats.get(machineId);
+          return {
+            ...m,
+            utilization_time: stats?.utilization_time || 0,
+            total_tasks: stats?.total_tasks || 0,
+            total_cost: (m.price || 0) * (stats?.utilization_time || 0) * 3600,
+            queue: (m.queue || []).slice(1),
+          };
+        }),
       );
     },
     [setMachines],
@@ -742,12 +768,24 @@ const SimDashboard = () => {
 
     // Process running tasks (completion)
     scheduler.processMachines();
+
     setCompletedTasks([...scheduler.getStats().completed]);
     setUnassignedTasks(
       scheduler.getBatchQ().filter((t) => t.machineId === null),
     );
     setMissedTasks([...scheduler.getStats().missed]);
     setDataResults([...unassignedTasks, ...completedTasks, ...missedTasks]);
+
+    const finished =
+      scheduler.getStats().completed.length +
+      scheduler.getStats().missed.length;
+    if (totalTasksRef.current > 0 && finished >= totalTasksRef.current) {
+      clearInterval(simulationIntervalRef.current);
+      simulationIntervalRef.current = null;
+      setIsRunning(false);
+      setIsPaused(false);
+      console.log("Simulation complete!");
+    }
   }, [simulationTime, isRunning]);
 
   // /* -------------------- WORKSPACE, EDGE, MACHINE, and IOT NODES -------------------- */
@@ -803,7 +841,6 @@ const SimDashboard = () => {
     try {
       // Simulate submission logic
       setSubmissionStatus("Submitting...");
-      await new Promise((resolve) => setTimeout(resolve, 1000)); // Simulate API call delay
       setSubmissionStatus("Submission successful!");
     } catch (error) {
       setSubmissionStatus("Submission failed.");
@@ -869,19 +906,30 @@ const SimDashboard = () => {
             <div className="flex justify-between space-x-4 bg-white rounded-full shadow-lg px-6 py-3">
               <>
                 <button
-                  className="bg-gray-400 hover:bg-gray-500 text-white rounded-full w-12 h-12 flex items-center justify-center transition"
-                  onClick={handleResetSim}
-                >
-                  ⟲
-                </button>
-                <button
                   onClick={runDataSimulation}
                   className="bg-green-600 hover:bg-green-700 text-white rounded-full w-12 h-12 flex items-center justify-center transition shadow-md"
                 >
                   ▶
                 </button>
-                <button className="bg-gray-400 hover:bg-gray-500 text-white rounded-full w-12 h-12 flex items-center justify-center transition">
-                  ⏸
+                <button
+                  className={`${isRunning ? "bg-blue-500 hover:bg-blue-600" : "bg-gray-300 cursor-not-allowed"} text-white rounded-full w-12 h-12 flex items-center justify-center transition`}
+                  onClick={isRunning ? handleRestartSim : undefined}
+                  disabled={!isRunning}
+                >
+                  ↺
+                </button>
+                <button
+                  className={`${isRunning ? (isPaused ? "bg-yellow-500 hover:bg-yellow-600" : "bg-gray-400 hover:bg-gray-500") : "bg-gray-300 cursor-not-allowed"} text-white rounded-full w-12 h-12 flex items-center justify-center transition`}
+                  onClick={
+                    isRunning
+                      ? isPaused
+                        ? handleResumeSim
+                        : handlePauseSim
+                      : undefined
+                  }
+                  disabled={!isRunning}
+                >
+                  {isPaused ? "▶" : "⏸"}
                 </button>
               </>
             </div>
@@ -953,17 +1001,20 @@ const SimDashboard = () => {
                     </label>
 
                     <select
-                      value={policy}
-                      onChange={(e) => setPolicy(e.target.value)}
+                      value={policyAlias}
+                      onChange={(e) => {
+                        setPolicyAlias(e.target.value);
+                      }}
                       className="w-full border px-3 py-2 text-sm rounded"
                     >
-                      <option>FirstCome-FirstServe</option>
-                      <option>Min-Expected-Completion-Time</option>
-                      <option>Min-Expected-Execution-Time</option>
-                      <option>Weighted-Round-Robin</option>
-                      <option>Random</option>
-                      <option>Uniform-Resender-Identifier</option>
-                      <option>Least-Connection</option>
+                      {policyNames.map((name) => {
+                        const alias = generateAlias(name);
+                        return (
+                          <option key={name} value={alias}>
+                            {name} ({alias})
+                          </option>
+                        );
+                      })}
                     </select>
                   </div>
                 </div>

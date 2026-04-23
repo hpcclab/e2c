@@ -1,0 +1,384 @@
+{
+  "nodes": [
+    {
+      "data": {},
+      "id": "LBNode_0",
+      "measured": { "height": 122, "width": 122 },
+      "position": { "x": 350, "y": 305 },
+      "type": "LBNode"
+    },
+    {
+      "id": "nd_5001",
+      "type": "iotNode",
+      "data": {
+        "iot": {
+          "id": 5001,
+          "name": "Thermometer",
+          "icon": "MdThermostat",
+          "queue": [],
+          "properties": {
+            "task_type": "temp_reading",
+            "dataInput": "default",
+            "meanSize": 1,
+            "urgency": "BestEffort",
+            "slack": 0,
+            "numTasks": 20,
+            "startTime": 0,
+            "endTime": 60,
+            "distribution": "uniform",
+            "deviceRole": "sensor",
+            "frequency": 0,
+            "connectivity": "WiFi",
+            "energySource": "Wired",
+            "taskColor": "Sky"
+          }
+        }
+      },
+      "position": { "x": 0, "y": 80 },
+      "draggable": true,
+      "measured": { "width": 102, "height": 102 }
+    },
+    {
+      "id": "nd_5002",
+      "type": "iotNode",
+      "data": {
+        "iot": {
+          "id": 5002,
+          "name": "Light Bulb",
+          "icon": "MdLightbulb",
+          "queue": [],
+          "properties": {
+            "task_type": "light_control",
+            "dataInput": "default",
+            "meanSize": 1,
+            "urgency": "BestEffort",
+            "slack": 0,
+            "numTasks": 15,
+            "startTime": 0,
+            "endTime": 60,
+            "distribution": "uniform",
+            "deviceRole": "actuator",
+            "frequency": 0,
+            "connectivity": "WiFi",
+            "energySource": "Wired",
+            "taskColor": "Emerald"
+          }
+        }
+      },
+      "position": { "x": 0, "y": 230 },
+      "draggable": true,
+      "measured": { "width": 102, "height": 102 }
+    },
+    {
+      "id": "nd_5003",
+      "type": "iotNode",
+      "data": {
+        "iot": {
+          "id": 5003,
+          "name": "Smart Lock",
+          "icon": "MdLock",
+          "queue": [],
+          "properties": {
+            "task_type": "lock_event",
+            "dataInput": "default",
+            "meanSize": 1,
+            "urgency": "BestEffort",
+            "slack": 0,
+            "numTasks": 10,
+            "startTime": 0,
+            "endTime": 60,
+            "distribution": "exponential",
+            "deviceRole": "actuator",
+            "frequency": 0,
+            "connectivity": "WiFi",
+            "energySource": "Battery",
+            "taskColor": "Slate"
+          }
+        }
+      },
+      "position": { "x": 0, "y": 380 },
+      "draggable": true,
+      "measured": { "width": 102, "height": 102 }
+    },
+    {
+      "id": "nd_5004",
+      "type": "iotNode",
+      "data": {
+        "iot": {
+          "id": 5004,
+          "name": "Speaker",
+          "icon": "MdSpeaker",
+          "queue": [],
+          "properties": {
+            "task_type": "voice_command",
+            "dataInput": "default",
+            "meanSize": 3,
+            "urgency": "BestEffort",
+            "slack": 0,
+            "numTasks": 12,
+            "startTime": 0,
+            "endTime": 60,
+            "distribution": "exponential",
+            "deviceRole": "sensor",
+            "frequency": 0,
+            "connectivity": "WiFi",
+            "energySource": "Wired",
+            "taskColor": "Violet"
+          }
+        }
+      },
+      "position": { "x": 0, "y": 530 },
+      "draggable": true,
+      "measured": { "width": 102, "height": 102 }
+    },
+    {
+      "id": "6001",
+      "type": "machineNode",
+      "data": {
+        "machine": {
+          "id": 6001,
+          "name": "Home Hub",
+          "icon": "MdDeveloperBoard",
+          "power": 3,
+          "idle_power": 0.5,
+          "replicas": 1,
+          "price": 0.1,
+          "cost": 0,
+          "utilization_time": 0,
+          "total_cost": 0,
+          "total_tasks": 0,
+          "eet": {
+            "temp_reading": "2",
+            "light_control": "1",
+            "lock_event": "3",
+            "voice_command": "8"
+          }
+        },
+        "machineIndex": 0
+      },
+      "position": { "x": 700, "y": 180 },
+      "draggable": true,
+      "measured": { "width": 386, "height": 108 }
+    },
+    {
+      "id": "6002",
+      "type": "machineNode",
+      "data": {
+        "machine": {
+          "id": 6002,
+          "name": "Smart Home Cloud",
+          "icon": "MdCloud",
+          "power": 50,
+          "idle_power": 5,
+          "replicas": 2,
+          "price": 1.0,
+          "cost": 0,
+          "utilization_time": 0,
+          "total_cost": 0,
+          "total_tasks": 0,
+          "eet": {
+            "temp_reading": "1",
+            "light_control": "1",
+            "lock_event": "1",
+            "voice_command": "3"
+          }
+        },
+        "machineIndex": 1
+      },
+      "position": { "x": 700, "y": 330 },
+      "draggable": true,
+      "measured": { "width": 386, "height": 108 }
+    }
+  ],
+  "edges": [
+    {
+      "id": "e-nd_5001-LBNode_0",
+      "source": "nd_5001",
+      "target": "LBNode_0",
+      "type": "packet",
+      "data": { "properties": { "connectionType": "WiFi" } }
+    },
+    {
+      "id": "e-nd_5002-LBNode_0",
+      "source": "nd_5002",
+      "target": "LBNode_0",
+      "type": "packet",
+      "data": { "properties": { "connectionType": "WiFi" } }
+    },
+    {
+      "id": "e-nd_5003-LBNode_0",
+      "source": "nd_5003",
+      "target": "LBNode_0",
+      "type": "packet",
+      "data": { "properties": { "connectionType": "WiFi" } }
+    },
+    {
+      "id": "e-nd_5004-LBNode_0",
+      "source": "nd_5004",
+      "target": "LBNode_0",
+      "type": "packet",
+      "data": { "properties": { "connectionType": "WiFi" } }
+    },
+    {
+      "id": "e-LBNode_0-6001",
+      "source": "LBNode_0",
+      "target": "6001",
+      "type": "packet",
+      "data": { "properties": { "connectionType": "LAN" } }
+    },
+    {
+      "id": "e-LBNode_0-6002",
+      "source": "LBNode_0",
+      "target": "6002",
+      "type": "packet",
+      "data": { "properties": { "connectionType": "LAN" } }
+    }
+  ],
+  "machines": [
+    {
+      "id": 6001,
+      "name": "Home Hub",
+      "icon": "MdDeveloperBoard",
+      "power": 3,
+      "idle_power": 0.5,
+      "replicas": 1,
+      "price": 0.1,
+      "cost": 0,
+      "utilization_time": 0,
+      "total_cost": 0,
+      "total_tasks": 0,
+      "eet": {
+        "temp_reading": "2",
+        "light_control": "1",
+        "lock_event": "3",
+        "voice_command": "8"
+      }
+    },
+    {
+      "id": 6002,
+      "name": "Smart Home Cloud",
+      "icon": "MdCloud",
+      "power": 50,
+      "idle_power": 5,
+      "replicas": 2,
+      "price": 1.0,
+      "cost": 0,
+      "utilization_time": 0,
+      "total_cost": 0,
+      "total_tasks": 0,
+      "eet": {
+        "temp_reading": "1",
+        "light_control": "1",
+        "lock_event": "1",
+        "voice_command": "3"
+      }
+    }
+  ],
+  "iot": [
+    {
+      "id": 5001,
+      "name": "Thermometer",
+      "icon": "MdThermostat",
+      "queue": [],
+      "properties": {
+        "task_type": "temp_reading",
+        "dataInput": "default",
+        "meanSize": 1,
+        "urgency": "BestEffort",
+        "slack": 0,
+        "numTasks": 20,
+        "startTime": 0,
+        "endTime": 60,
+        "distribution": "uniform",
+        "deviceRole": "sensor",
+        "frequency": 0,
+        "connectivity": "WiFi",
+        "energySource": "Wired",
+        "taskColor": "Sky"
+      }
+    },
+    {
+      "id": 5002,
+      "name": "Light Bulb",
+      "icon": "MdLightbulb",
+      "queue": [],
+      "properties": {
+        "task_type": "light_control",
+        "dataInput": "default",
+        "meanSize": 1,
+        "urgency": "BestEffort",
+        "slack": 0,
+        "numTasks": 15,
+        "startTime": 0,
+        "endTime": 60,
+        "distribution": "uniform",
+        "deviceRole": "actuator",
+        "frequency": 0,
+        "connectivity": "WiFi",
+        "energySource": "Wired",
+        "taskColor": "Emerald"
+      }
+    },
+    {
+      "id": 5003,
+      "name": "Smart Lock",
+      "icon": "MdLock",
+      "queue": [],
+      "properties": {
+        "task_type": "lock_event",
+        "dataInput": "default",
+        "meanSize": 1,
+        "urgency": "BestEffort",
+        "slack": 0,
+        "numTasks": 10,
+        "startTime": 0,
+        "endTime": 60,
+        "distribution": "exponential",
+        "deviceRole": "actuator",
+        "frequency": 0,
+        "connectivity": "WiFi",
+        "energySource": "Battery",
+        "taskColor": "Slate"
+      }
+    },
+    {
+      "id": 5004,
+      "name": "Speaker",
+      "icon": "MdSpeaker",
+      "queue": [],
+      "properties": {
+        "task_type": "voice_command",
+        "dataInput": "default",
+        "meanSize": 3,
+        "urgency": "BestEffort",
+        "slack": 0,
+        "numTasks": 12,
+        "startTime": 0,
+        "endTime": 60,
+        "distribution": "exponential",
+        "deviceRole": "sensor",
+        "frequency": 0,
+        "connectivity": "WiFi",
+        "energySource": "Wired",
+        "taskColor": "Violet"
+      }
+    }
+  ],
+  "workloadFileName": "",
+  "profilingFileName": "",
+  "configFileName": "",
+  "machineConfig": [],
+  "taskTypes": [
+    { "srcID": 5001, "name": "Thermometer", "dataInput": "default", "meanSize": 1, "urgency": "BestEffort", "slack": 0 },
+    { "srcID": 5002, "name": "Light Bulb", "dataInput": "default", "meanSize": 1, "urgency": "BestEffort", "slack": 0 },
+    { "srcID": 5003, "name": "Smart Lock", "dataInput": "default", "meanSize": 1, "urgency": "BestEffort", "slack": 0 },
+    { "srcID": 5004, "name": "Speaker", "dataInput": "default", "meanSize": 3, "urgency": "BestEffort", "slack": 0 }
+  ],
+  "scenarioRows": [
+    { "srcID": 5001, "taskType": "temp_reading", "numTasks": 20, "startTime": 0, "endTime": 60, "distribution": "uniform" },
+    { "srcID": 5002, "taskType": "light_control", "numTasks": 15, "startTime": 0, "endTime": 60, "distribution": "uniform" },
+    { "srcID": 5003, "taskType": "lock_event", "numTasks": 10, "startTime": 0, "endTime": 60, "distribution": "exponential" },
+    { "srcID": 5004, "taskType": "voice_command", "numTasks": 12, "startTime": 0, "endTime": 60, "distribution": "exponential" }
+  ],
+  "colorMemory": {}
+}

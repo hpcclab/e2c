@@ -101,6 +101,9 @@ export const GlobalProvider = ({ children }) => {
   const [missedTasks, setMissedTasks] = useState([]);
   const [unassignedTasks, setUnassignedTasks] = useState([]);
   const [showReport, setShowReport] = useState(false);
+  const [isRunning, setIsRunning] = useState(false);
+  const [isPaused, setIsPaused] = useState(false);
+  const [simTotal, setSimTotal] = useState(Infinity);
 
   const getNeighbors = (sourceID) => {
     let outies =
@@ -432,6 +435,7 @@ export const GlobalProvider = ({ children }) => {
   const batchSlotsRef = useRef([]);
   const machineSlotsRef = useRef({});
   const loadBalancerRef = useRef(null);
+
   // End Define States
 
   const value = {
@@ -528,6 +532,12 @@ export const GlobalProvider = ({ children }) => {
     setMissedTasks,
     dataResults,
     setDataResults,
+    isRunning,
+    setIsRunning,
+    isPaused,
+    setIsPaused,
+    simTotal,
+    setSimTotal,
   };
 
   return (

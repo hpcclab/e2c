@@ -1,20 +1,17 @@
 import { BaseScheduler } from "./BaseScheduler";
 import { registerScheduler } from "./registry";
-export class FCFS extends BaseScheduler {
+export class LC extends BaseScheduler {
   constructor(opts) {
     super(opts);
-    this.name = "FCFS";
+    this.name = "LC";
+    this.prev_assignment_idx = -1;
   }
 
-  firstAvailableMachine() {
-    // Prefer idle machines first
-    for (const m of this.machines) {
-      if (!m.queue?.length) return m;
-    }
+  selectMin() {
+    if (!this.machines.length) return null;
 
-    // Otherwise pick least loaded machine
-    let min = Infinity;
-    let chosen = null;
+    let chosen = this.machines[0];
+    let min = this.machines[0].queue?.length || 0;
 
     for (const m of this.machines) {
       const len = m.queue?.length || 0;
@@ -32,10 +29,10 @@ export class FCFS extends BaseScheduler {
       return null;
     }
 
-    // Get next FCFS task only when needed
     if (!this.unmappedTask.length) {
-      const nextTask = this.batchQueue[0];
+      if (!this.batchQueue.length) return null;
 
+      const nextTask = this.batchQueue[0];
       if (!nextTask) return null;
 
       if (nextTask.arrival_time > this.getTime()) {
@@ -45,15 +42,11 @@ export class FCFS extends BaseScheduler {
       this.choose();
     }
 
-    // Find machine
-    const machine = this.firstAvailableMachine();
-    if (!machine) {
-      console.log("Machines Unavailable");
-      return null;
-    }
+    const machine = this.selectMin();
+    if (!machine) return null;
 
     this.map(machine);
     return machine;
   }
 }
-registerScheduler("FCFS", FCFS);
+registerScheduler("LC", LC);

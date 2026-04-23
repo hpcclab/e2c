@@ -18,6 +18,18 @@ import "../assets/saveload.css";
 import { colorMemory } from "./Task";
 
 Modal.setAppElement("#root");
+
+const TASK_COLOR_NAME_TO_INDEX = {
+  Slate: 0,
+  Sky: 1,
+  Teal: 2,
+  Emerald: 3,
+  Violet: 4,
+  Rose: 5,
+  Amber: 6,
+  Fuchsia: 7,
+};
+
 export default function FlowSaveLoadPanel() {
   const {
     nodes,
@@ -63,6 +75,45 @@ export default function FlowSaveLoadPanel() {
     statusTimer.current = setTimeout(() => setStatus(null), 2000);
   };
 
+  const getDerivedTaskColorMemory = (iots = []) => {
+    const derived = {};
+    iots.forEach((iotEntry) => {
+      const taskType = iotEntry?.properties?.task_type ?? iotEntry?.name;
+      if (!taskType) return;
+
+      const colorName = iotEntry?.properties?.taskColor ?? "Slate";
+      const idx = TASK_COLOR_NAME_TO_INDEX[colorName];
+      if (idx !== undefined) derived[taskType] = idx;
+    });
+    return derived;
+  };
+
+  const normalizeTaskColorMemory = (memory = {}) => {
+    const normalized = {};
+    Object.entries(memory || {}).forEach(([taskType, idx]) => {
+      const parsed = Number(idx);
+      if (!Number.isFinite(parsed)) return;
+      if (parsed < 0 || parsed > 7) return;
+      normalized[taskType] = parsed;
+    });
+    return normalized;
+  };
+
+  const getPersistedTaskColorMemory = (iots = []) => ({
+    ...getDerivedTaskColorMemory(iots),
+    ...normalizeTaskColorMemory(colorMemory),
+  });
+
+  const restoreTaskColorMemory = (iots = [], loadedMemory = {}) => {
+    const merged = {
+      ...getDerivedTaskColorMemory(iots),
+      ...normalizeTaskColorMemory(loadedMemory),
+    };
+    Object.keys(colorMemory).forEach((k) => delete colorMemory[k]);
+    Object.assign(colorMemory, merged);
+    window.dispatchEvent(new Event("taskColorChanged"));
+  };
+
   // Fetch existing files
   const fetchFiles = async () => {
     try {
@@ -93,6 +144,7 @@ export default function FlowSaveLoadPanel() {
       if (!machineConfig) {
         generateMachineConfig(machines, taskTypes);
       }
+      const persistedColorMemory = getPersistedTaskColorMemory(iot);
       await localStore.saveAs(fileWithExtension, {
         nodes,
         edges,
@@ -104,7 +156,7 @@ export default function FlowSaveLoadPanel() {
         machineConfig,
         taskTypes,
         scenarioRows,
-        colorMemory,
+        colorMemory: persistedColorMemory,
         filename: fileWithExtension,
       });
       notify("Saved!");
@@ -121,6 +173,7 @@ export default function FlowSaveLoadPanel() {
       if (!machineConfig) {
         generateMachineConfig(machines, taskTypes);
       }
+      const persistedColorMemory = getPersistedTaskColorMemory(iot);
       await localStore.saveState(selectedFile, {
         nodes,
         edges,
@@ -132,7 +185,7 @@ export default function FlowSaveLoadPanel() {
         machineConfig,
         taskTypes,
         scenarioRows,
-        colorMemory,
+        colorMemory: persistedColorMemory,
         filename: selectedFile,
       });
       notify("Saved!");
@@ -157,7 +210,7 @@ export default function FlowSaveLoadPanel() {
         const loadedMachineConfig = data.machineConfig || [];
         const loadedTaskTypes = data.taskTypes || [];
         const loadedScenarioRows = data.scenarioRows || [];
-        const loadedcolorMemory = data.colorMemory || [];
+        const loadedColorMemory = data.colorMemory || {};
 
         // Separate other nodes (non-machine / non-iot)
         const otherNodes = loadedNodes.filter(
@@ -186,13 +239,14 @@ export default function FlowSaveLoadPanel() {
         setEdges(loadedEdges);
         setMachines(loadedMachines);
         setIot(loadedIots);
+
+        // Restore task color map (with IoT-property fallback for old exports)
+        restoreTaskColorMemory(loadedIots, loadedColorMemory);
+
         notify("Loaded!");
         fetchFiles();
 
-        // load task colors:
-
         fitView({ padding: 0.5, duration: 600, interpolate: "smooth" });
-        window.dispatchEvent(new Event("taskColorChanged"));
       } else {
         notify("No data found in file.", true);
       }
@@ -235,8 +289,20 @@ export default function FlowSaveLoadPanel() {
           setEdges(data.edges);
           setMachines(data.machines);
           setIot(data.iot);
+          if (data.taskTypes) setTaskTypes(data.taskTypes);
+          if (data.scenarioRows) setScenarioRows(data.scenarioRows);
+          if (data.machineConfig) setMachineConfig(data.machineConfig);
 
-          await localStore.saveAs(file.name, data);
+          const importedColorMemory = {
+            ...getDerivedTaskColorMemory(data.iot),
+            ...normalizeTaskColorMemory(data.colorMemory || {}),
+          };
+          restoreTaskColorMemory(data.iot, importedColorMemory);
+
+          await localStore.saveAs(file.name, {
+            ...data,
+            colorMemory: importedColorMemory,
+          });
           notify("Loaded and saved!");
           closeModal();
           fetchFiles();
@@ -300,6 +366,7 @@ export default function FlowSaveLoadPanel() {
 
   const exportWorkspace = () => {
     const filename = (newFileName.trim() || "workspace") + ".json";
+    const persistedColorMemory = getPersistedTaskColorMemory(iot);
     triggerDownload(filename, {
       nodes,
       edges,
@@ -308,6 +375,7 @@ export default function FlowSaveLoadPanel() {
       taskTypes,
       scenarioRows,
       machineConfig,
+      colorMemory: persistedColorMemory,
     });
     notify("Exported!");
   };
