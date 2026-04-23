@@ -18,6 +18,8 @@ export class BaseScheduler {
       missed: [],
       completed: [],
     };
+
+    this.machineStats = new Map(); // machineId -> { utilization_time, total_tasks }
   }
 
   setTime(t) {
@@ -108,7 +110,16 @@ export class BaseScheduler {
         task.status = "COMPLETED";
         this.stats.completed.push(task);
         this.dequeue(m.id);
+        const prev = this.machineStats.get(m.id) || { utilization_time: 0, total_tasks: 0 };
+        this.machineStats.set(m.id, {
+          utilization_time: prev.utilization_time + (task.execution_time || 0) / 3600,
+          total_tasks: prev.total_tasks + 1,
+        });
       }
     }
+  }
+
+  getMachineStats() {
+    return this.machineStats;
   }
 }

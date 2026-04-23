@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { useGlobalState } from "../context/GlobalStates";
 import { MACHINE_ICON_MAP } from "../utils/machineIcons";
+import { formatUtilizationTime, formatEnergy } from "../utils/formatTime";
 
 const MACHINE_PRESETS = [
   { name: "CPU",      icon: "MdComputer" },
@@ -157,7 +158,7 @@ const EditMachineProperties = ({
 
         <div>
           <label className="block text-sm font-semibold text-gray-700 mb-1">
-            Power
+            Power (W)
           </label>
           <input
             type="number"
@@ -169,7 +170,7 @@ const EditMachineProperties = ({
 
         <div>
           <label className="block text-sm font-semibold text-gray-700 mb-1">
-            Idle Power
+            Idle Power (W)
           </label>
           <input
             type="number"
@@ -194,7 +195,7 @@ const EditMachineProperties = ({
 
         <div>
           <label className="block text-sm font-semibold text-gray-700 mb-1">
-            ($) Price / hr
+            ($) Price / s
           </label>
           <input
             type="number"
@@ -225,7 +226,7 @@ const EditMachineProperties = ({
                   <th className="border px-2 py-1 bg-gray-100 text-left">
                     Task Type
                   </th>
-                  <th className="border px-2 py-1 bg-gray-100">EET(s)</th>
+                  <th className="border px-2 py-1 bg-gray-100">EET (s)</th>
                 </tr>
               </thead>
               <tbody>
@@ -336,7 +337,7 @@ const EditMachineProperties = ({
 
         <div>
           <label className="block text-sm font-semibold text-gray-700 mb-1">
-            ($) Price / hr
+            ($) Price / s
           </label>
           <div className="w-full border px-3 py-2 text-sm rounded bg-gray-100">
             $
@@ -399,13 +400,13 @@ const EditMachineProperties = ({
 
             <div>
               <span className="font-medium text-gray-600">
-                Utilization Hours:
+                Utilization Time:
               </span>
               <div className="bg-green-50 font-bold px-2 py-1 rounded">
-                {selectedMachine.utilization_time
-                  ? Number(selectedMachine.utilization_time).toFixed(3)
-                  : "0.000"}
-                h
+                {(() => {
+                  const d = formatUtilizationTime(selectedMachine.utilization_time || 0);
+                  return `${d.value} ${d.unit}`;
+                })()}
               </div>
             </div>
 
@@ -420,15 +421,14 @@ const EditMachineProperties = ({
             </div>
 
             <div>
-              <span className="font-medium text-gray-600">Cost/Task:</span>
+              <span className="font-medium text-gray-600">Total Energy:</span>
               <div className="bg-purple-50 font-bold px-2 py-1 rounded">
-                $
-                {selectedMachine.total_tasks && selectedMachine.total_cost
-                  ? (
-                      Number(selectedMachine.total_cost) /
-                      Number(selectedMachine.total_tasks)
-                    ).toFixed(2)
-                  : "0.00"}
+                {(() => {
+                  const e = formatEnergy(
+                    ((selectedMachine.power || 0) * (selectedMachine.utilization_time || 0)) / 1000
+                  );
+                  return `${e.value} ${e.unit}`;
+                })()}
               </div>
             </div>
           </div>

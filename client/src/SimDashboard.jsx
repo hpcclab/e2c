@@ -137,6 +137,12 @@ const SimDashboard = () => {
     setMissedTasks,
     dataResults,
     setDataResults,
+    isRunning,
+    setIsRunning,
+    isPaused,
+    setIsPaused,
+    simTotal,
+    setSimTotal,
   } = useGlobalState();
   // End Global States
 
@@ -325,12 +331,24 @@ const SimDashboard = () => {
   const totalSimTimeRef = useRef(Infinity);
   const totalTasksRef = useRef(0);
 
+  // Resume simulation if it was running when user navigated away
+  useEffect(() => {
+    if (isRunning && !isPaused && simulationTime < simTotal) {
+      simCurrentRef.current = simulationTime;
+      totalSimTimeRef.current = simTotal;
+      startSimInterval();
+    }
+    return () => {
+      clearInterval(simulationIntervalRef.current);
+      simulationIntervalRef.current = null;
+    };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const [animatedMachines, setAnimatedMachines] = useState(machines); // ANIMATION
   const [animatedIOTs, setAnimatedIOTs] = useState(iot);
   const [flyers, setFlyers] = useState([]);
   const [animatedTaskIds, setAnimatedTaskIds] = useState([]);
-  const [isRunning, setIsRunning] = useState(false);
-  const [isPaused, setIsPaused] = useState(false);
   const [machine_index, setMachine_index] = useState(0);
   const [prev_machine_index, setPrev_machine_index] = useState(-1);
   const [iot_index, setIot_index] = useState(0);
@@ -501,12 +519,13 @@ const SimDashboard = () => {
     try {
       console.log("Saving machine properties:", updatedMachine);
       // Update React state so canvas and sidebar re-render
+      // Spread existing machine first to preserve fields not in the edit form (position, parentId, etc.)
       setMachines((prev) =>
-        prev.map((m) => (m.id === updatedMachine.id ? updatedMachine : m)),
+        prev.map((m) => (m.id === updatedMachine.id ? { ...m, ...updatedMachine } : m)),
       );
       // Update the machines ref
       machinesRef.current = machinesRef.current.map((machine) =>
-        machine.id === updatedMachine.id ? updatedMachine : machine,
+        machine.id === updatedMachine.id ? { ...machine, ...updatedMachine } : machine,
       );
       // Generate updated config - make sure all machines are included
       const allMachines = machinesRef.current.filter((m) => m.id !== -1);
@@ -559,7 +578,7 @@ const SimDashboard = () => {
   };
   const handleIOTPropertySave = async (updatedIOT) => {
     setIot((prev) =>
-      prev.map((i) => (i.id === updatedIOT.id ? updatedIOT : i)),
+      prev.map((i) => (i.id === updatedIOT.id ? { ...i, ...updatedIOT } : i)),
     );
     const updatedIotType = {
       srcID: updatedIOT.id,
@@ -632,6 +651,7 @@ const SimDashboard = () => {
       const scheduler = schedulerRef.current;
       totalTasksRef.current = scheduler.getBatchQ().length;
       totalSimTimeRef.current = scheduler.getBatchQ().at(-1)?.end_time || Infinity;
+      setSimTotal(totalSimTimeRef.current);
 
       startSimInterval();
 
@@ -767,6 +787,24 @@ const SimDashboard = () => {
 
     // Process running tasks (completion)
     scheduler.processMachines();
+
+    // Sync per-machine utilization and task counts accumulated in the scheduler
+    const machineStats = scheduler.getMachineStats();
+    if (machineStats.size > 0) {
+      setMachines((prev) =>
+        prev.map((m) => {
+          const stats = machineStats.get(m.id);
+          if (!stats) return m;
+          return {
+            ...m,
+            utilization_time: stats.utilization_time,
+            total_tasks: stats.total_tasks,
+            total_cost: (m.price || 0) * stats.utilization_time * 3600,
+          };
+        }),
+      );
+    }
+
     setCompletedTasks([...scheduler.getStats().completed]);
     setUnassignedTasks(
       scheduler.getBatchQ().filter((t) => t.machineId === null),
