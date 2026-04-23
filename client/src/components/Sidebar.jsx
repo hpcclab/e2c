@@ -674,7 +674,7 @@ export default function Sidebar() {
 
           <div className="sb-section-label">Topology</div>
           <div className="sb-node-list">
-            {NODE_CONFIG.slice(4).map((cfg) => (
+            {NODE_CONFIG.slice(5).map((cfg) => (
               <DraggableNode
                 key={cfg.type}
                 config={cfg}

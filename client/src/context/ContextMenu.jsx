@@ -126,8 +126,16 @@ export default function ContextMenu({
   const deleteNode = useCallback(() => {
     const node = getNode(id);
     if (!node) return;
+    let numericId;
+    let iotId;
 
-    const numericId = extractNumericId(id);
+    if (id[2] === "_") {
+      // is an iot node with intitial: "nd_"
+      numericId = id;
+      iotId = Number(id.substring(3));
+    } else {
+      numericId = extractNumericId(id);
+    }
 
     setNodes((nodes) => nodes.filter((n) => n.id !== id));
     setEdges((edges) =>
@@ -139,9 +147,9 @@ export default function ContextMenu({
     }
 
     if (node.type === "iotNode") {
-      setIot((prev) => prev.filter((i) => Number(i.id) !== numericId));
-      setScenarioRows((prev) => prev.filter((o) => o.srcID !== numericId));
-      setTaskTypes((prev) => prev.filter((o) => o.srcID !== numericId));
+      setIot((prev) => prev.filter((i) => i.id !== iotId));
+      setScenarioRows((prev) => prev.filter((o) => o.srcID !== iotId));
+      setTaskTypes((prev) => prev.filter((o) => o.srcID !== iotId));
     }
   }, [id, getNode, setNodes, setEdges, setMachines, setIot]);
   // Edge functions
@@ -160,16 +168,17 @@ export default function ContextMenu({
           Edge Properties
         </button>
       ) : (
-        <button className="menu-item" onClick={duplicateNode}>
-          <FiCopy className="icon" />
-          Duplicate
-        </button>
+        <>
+          <button className="menu-item" onClick={duplicateNode}>
+            <FiCopy className="icon" />
+            Duplicate
+          </button>
+          <button className="menu-item danger" onClick={deleteNode}>
+            <FiTrash2 className="icon" />
+            Delete
+          </button>
+        </>
       )}
-
-      <button className="menu-item danger" onClick={deleteNode}>
-        <FiTrash2 className="icon" />
-        Delete
-      </button>
     </div>
   );
 }

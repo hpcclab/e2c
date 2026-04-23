@@ -435,6 +435,7 @@ export const GlobalProvider = ({ children }) => {
   const batchSlotsRef = useRef([]);
   const machineSlotsRef = useRef({});
   const loadBalancerRef = useRef(null);
+
   // End Define States
 
   const value = {
