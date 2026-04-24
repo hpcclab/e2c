@@ -1,7 +1,5 @@
 # E2C-Revamp
 
-This repository contains a small Flask backend and React frontend for experimenting with workload scheduling algorithms.
-
 View our simulation at:
 
 [E2C Simulation](https://hpcclab.github.io/e2c)
