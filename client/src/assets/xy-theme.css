@@ -4,29 +4,31 @@
   --xy-background-color: #f7f9fb;
   /* Custom Variables */
   --xy-theme-selected: #f57dbd;
-  --xy-theme-hover: #c5c5c5;
+  --xy-theme-hover: rgb(47, 172, 255);
   --xy-theme-edge-hover: black;
   --xy-theme-color-focus: #e8e8e8;
 
   /* Built-in Variables see https://reactflow.dev/learn/customization/theming */
-  --xy-node-border-default: 1px solid #ededed;
+  --xy-node-border-default: 2px solid #ededed;
 
-  --xy-node-boxshadow-default: 0px 3.54px 4.55px 0px #00000005,
-    0px 3.54px 4.55px 0px #0000000d, 0px 0.51px 1.01px 0px #0000001a;
+  --xy-node-boxshadow-default:
+    0px 3.54px 4.55px 0px #00000005, 0px 3.54px 4.55px 0px #0000000d,
+    0px 0.51px 1.01px 0px #0000001a;
 
   --xy-node-border-radius-default: 8px;
 
   --xy-handle-background-color-default: #ffffff;
   --xy-handle-border-color-default: #aaaaaa;
 
-  --xy-edge-label-color-default: #505050;
+  --xy-edge-label-color-default: #5685b9;
 }
 
 .react-flow.dark {
-  --xy-node-boxshadow-default: 0px 3.54px 4.55px 0px rgba(255, 255, 255, 0.05),
+  --xy-node-boxshadow-default:
+    0px 3.54px 4.55px 0px rgba(255, 255, 255, 0.05),
     /* light shadow */ 0px 3.54px 4.55px 0px rgba(255, 255, 255, 0.13),
     /* medium shadow */ 0px 0.51px 1.01px 0px rgba(255, 255, 255, 0.2); /* smallest shadow */
-  --xy-theme-color-focus: #535353;
+  --xy-theme-color-focus: #5685b9;
 }
 
 /* Customizing Default Theming */
@@ -67,7 +69,6 @@
 
 .react-flow__node-group {
   background-color: rgba(207, 182, 255, 0.4);
-  border-color: #9e86ed;
 }
 
 .react-flow__edge.selectable:hover .react-flow__edge-path,
@@ -96,12 +97,19 @@
   border: none;
 }
 
+.react-flow__resize-control.line {
+  border-color: var(--xy-theme-selected);
+}
+
 .react-flow__resize-control.handle {
   background-color: #ffffff;
   border-color: #9e86ed;
   border-radius: 0;
   width: 5px;
   height: 5px;
+}
+.react-flow__resize-control.handle:hover {
+  background-color: #9e86ed;
 }
 
 /* 
@@ -150,7 +158,9 @@
   border: 1px solid var(--color-primary);
   background-color: var(--color-background);
   color: var(--color-primary);
-  transition: background-color 0.2s ease, border-color 0.2s ease;
+  transition:
+    background-color 0.2s ease,
+    border-color 0.2s ease;
   box-shadow: var(--xy-node-boxshadow-default);
   cursor: pointer;
 }
@@ -197,7 +207,9 @@
   border: 1px solid var(--color-primary);
   border-radius: 7px;
   background-color: var(--color-background);
-  transition: background-color 0.2s ease, border-color 0.2s ease;
+  transition:
+    background-color 0.2s ease,
+    border-color 0.2s ease;
   font-size: 1rem;
   color: inherit;
 }
@@ -217,7 +229,9 @@
   border-radius: 7px;
   border: 2px solid var(--color-primary);
   background-color: var(--color-background);
-  transition: background-color 0.2s ease, border-color 0.2s ease;
+  transition:
+    background-color 0.2s ease,
+    border-color 0.2s ease;
   cursor: pointer;
   display: inline-block;
   vertical-align: middle;
@@ -240,7 +254,9 @@
   border: 1px solid var(--color-primary);
   border-radius: 50px;
   background-color: var(--color-background);
-  transition: background-color 0.2s ease, border-color 0.2s ease;
+  transition:
+    background-color 0.2s ease,
+    border-color 0.2s ease;
   font-size: 1rem;
   color: inherit;
   margin-right: 0.5rem;
@@ -250,7 +266,7 @@
 .xy-theme__select:focus {
   outline: none;
   border-color: var(--color-primary);
-  box-shadow: 0 0 0 2px rgba(255, 0, 115, 0.3);
+  box-shadow: 0 0 0 2 rgba(255, 0, 115, 0.3);
 }
 
 .xy-theme__label {

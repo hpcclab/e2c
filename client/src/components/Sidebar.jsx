@@ -96,29 +96,6 @@ const NODE_CONFIG = [
     border: "rgba(251,146,60,0.25)",
   },
   {
-    type: "workloadNode",
-    label: "Work Space",
-    icon: (
-      <svg
-        viewBox="0 0 24 24"
-        fill="none"
-        stroke="currentColor"
-        strokeWidth="1.5"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      >
-        <rect x="3" y="3" width="7" height="7" rx="1" />
-        <rect x="14" y="3" width="7" height="7" rx="1" />
-        <rect x="3" y="14" width="7" height="7" rx="1" />
-        <rect x="14" y="14" width="7" height="7" rx="1" />
-      </svg>
-    ),
-    description: "Grouped workload zone",
-    accent: "#e879f9",
-    bg: "rgba(232,121,249,0.08)",
-    border: "rgba(232,121,249,0.25)",
-  },
-  {
     type: "LBNode",
     label: "Load Balancer",
     icon: (
@@ -462,7 +439,11 @@ export default function Sidebar() {
             }),
           );
         }
-      } else if (nodeType === "workloadNode") {
+      } else if (
+        nodeType === "workloadNode" ||
+        nodeType === "edgeSpace" ||
+        nodeType === "cloudSpace"
+      ) {
         const newWorkspace = {
           id: Date.now(),
           job_q: [],
@@ -470,14 +451,23 @@ export default function Sidebar() {
           machines: [],
           iots: [],
         };
+        let nodeName;
+        nodeType === "edgeSpace"
+          ? (nodeName = "Edge")
+          : nodeType === "cloudSpace"
+            ? (nodeName = "Cloud")
+            : "Default Organizer";
         setWorkspaces((prev) => [...prev, newWorkspace]);
         setNodes((nds) =>
           nds.concat({
             id: `nd-${newWorkspace.id}`,
             type: "group",
             position: relativePosition,
-            data: { workspaceId: newWorkspace.id, nodes: [] },
-            resizing: true,
+            data: {
+              workspaceId: newWorkspace.id,
+              nodes: [],
+              name: nodeName,
+            },
             style: {
               width: 280,
               height: 250,
@@ -654,7 +644,7 @@ export default function Sidebar() {
         </div>
 
         <div className="sb-section">
-          {/* <div className="sb-section-label">Infrastructure</div>
+          <div className="sb-section-label">Architecture</div>
           <div className="sb-node-list">
             {NODE_CONFIG.slice(0, 2).map((cfg) => (
               <DraggableNode
@@ -665,7 +655,7 @@ export default function Sidebar() {
             ))}
           </div>
 
-          <div className="sb-divider" /> */}
+          <div className="sb-divider" />
 
           <div className="sb-section-label">Compute</div>
           <div className="sb-node-list">
@@ -682,7 +672,7 @@ export default function Sidebar() {
 
           <div className="sb-section-label">Topology</div>
           <div className="sb-node-list">
-            {NODE_CONFIG.slice(5).map((cfg) => (
+            {NODE_CONFIG.slice(4).map((cfg) => (
               <DraggableNode
                 key={cfg.type}
                 config={cfg}
