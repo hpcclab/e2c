@@ -123,6 +123,10 @@ export default function ContextMenu({
     }
   }, [id, getNode, machines, iot, addNodes, setMachines, setIot]);
 
+  const deleteEdge = useCallback(() => {
+    setEdges((eds) => eds.filter((e) => e.id !== id));
+  }, [setEdges]);
+
   const deleteNode = useCallback(() => {
     const node = getNode(id);
     if (!node) return;
@@ -163,10 +167,16 @@ export default function ContextMenu({
       <div className="menu-header">Node</div>
       <div className="menu-sub">{id}</div>
       {id[0] === "e" ? (
-        <button className="menu-item" onClick={edgeSidebar}>
-          <FiCopy className="icon" />
-          Edge Properties
-        </button>
+        <>
+          <button className="menu-item" onClick={edgeSidebar}>
+            <FiCopy className="icon" />
+            Edge Properties
+          </button>
+          <button className="menu-item danger" onClick={deleteEdge}>
+            <FiTrash2 className="icon" />
+            Delete
+          </button>
+        </>
       ) : (
         <>
           <button className="menu-item" onClick={duplicateNode}>

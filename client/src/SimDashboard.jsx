@@ -49,6 +49,8 @@ import { LC } from "./schedulers/LC";
 import { RAND } from "./schedulers/RAND";
 import { URI } from "./schedulers/URI";
 import { SCHEDULER_REGISTRY } from "./schedulers/registry";
+import Reports from "./Reports";
+import { Link, Route, Routes } from "react-router-dom";
 
 const edgeTypes = {
   packet: AnimatedEdge,
@@ -860,10 +862,24 @@ const SimDashboard = () => {
 
   return (
     <div className=" bg-[#d9d9d9] m-5 h-720 max-h-screen max-w-1600 flex flex-col relative ">
-      {/* DND */}
+      {/* Navbar */}
+      <div className="max-w-screen max-h-screen  bg-gray-50 overflow-hidden">
+        <header className="bg-blue-500 h-12 text-white p-3 shadow-md overflow-hidden">
+          <nav className="mx-auto flex justify-between items-center overflow-hidden ">
+            <SaveLoadPanel />
+            <Link to="/e2c/reports" className="hover:underline">
+              Reports
+            </Link>
+          </nav>
+        </header>
+        <Routes>
+          <Route path="/e2c/reports" element={<Reports />} />
+        </Routes>
+      </div>
 
-      <div className=" p-3 bg-gray-100 size-dvw max-w-screen max-h-screen relative">
-        <div className="dndflow">
+      {/* DND */}
+      <div className=" p-3 bg-gray-100 h-dvh max-w-screen max-h-screen relative">
+        <div className="dndflow flex gap-1">
           <div className="reactflow-wrapper" ref={reactFlowWrapper}>
             <ReactFlow
               nodes={nodes}
@@ -887,7 +903,6 @@ const SimDashboard = () => {
               <Controls position="center-left" />
               <Background />
               {menu && <ContextMenu onClick={onPaneClick} {...menu} />}
-              <SaveLoadPanel />
             </ReactFlow>
           </div>
           <Sidebar setNodes={setNodes} />

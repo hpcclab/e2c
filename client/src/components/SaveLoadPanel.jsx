@@ -254,7 +254,70 @@ export default function FlowSaveLoadPanel() {
       notify("Load failed: " + err.message, true);
     }
   };
+  // Select Files
+  const handleFileSelect = (e) => {
+    const file = e.target.files[0];
+    console.log(e);
+    if (!file || !file.name.endsWith(".json")) {
+      alert("Only .json file selection is allowed.");
+      return;
+    }
+    e.preventDefault();
 
+    const reader = new FileReader();
+    reader.onload = async (event) => {
+      try {
+        const data = JSON.parse(event.target.result);
+        if (data.machines && data.iot && data.edges) {
+          const machineNodes = data.machines.map((m) => ({
+            id: `machine-${m.id}`,
+            type: "machineNode",
+            position: m.position || { x: 0, y: 0 },
+            data: m,
+          }));
+
+          const iotNodes = data.iot.map((i) => ({
+            id: `iot-${i.id}`,
+            type: "iotNode",
+            position: i.position || { x: 0, y: 0 },
+            data: i,
+          }));
+
+          const otherNodes =
+            data.nodes?.filter(
+              (n) => n.type !== "machineNode" && n.type !== "iotNode",
+            ) || [];
+
+          setNodes([...otherNodes, ...machineNodes, ...iotNodes]);
+          setEdges(data.edges);
+          setMachines(data.machines);
+          setIot(data.iot);
+          if (data.taskTypes) setTaskTypes(data.taskTypes);
+          if (data.scenarioRows) setScenarioRows(data.scenarioRows);
+          if (data.machineConfig) setMachineConfig(data.machineConfig);
+
+          const importedColorMemory = {
+            ...getDerivedTaskColorMemory(data.iot),
+            ...normalizeTaskColorMemory(data.colorMemory || {}),
+          };
+          restoreTaskColorMemory(data.iot, importedColorMemory);
+
+          await localStore.saveAs(file.name, {
+            ...data,
+            colorMemory: importedColorMemory,
+          });
+          notify("Loaded and saved!");
+          closeModal();
+          fetchFiles();
+        } else {
+          notify("Invalid file format.", true);
+        }
+      } catch (err) {
+        notify("Error parsing file: " + err.message, true);
+      }
+    };
+    reader.readAsText(file);
+  };
   // Drag & Drop
   const handleDrop = (e) => {
     e.preventDefault();
@@ -401,16 +464,13 @@ export default function FlowSaveLoadPanel() {
   // Render
   return (
     <>
-      <Panel position="top-left">
-        <button
-          onClick={openModal}
-          title="Save / Load"
-          className="xy-theme__button"
-          style={{ padding: "6px 8px", display: "flex", alignItems: "center" }}
-        >
-          <VscFiles size={32} />
-        </button>
-      </Panel>
+      <button
+        onClick={openModal}
+        title="Save / Load"
+        className="text-2l hover:underline"
+      >
+        File
+      </button>
 
       <Modal
         isOpen={modalOpen}
@@ -438,8 +498,7 @@ export default function FlowSaveLoadPanel() {
           onMouseLeave={stopDrag}
         >
           <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-            <VscFiles size={16} />
-            <span>Saved States</span>
+            <span className="text-xl">Saved States</span>
           </div>
           <button className="close-btn" onClick={closeModal}>
             <MdClose size={18} />
@@ -456,7 +515,7 @@ export default function FlowSaveLoadPanel() {
           )}
 
           {/* File list */}
-          <p className="section-label">Saved workspaces</p>
+          <p className="section-label">Saved Simulations</p>
           {files.length === 0 ? (
             <p className="empty-state">No saved states yet.</p>
           ) : (
@@ -490,6 +549,7 @@ export default function FlowSaveLoadPanel() {
                       title="Download as file"
                     >
                       <MdDownload size={13} />
+                      Export
                     </button>
                   </div>
                 </li>
@@ -521,7 +581,7 @@ export default function FlowSaveLoadPanel() {
               onClick={save}
               title="Save to selected file"
             >
-              <MdSave size={14} /> Overwrite Save
+              <MdSave size={14} /> Update
             </button>
             <button
               className="action-btn btn-rename"
@@ -541,15 +601,15 @@ export default function FlowSaveLoadPanel() {
 
           {/* Export */}
           <p className="section-label" style={{ marginTop: "16px" }}>
-            Export
+            Import
           </p>
-          <button
-            className="action-btn btn-export"
-            onClick={exportWorkspace}
-            style={{ width: "100%" }}
-          >
-            <MdDownload size={14} /> Download workspace as .json
-          </button>
+          <input
+            type="file"
+            accept=".json"
+            className="w-full action-btn btn-export"
+            placeholder="Select File"
+            onChange={handleFileSelect}
+          />
 
           {/* Drop zone */}
           <div
@@ -559,7 +619,7 @@ export default function FlowSaveLoadPanel() {
             style={{ marginTop: "12px" }}
           >
             <MdUploadFile size={22} style={{ opacity: 0.4 }} />
-            <span>Drop a JSON state file to load</span>
+            <span>Drop a Simulation file to import (.json only)</span>
           </div>
         </div>
       </Modal>

@@ -10,7 +10,7 @@ const App = () => {
     <Router>
       <div className="max-w-screen max-h-screen bg-gray-50 overflow-x-hidden">
         <header className="bg-blue-500 text-white p-3 shadow-md overflow-hidden">
-          <nav className="max-w-7xl mx-auto flex justify-between items-center overflow-hidden ">
+          <nav className="mx-auto flex justify-between items-center overflow-hidden ">
             <h1 className="text-3xl font-bold">E2C</h1>
             <ul className="flex space-x-6 text-lg max-w-screen overflow-hidden">
               <li>
@@ -21,11 +21,6 @@ const App = () => {
               <li>
                 <Link to="/e2c/simulate" className="hover:underline">
                   Simulation
-                </Link>
-              </li>
-              <li>
-                <Link to="/e2c/reports" className="hover:underline">
-                  Reports
                 </Link>
               </li>
             </ul>

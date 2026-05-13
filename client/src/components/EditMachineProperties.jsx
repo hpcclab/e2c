@@ -4,9 +4,9 @@ import { MACHINE_ICON_MAP } from "../utils/machineIcons";
 import { formatUtilizationTime, formatEnergy } from "../utils/formatTime";
 
 const MACHINE_PRESETS = [
-  { name: "CPU",      icon: "MdComputer" },
-  { name: "GPU",      icon: "MdMemory" },
-  { name: "ARM",      icon: "MdDeveloperBoard" },
+  { name: "CPU", icon: "MdComputer" },
+  { name: "GPU", icon: "MdMemory" },
+  { name: "ARM", icon: "MdDeveloperBoard" },
   { name: "Cloud VM", icon: "MdCloud" },
 ];
 
@@ -39,9 +39,17 @@ const EditMachineProperties = ({
 
   const handlePresetSelect = async (preset) => {
     if (editMode) {
-      setEditedMachine((prev) => ({ ...prev, name: preset.name, icon: preset.icon }));
+      setEditedMachine((prev) => ({
+        ...prev,
+        name: preset.name,
+        icon: preset.icon,
+      }));
     } else {
-      const updated = { ...selectedMachine, name: preset.name, icon: preset.icon };
+      const updated = {
+        ...selectedMachine,
+        name: preset.name,
+        icon: preset.icon,
+      };
       setSelectedMachine(updated);
       setAnimatedMachines((prev) =>
         prev.map((m) => (m.id === updated.id ? { ...m, ...updated } : m)),
@@ -52,7 +60,9 @@ const EditMachineProperties = ({
 
   const PresetPicker = () => (
     <div className="mb-4">
-      <p className="text-xs font-bold text-gray-500 uppercase mb-2">Hardware Preset</p>
+      <p className="text-xs font-bold text-gray-500 uppercase mb-2">
+        Hardware Preset
+      </p>
       <div className="grid grid-cols-4 gap-1">
         {MACHINE_PRESETS.map((preset) => {
           const active = editMode
@@ -69,7 +79,10 @@ const EditMachineProperties = ({
               }`}
             >
               {Icon && <Icon size={22} />}
-              <span className="mt-0.5 text-gray-600 truncate w-full text-center" style={{ fontSize: "9px" }}>
+              <span
+                className="mt-0.5 text-gray-600 truncate w-full text-center"
+                style={{ fontSize: "9px" }}
+              >
                 {preset.name}
               </span>
             </button>
@@ -306,7 +319,7 @@ const EditMachineProperties = ({
 
         <div>
           <label className="block text-sm font-semibold text-gray-700 mb-1">
-            Power
+            Power (W)
           </label>
           <div className="w-full border px-3 py-2 text-sm rounded bg-gray-100">
             {selectedMachine.power !== undefined ? selectedMachine.power : "-"}
@@ -315,7 +328,7 @@ const EditMachineProperties = ({
 
         <div>
           <label className="block text-sm font-semibold text-gray-700 mb-1">
-            Idle Power
+            Idle Power (W)
           </label>
           <div className="w-full border px-3 py-2 text-sm rounded bg-gray-100">
             {selectedMachine.idle_power !== undefined
@@ -337,7 +350,7 @@ const EditMachineProperties = ({
 
         <div>
           <label className="block text-sm font-semibold text-gray-700 mb-1">
-            ($) Price / s
+            Price / s ($)
           </label>
           <div className="w-full border px-3 py-2 text-sm rounded bg-gray-100">
             $
@@ -373,7 +386,7 @@ const EditMachineProperties = ({
                         undefined &&
                       selectedMachine.eet?.[iotNode.properties.task_type] !== ""
                         ? selectedMachine.eet[iotNode.properties.task_type]
-                        : "-"}
+                        : "1"}
                     </td>
                   </tr>
                 ))}
@@ -404,7 +417,9 @@ const EditMachineProperties = ({
               </span>
               <div className="bg-green-50 font-bold px-2 py-1 rounded">
                 {(() => {
-                  const d = formatUtilizationTime(selectedMachine.utilization_time || 0);
+                  const d = formatUtilizationTime(
+                    selectedMachine.utilization_time || 0,
+                  );
                   return `${d.value} ${d.unit}`;
                 })()}
               </div>
@@ -425,7 +440,9 @@ const EditMachineProperties = ({
               <div className="bg-purple-50 font-bold px-2 py-1 rounded">
                 {(() => {
                   const e = formatEnergy(
-                    ((selectedMachine.power || 0) * (selectedMachine.utilization_time || 0)) / 1000
+                    ((selectedMachine.power || 0) *
+                      (selectedMachine.utilization_time || 0)) /
+                      1000,
                   );
                   return `${e.value} ${e.unit}`;
                 })()}

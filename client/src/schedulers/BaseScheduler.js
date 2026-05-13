@@ -95,9 +95,8 @@ export class BaseScheduler {
       if (!m.queue?.length) continue;
 
       let task = m.queue[0];
-      const eet = m.eet?.[task.task_type];
-
-      // If no execution time defined, skip safely
+      // If no execution time defined, assume default of 1 ms
+      const eet = m.eet?.[task.task_type] || 1;
       if (eet == null) continue;
 
       const life = this.getTime() - task.start_time;
@@ -110,9 +109,13 @@ export class BaseScheduler {
         task.status = "COMPLETED";
         this.stats.completed.push(task);
         this.dequeue(m.id);
-        const prev = this.machineStats.get(m.id) || { utilization_time: 0, total_tasks: 0 };
+        const prev = this.machineStats.get(m.id) || {
+          utilization_time: 0,
+          total_tasks: 0,
+        };
         this.machineStats.set(m.id, {
-          utilization_time: prev.utilization_time + (task.execution_time || 0) / 3600,
+          utilization_time:
+            prev.utilization_time + (task.execution_time || 0) / 3600,
           total_tasks: prev.total_tasks + 1,
         });
       }
