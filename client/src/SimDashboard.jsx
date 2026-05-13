@@ -33,7 +33,6 @@ import Sidebar from "./components/Sidebar";
 import ContextMenu from "./context/ContextMenu";
 import machineNode from "./components/machineNode";
 import iotNode from "./components/iotNode";
-import edgeSpace from "./components/edgeSpace";
 import cloudSpace from "./components/cloudSpace";
 import edgeLockedNode from "./components/edgeLockedNode";
 import workloadNode from "./components/workloadNode";
@@ -58,8 +57,8 @@ const edgeTypes = {
 const nodeTypes = {
   machineNode: machineNode,
   iotNode: iotNode,
-  edgeSpace: edgeSpace,
-  cloudSpace: cloudSpace,
+  edgeSpace: workloadNode,
+  cloudSpace: workloadNode,
   edgeLockedNode: edgeLockedNode,
   group: workloadNode,
   LBNode: LBNode,
@@ -806,6 +805,7 @@ const SimDashboard = () => {
           parentId: parentExists ? m.parentId : undefined,
           extent: parentExists && m.parentId ? "parent" : undefined,
           draggable: true,
+          expandParent: true,
         };
       });
 
@@ -830,6 +830,7 @@ const SimDashboard = () => {
           parentId: parentExists ? i.parentId : undefined,
           extent: parentExists && i.parentId ? "parent" : undefined,
           draggable: true,
+          expandParent: true,
         };
       });
 

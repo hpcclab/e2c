@@ -29,9 +29,9 @@ const App = () => {
 
         <main className="p-0 overflow-hidden">
           <Routes>
-            <Route path="/e2c" element={<Home />} />
-            <Route path="/e2c/simulate" element={<SimDashboard />} />
-            <Route path="/e2c/reports" element={<Reports />} />
+            <Route path="/e2c/*" element={<Home />} />
+            <Route path="/e2c/simulate/*" element={<SimDashboard />} />
+            <Route path="/e2c/reports/*" element={<Reports />} />
           </Routes>
         </main>
       </div>

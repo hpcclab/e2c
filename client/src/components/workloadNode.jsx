@@ -32,6 +32,7 @@ export default memo(({ data, selected }) => {
   };
 
   return (
+    // when to change parent box within node, go to sidebar.jsx and change workspace node styles.
     <div
       onClick={handleChildClick}
       style={{
@@ -46,16 +47,15 @@ export default memo(({ data, selected }) => {
         padding: 8,
       }}
     >
-      <div
-        onClick={() => openSidebar("workload")}
-        className="bg-gray-800 text-white text-sm font-semibold w-full h-6 flex items-center justify-center rounded-lg cursor-pointer hover:scale-105 transition"
-      >
-        Workspace Configuration
+      <div className="bg-gray-800 text-white text-sm font-semibold w-full h-6 flex items-center justify-center rounded-lg cursor-pointer hover:scale-105 transition">
+        {data.name || ""}
       </div>
-      <NodeResizer minWidth={280} minHeight={250} isVisible={selected} />
-      {/* <NodeResizeControl style={controlStyle} minWidth={100} minHeight={50}>
-        <ResizeIcon />
-      </NodeResizeControl> */}
+      <NodeResizer
+        handleStyle={{ width: 12, height: 12, borderRadius: "50%" }}
+        minWidth={280}
+        minHeight={250}
+        isVisible={selected}
+      />
     </div>
   );
 });
