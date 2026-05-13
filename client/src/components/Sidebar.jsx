@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { useGlobalState } from "../context/GlobalStates";
 
+// Contains node spawners through drag and drop
 // Simple ID generator for nodes
 let id = 0;
 const getId = (type) => `${type}_${id++}`;
@@ -633,7 +634,6 @@ export default function Sidebar() {
           50% { opacity: 0.3; }
         }
       `}</style>
-
       <aside className="sidebar-shell">
         <div className="sb-header">
           <div className="sb-header-eyebrow">Topology Builder</div>
