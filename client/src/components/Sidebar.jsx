@@ -310,6 +310,7 @@ export default function Sidebar() {
   const {
     setMachines,
     setIot,
+    iot,
     taskTypes,
     setTaskTypes,
     scenarioRows,
@@ -366,20 +367,23 @@ export default function Sidebar() {
         : position;
 
       if (nodeType === "machineNode") {
+        const eet = Object.fromEntries(iot.map((i) => [i.name, "1"]));
+
         const newMachine = {
           id: Date.now(),
           name: `Machine ${Date.now().toString().slice(-4)}`,
           queue: [],
-          power: 0,
-          idle_power: 0,
+          power: 10,
+          idle_power: 1,
           replicas: 1,
-          price: 0,
+          price: 0.15,
           cost: 0,
           position: relativePosition,
           parentId,
           extent: parentId ? "parent" : undefined,
-          eet: {},
+          eet,
         };
+
         setMachines((prev) => [...prev, newMachine]);
         if (parentId) {
           setWorkspaces((prev) =>
@@ -405,6 +409,10 @@ export default function Sidebar() {
             startTime: 0,
             endTime: 30,
             distribution: distributionOptions[0],
+            deviceRole: "sensor",
+            frequency: 0,
+            connectivity: "WiFi",
+            energySource: "Wired",
             taskColor: "Slate",
           },
           queue: [],
@@ -441,7 +449,7 @@ export default function Sidebar() {
         setMachines((prev) =>
           prev.map((m) => ({
             ...m,
-            eet: { ...(m.eet || {}), [newIot.name]: "" },
+            eet: { ...(m.eet || {}), [newIot.name]: "1" },
           })),
         );
         if (parentId) {

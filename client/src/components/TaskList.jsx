@@ -7,7 +7,7 @@ export default function TaskList({
   isBatchQueue = false,
   registerSlotRef,
 }) {
-  const taskSlots = Array.from({ length: 6 });
+  const taskSlots = Array.from({ length: 2 });
   const emptyTask = {
     id: -1,
     task_type: "empty",

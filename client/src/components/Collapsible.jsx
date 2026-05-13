@@ -18,7 +18,7 @@ const Collapsible = ({ title, children, defaultExpanded = false }) => {
           fontWeight: "bold",
         }}
       >
-        {title} {isOpen ? "▲" : "▼"}
+        {title} {isOpen ? "▶" : "▼"}
       </div>
       {isOpen && <div style={{ padding: 12 }}>{children}</div>}
     </div>

@@ -189,7 +189,6 @@ const SimulationReport = ({
     }
   }, [isDragging, isResizing, handleMouseMove, handleMouseUp]);
 
-
   return (
     <div
       className={`bg-white rounded-lg shadow-2xl flex flex-col transition-all `}
@@ -287,13 +286,13 @@ const SimulationReport = ({
                 </div>
               </div>
 
-              {/* Tasks Mapped */}
+              {/* Tasks Completed */}
               <div className="bg-green-50 rounded-lg p-4 text-center">
                 <div className="text-3xl font-bold text-green-700">
                   {summaryStats.tasksMapped}
                 </div>
                 <div className="text-sm text-green-600 font-medium">
-                  Tasks Mapped
+                  Tasks Completed
                 </div>
               </div>
 
@@ -341,7 +340,7 @@ const SimulationReport = ({
                 </tr>
                 <tr className="hover:bg-gray-50">
                   <td className="border border-gray-300 px-4 py-2 font-medium">
-                    Tasks Mapped
+                    Tasks Completed
                   </td>
                   <td className="border border-gray-300 px-4 py-2 text-right">
                     {summaryStats.tasksMapped}
@@ -384,7 +383,10 @@ const SimulationReport = ({
                     Total Energy Consumed
                   </td>
                   <td className="border border-gray-300 px-4 py-2 text-right font-semibold text-yellow-700">
-                    {(() => { const e = formatEnergy(summaryStats.totalEnergyConsumed); return `${e.value} ${e.unit}`; })()}
+                    {(() => {
+                      const e = formatEnergy(summaryStats.totalEnergyConsumed);
+                      return `${e.value} ${e.unit}`;
+                    })()}
                   </td>
                 </tr>
                 <tr className="hover:bg-gray-50 bg-green-50">
@@ -534,10 +536,22 @@ const SimulationReport = ({
                             {machine.power || 0} W
                           </td>
                           <td className="border border-gray-300 px-4 py-2">
-                            {(() => { const d = formatUtilizationTime(machine.utilization_time || 0); return `${d.value} ${d.unit}`; })()}
+                            {(() => {
+                              const d = formatUtilizationTime(
+                                machine.utilization_time || 0,
+                              );
+                              return `${d.value} ${d.unit}`;
+                            })()}
                           </td>
                           <td className="border border-gray-300 px-4 py-2">
-                            {(() => { const e = formatEnergy(((machine.power || 0) * (machine.utilization_time || 0)) / 1000); return `${e.value} ${e.unit}`; })()}
+                            {(() => {
+                              const e = formatEnergy(
+                                ((machine.power || 0) *
+                                  (machine.utilization_time || 0)) /
+                                  1000,
+                              );
+                              return `${e.value} ${e.unit}`;
+                            })()}
                           </td>
                         </tr>
                       );
@@ -552,7 +566,12 @@ const SimulationReport = ({
                       Total
                     </td>
                     <td className="border border-gray-300 px-4 py-2 text-right">
-                      {(() => { const e = formatEnergy(summaryStats.totalEnergyConsumed); return `${e.value} ${e.unit}`; })()}
+                      {(() => {
+                        const e = formatEnergy(
+                          summaryStats.totalEnergyConsumed,
+                        );
+                        return `${e.value} ${e.unit}`;
+                      })()}
                     </td>
                   </tr>
                 </tfoot>
@@ -635,20 +654,26 @@ const SimulationReport = ({
                   data={machines
                     .filter((m) => m.id !== -1)
                     .map((m) => {
-                      const kWh = ((m.power || 0) * (m.utilization_time || 0)) / 1000;
+                      const kWh =
+                        ((m.power || 0) * (m.utilization_time || 0)) / 1000;
                       const e = formatEnergy(kWh);
-                      return { name: m.name, energy: parseFloat(e.value), unit: e.unit };
+                      return {
+                        name: m.name,
+                        energy: parseFloat(e.value),
+                        unit: e.unit,
+                      };
                     })}
                   margin={{ top: 5, right: 10, left: 0, bottom: 5 }}
                 >
                   <XAxis dataKey="name" tick={{ fontSize: 11 }} />
                   <YAxis tick={{ fontSize: 11 }} />
-                  <Tooltip formatter={(val, _, props) => [`${val} ${props.payload.unit}`, "Energy"]} />
-                  <Bar
-                    dataKey="energy"
-                    fill="#eab308"
-                    radius={[4, 4, 0, 0]}
+                  <Tooltip
+                    formatter={(val, _, props) => [
+                      `${val} ${props.payload.unit}`,
+                      "Energy",
+                    ]}
                   />
+                  <Bar dataKey="energy" fill="#eab308" radius={[4, 4, 0, 0]} />
                 </BarChart>
               </ResponsiveContainer>
             </div>
@@ -665,7 +690,11 @@ const SimulationReport = ({
                     .map((m) => ({
                       name: m.name,
                       "Cost ($)": parseFloat(
-                        ((m.price || 0) * (m.utilization_time || 0) * 3600).toFixed(2),
+                        (
+                          (m.price || 0) *
+                          (m.utilization_time || 0) *
+                          3600
+                        ).toFixed(2),
                       ),
                     }))}
                   margin={{ top: 5, right: 10, left: 0, bottom: 5 }}
@@ -785,7 +814,12 @@ const SimulationReport = ({
                               ${machine.price || 0}
                             </td>
                             <td className="border border-gray-300 px-4 py-2">
-                              {(() => { const d = formatUtilizationTime(machine.utilization_time || 0); return `${d.value} ${d.unit}`; })()}
+                              {(() => {
+                                const d = formatUtilizationTime(
+                                  machine.utilization_time || 0,
+                                );
+                                return `${d.value} ${d.unit}`;
+                              })()}
                             </td>
                             <td className="border border-gray-300 px-4 py-2">
                               $
@@ -836,7 +870,8 @@ const SimulationReport = ({
                           .filter((m) => m.id !== -1)
                           .reduce(
                             (sum, m) =>
-                              sum + (m.price || 0) * (m.utilization_time || 0) * 3600,
+                              sum +
+                              (m.price || 0) * (m.utilization_time || 0) * 3600,
                             0,
                           )
                           .toFixed(2)}
