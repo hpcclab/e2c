@@ -1,0 +1,3 @@
+task_type,ARM,CPU
+image_detect,100,50
+face_recog,140,100

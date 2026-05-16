@@ -1,23 +1,19 @@
 import React, { useState, useRef, useEffect } from "react";
-import { Panel } from "@xyflow/react";
-import Modal from "react-modal";
 import { useGlobalState } from "../context/GlobalStates";
 import { useReactFlow } from "@xyflow/react";
 import * as localStore from "../utils/localStore";
 import { VscFiles } from "react-icons/vsc";
 import {
-  MdDriveFileRenameOutline,
   MdDeleteOutline,
   MdSave,
   MdSaveAs,
   MdClose,
   MdUploadFile,
   MdDownload,
+  MdFolderOpen,
 } from "react-icons/md";
 import "../assets/saveload.css";
 import { colorMemory } from "./Task";
-
-Modal.setAppElement("#root");
 
 const TASK_COLOR_NAME_TO_INDEX = {
   Slate: 0,
@@ -40,8 +36,6 @@ export default function FlowSaveLoadPanel() {
     iot,
     setMachines,
     setIot,
-    handleProfilingUpload,
-    handleWorkloadUpload,
     workloadFileName,
     profilingFileName,
     configFileName,
@@ -53,34 +47,50 @@ export default function FlowSaveLoadPanel() {
     setScenarioRows,
     generateMachineConfig,
   } = useGlobalState();
-  // check sets
 
   const { fitView } = useReactFlow();
-  const [modalOpen, setModalOpen] = useState(false);
+  const [open, setOpen] = useState(false);
+  const [activeSection, setActiveSection] = useState("open");
   const [files, setFiles] = useState([]);
   const [selectedFile, setSelectedFile] = useState("");
   const [newFileName, setNewFileName] = useState("");
-  const [dragging, setDragging] = useState(false);
-  const [status, setStatus] = useState(null); // { msg, error }
+  const [status, setStatus] = useState(null);
+  const [confirmClear, setConfirmClear] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState(null);
   const statusTimer = useRef(null);
-  const [modalPosition, setModalPosition] = useState({
-    top: 100,
-    left: window.innerWidth / 2 - 250,
-  });
-  const dragStartPos = useRef({ x: 0, y: 0 });
 
   const notify = (msg, error = false) => {
     clearTimeout(statusTimer.current);
     setStatus({ msg, error });
-    statusTimer.current = setTimeout(() => setStatus(null), 2000);
+    statusTimer.current = setTimeout(() => setStatus(null), 3000);
   };
+
+  const openPanel = () => {
+    setOpen(true);
+    setActiveSection("open");
+    fetchFiles();
+  };
+
+  const closePanel = () => {
+    setOpen(false);
+    setConfirmClear(false);
+    setStatus(null);
+  };
+
+  // Close on ESC
+  useEffect(() => {
+    const handleKey = (e) => { if (e.key === "Escape") closePanel(); };
+    if (open) window.addEventListener("keydown", handleKey);
+    return () => window.removeEventListener("keydown", handleKey);
+  }, [open]);
+
+  // ── Color memory helpers ──────────────────────────────────────────────────
 
   const getDerivedTaskColorMemory = (iots = []) => {
     const derived = {};
     iots.forEach((iotEntry) => {
       const taskType = iotEntry?.properties?.task_type ?? iotEntry?.name;
       if (!taskType) return;
-
       const colorName = iotEntry?.properties?.taskColor ?? "Slate";
       const idx = TASK_COLOR_NAME_TO_INDEX[colorName];
       if (idx !== undefined) derived[taskType] = idx;
@@ -92,8 +102,7 @@ export default function FlowSaveLoadPanel() {
     const normalized = {};
     Object.entries(memory || {}).forEach(([taskType, idx]) => {
       const parsed = Number(idx);
-      if (!Number.isFinite(parsed)) return;
-      if (parsed < 0 || parsed > 7) return;
+      if (!Number.isFinite(parsed) || parsed < 0 || parsed > 7) return;
       normalized[taskType] = parsed;
     });
     return normalized;
@@ -114,7 +123,8 @@ export default function FlowSaveLoadPanel() {
     window.dispatchEvent(new Event("taskColorChanged"));
   };
 
-  // Fetch existing files
+  // ── File operations ───────────────────────────────────────────────────────
+
   const fetchFiles = async () => {
     try {
       const keys = await localStore.listStates();
@@ -124,301 +134,102 @@ export default function FlowSaveLoadPanel() {
     }
   };
 
-  useEffect(() => {
-    if (modalOpen) fetchFiles();
-  }, [modalOpen]);
-
-  const openModal = () => setModalOpen(true);
-  const closeModal = () => setModalOpen(false);
-
-  // Save / Save As
   const saveAs = async () => {
     const filename = newFileName.trim();
     if (!filename) return notify("Enter a filename", true);
-
     const fileWithExtension = filename.toLowerCase().endsWith(".json")
-      ? filename
-      : `${filename}.json`;
-
+      ? filename : `${filename}.json`;
     try {
-      if (!machineConfig) {
-        generateMachineConfig(machines, taskTypes);
-      }
+      if (!machineConfig) generateMachineConfig(machines, taskTypes);
       const persistedColorMemory = getPersistedTaskColorMemory(iot);
       await localStore.saveAs(fileWithExtension, {
-        nodes,
-        edges,
-        machines,
-        iot,
-        workloadFileName,
-        profilingFileName,
-        configFileName,
-        machineConfig,
-        taskTypes,
-        scenarioRows,
+        nodes, edges, machines, iot,
+        workloadFileName, profilingFileName, configFileName,
+        machineConfig, taskTypes, scenarioRows,
         colorMemory: persistedColorMemory,
         filename: fileWithExtension,
       });
-      notify("Saved!");
+      notify("Saved as " + fileWithExtension);
       fetchFiles();
       setNewFileName("");
+      setSelectedFile(fileWithExtension);
+      setActiveSection("open");
     } catch (err) {
       notify("Save failed: " + err.message, true);
     }
   };
 
   const save = async () => {
-    if (!selectedFile) return notify("Select a file to save", true);
+    if (!selectedFile) return notify("Select a file first from Open", true);
     try {
-      if (!machineConfig) {
-        generateMachineConfig(machines, taskTypes);
-      }
+      if (!machineConfig) generateMachineConfig(machines, taskTypes);
       const persistedColorMemory = getPersistedTaskColorMemory(iot);
       await localStore.saveState(selectedFile, {
-        nodes,
-        edges,
-        machines,
-        iot,
-        workloadFileName,
-        profilingFileName,
-        configFileName,
-        machineConfig,
-        taskTypes,
-        scenarioRows,
+        nodes, edges, machines, iot,
+        workloadFileName, profilingFileName, configFileName,
+        machineConfig, taskTypes, scenarioRows,
         colorMemory: persistedColorMemory,
         filename: selectedFile,
       });
-      notify("Saved!");
+      notify("Saved to " + selectedFile);
       fetchFiles();
     } catch (err) {
       notify("Save failed: " + err.message, true);
     }
   };
 
-  // Load
   const load = async (file) => {
     try {
       const data = await localStore.loadState(file);
+      if (!data) return notify("No data found.", true);
 
-      if (data) {
-        const loadedMachines = data.machines || [];
-        const loadedIots = data.iot || [];
-        const loadedEdges = data.edges || [];
-        const loadedNodes = data.nodes || [];
-        const loadedWorkloadFileName = data.workloadFileName || [];
-        const loadedProfilingFileName = data.profilingFileName || [];
-        const loadedMachineConfig = data.machineConfig || [];
-        const loadedTaskTypes = data.taskTypes || [];
-        const loadedScenarioRows = data.scenarioRows || [];
-        const loadedColorMemory = data.colorMemory || {};
+      const loadedMachines = data.machines || [];
+      const loadedIots = data.iot || [];
+      const otherNodes = (data.nodes || []).filter(
+        (n) => n.type !== "machineNode" && n.type !== "iotNode",
+      );
+      const machinesArr = loadedMachines.map((m) => ({
+        id: `${m.id}`, type: "machineNode",
+        position: m.position || { x: 0, y: 0 }, data: m,
+      }));
+      const iotArr = loadedIots.map((i) => ({
+        id: `${i.id}`, type: "iotNode",
+        position: i.position || { x: 0, y: 0 }, data: i,
+      }));
 
-        // Separate other nodes (non-machine / non-iot)
-        const otherNodes = loadedNodes.filter(
-          (n) => n.type !== "machineNode" && n.type !== "iotNode",
-        );
+      setMachineConfig(data.machineConfig || []);
+      setTaskTypes(data.taskTypes || []);
+      setScenarioRows(data.scenarioRows || []);
+      setNodes([...otherNodes, ...machinesArr, ...iotArr]);
+      setEdges(data.edges || []);
+      setMachines(loadedMachines);
+      setIot(loadedIots);
+      restoreTaskColorMemory(loadedIots, data.colorMemory || {});
+      setSelectedFile(file);
 
-        // Map machines to React Flow nodes
-        const machinesArr = loadedMachines.map((m) => ({
-          id: `${m.id}`,
-          type: "machineNode",
-          position: m.position || { x: 0, y: 0 },
-          data: m,
-        }));
-
-        // Map IoTs to React Flow nodes
-        const iotArr = loadedIots.map((i) => ({
-          id: `${i.id}`,
-          type: "iotNode",
-          position: i.position || { x: 0, y: 0 },
-          data: i,
-        }));
-        setMachineConfig(loadedMachineConfig);
-        setTaskTypes(loadedTaskTypes);
-        setScenarioRows(loadedScenarioRows);
-        setNodes([...otherNodes, ...machinesArr, ...iotArr]);
-        setEdges(loadedEdges);
-        setMachines(loadedMachines);
-        setIot(loadedIots);
-
-        // Restore task color map (with IoT-property fallback for old exports)
-        restoreTaskColorMemory(loadedIots, loadedColorMemory);
-
-        notify("Loaded!");
-        fetchFiles();
-
-        fitView({ padding: 0.5, duration: 600, interpolate: "smooth" });
-      } else {
-        notify("No data found in file.", true);
-      }
+      notify("Loaded " + file);
+      fitView({ padding: 0.5, duration: 600, interpolate: "smooth" });
+      closePanel();
     } catch (err) {
       notify("Load failed: " + err.message, true);
     }
   };
-  // Select Files
-  const handleFileSelect = (e) => {
-    const file = e.target.files[0];
-    console.log(e);
-    if (!file || !file.name.endsWith(".json")) {
-      alert("Only .json file selection is allowed.");
-      return;
-    }
-    e.preventDefault();
 
-    const reader = new FileReader();
-    reader.onload = async (event) => {
-      try {
-        const data = JSON.parse(event.target.result);
-        if (data.machines && data.iot && data.edges) {
-          const machineNodes = data.machines.map((m) => ({
-            id: `machine-${m.id}`,
-            type: "machineNode",
-            position: m.position || { x: 0, y: 0 },
-            data: m,
-          }));
-
-          const iotNodes = data.iot.map((i) => ({
-            id: `iot-${i.id}`,
-            type: "iotNode",
-            position: i.position || { x: 0, y: 0 },
-            data: i,
-          }));
-
-          const otherNodes =
-            data.nodes?.filter(
-              (n) => n.type !== "machineNode" && n.type !== "iotNode",
-            ) || [];
-
-          setNodes([...otherNodes, ...machineNodes, ...iotNodes]);
-          setEdges(data.edges);
-          setMachines(data.machines);
-          setIot(data.iot);
-          if (data.taskTypes) setTaskTypes(data.taskTypes);
-          if (data.scenarioRows) setScenarioRows(data.scenarioRows);
-          if (data.machineConfig) setMachineConfig(data.machineConfig);
-
-          const importedColorMemory = {
-            ...getDerivedTaskColorMemory(data.iot),
-            ...normalizeTaskColorMemory(data.colorMemory || {}),
-          };
-          restoreTaskColorMemory(data.iot, importedColorMemory);
-
-          await localStore.saveAs(file.name, {
-            ...data,
-            colorMemory: importedColorMemory,
-          });
-          notify("Loaded and saved!");
-          closeModal();
-          fetchFiles();
-        } else {
-          notify("Invalid file format.", true);
-        }
-      } catch (err) {
-        notify("Error parsing file: " + err.message, true);
-      }
-    };
-    reader.readAsText(file);
-  };
-  // Drag & Drop
-  const handleDrop = (e) => {
-    e.preventDefault();
-    const file = e.dataTransfer.files[0];
-    if (!file) return;
-
-    const reader = new FileReader();
-    reader.onload = async (event) => {
-      try {
-        const data = JSON.parse(event.target.result);
-        if (data.machines && data.iot && data.edges) {
-          const machineNodes = data.machines.map((m) => ({
-            id: `machine-${m.id}`,
-            type: "machineNode",
-            position: m.position || { x: 0, y: 0 },
-            data: m,
-          }));
-
-          const iotNodes = data.iot.map((i) => ({
-            id: `iot-${i.id}`,
-            type: "iotNode",
-            position: i.position || { x: 0, y: 0 },
-            data: i,
-          }));
-
-          const otherNodes =
-            data.nodes?.filter(
-              (n) => n.type !== "machineNode" && n.type !== "iotNode",
-            ) || [];
-
-          setNodes([...otherNodes, ...machineNodes, ...iotNodes]);
-          setEdges(data.edges);
-          setMachines(data.machines);
-          setIot(data.iot);
-          if (data.taskTypes) setTaskTypes(data.taskTypes);
-          if (data.scenarioRows) setScenarioRows(data.scenarioRows);
-          if (data.machineConfig) setMachineConfig(data.machineConfig);
-
-          const importedColorMemory = {
-            ...getDerivedTaskColorMemory(data.iot),
-            ...normalizeTaskColorMemory(data.colorMemory || {}),
-          };
-          restoreTaskColorMemory(data.iot, importedColorMemory);
-
-          await localStore.saveAs(file.name, {
-            ...data,
-            colorMemory: importedColorMemory,
-          });
-          notify("Loaded and saved!");
-          closeModal();
-          fetchFiles();
-        } else {
-          notify("Invalid file format.", true);
-        }
-      } catch (err) {
-        notify("Error parsing file: " + err.message, true);
-      }
-    };
-    reader.readAsText(file);
-  };
-
-  const allowDrop = (e) => e.preventDefault();
-  const startDrag = (e) => {
-    setDragging(true);
-    dragStartPos.current = {
-      x: e.clientX - modalPosition.left,
-      y: e.clientY - modalPosition.top,
-    };
-  };
-  const onDrag = (e) => {
-    if (!dragging) return;
-    setModalPosition({
-      top: e.clientY - dragStartPos.current.y,
-      left: e.clientX - dragStartPos.current.x,
-    });
-  };
-  const stopDrag = () => setDragging(false);
-
-  // Rename / Delete
-  const renameFile = async () => {
-    if (!selectedFile || !newFileName.trim())
-      return notify("Select a file and enter a new name", true);
-
-    let newName = newFileName.trim();
-    if (!newName.toLowerCase().endsWith(".json")) newName += ".json";
-
+  const deleteFile = async (fileToDelete) => {
+    const target = fileToDelete || selectedFile;
+    if (!target) return notify("Select a file to delete", true);
     try {
-      await localStore.renameState(selectedFile, newName);
-      notify("Renamed!");
+      await localStore.deleteState(target);
+      notify("Deleted " + target);
       fetchFiles();
       setSelectedFile("");
-      setNewFileName("");
     } catch (err) {
-      notify("Rename failed: " + err.message, true);
+      notify("Delete failed: " + err.message, true);
     }
   };
 
   const triggerDownload = (filename, data) => {
-    const blob = new Blob([JSON.stringify(data, null, 2)], {
-      type: "application/json",
-    });
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
@@ -428,201 +239,288 @@ export default function FlowSaveLoadPanel() {
   };
 
   const exportWorkspace = () => {
-    const filename = (newFileName.trim() || "workspace") + ".json";
-    const persistedColorMemory = getPersistedTaskColorMemory(iot);
+    const filename = (newFileName.trim() || selectedFile || "workspace").replace(/\.json$/, "") + ".json";
     triggerDownload(filename, {
-      nodes,
-      edges,
-      machines,
-      iot,
-      taskTypes,
-      scenarioRows,
-      machineConfig,
-      colorMemory: persistedColorMemory,
+      nodes, edges, machines, iot, taskTypes, scenarioRows, machineConfig,
+      colorMemory: getPersistedTaskColorMemory(iot),
     });
-    notify("Exported!");
+    notify("Exported " + filename);
   };
 
-  const exportSaved = async (file, e) => {
-    e.stopPropagation();
-    const data = await localStore.loadState(file);
-    if (data) triggerDownload(file, data);
+  const handleFileSelect = (e) => {
+    const file = e.target.files[0];
+    if (!file || !file.name.endsWith(".json")) {
+      notify("Only .json files allowed", true);
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = async (event) => {
+      try {
+        const data = JSON.parse(event.target.result);
+        if (data.machines && data.iot && data.edges) {
+          const otherNodes = data.nodes?.filter(
+            (n) => n.type !== "machineNode" && n.type !== "iotNode",
+          ) || [];
+          const machineNodes = data.machines.map((m) => ({
+            id: `machine-${m.id}`, type: "machineNode",
+            position: m.position || { x: 0, y: 0 }, data: m,
+          }));
+          const iotNodes = data.iot.map((i) => ({
+            id: `iot-${i.id}`, type: "iotNode",
+            position: i.position || { x: 0, y: 0 }, data: i,
+          }));
+          setNodes([...otherNodes, ...machineNodes, ...iotNodes]);
+          setEdges(data.edges);
+          setMachines(data.machines);
+          setIot(data.iot);
+          if (data.taskTypes) setTaskTypes(data.taskTypes);
+          if (data.scenarioRows) setScenarioRows(data.scenarioRows);
+          if (data.machineConfig) setMachineConfig(data.machineConfig);
+          const importedColorMemory = {
+            ...getDerivedTaskColorMemory(data.iot),
+            ...normalizeTaskColorMemory(data.colorMemory || {}),
+          };
+          restoreTaskColorMemory(data.iot, importedColorMemory);
+          await localStore.saveAs(file.name, { ...data, colorMemory: importedColorMemory });
+          notify("Imported and saved!");
+          fetchFiles();
+          setActiveSection("open");
+        } else {
+          notify("Invalid file format.", true);
+        }
+      } catch (err) {
+        notify("Error parsing file: " + err.message, true);
+      }
+    };
+    reader.readAsText(file);
   };
 
-  const deleteFile = async () => {
-    if (!selectedFile) return notify("Select a file to delete", true);
-    try {
-      await localStore.deleteState(selectedFile);
-      notify("Deleted!");
-      fetchFiles();
-      setSelectedFile("");
-    } catch (err) {
-      notify("Delete failed: " + err.message, true);
+  const handleDrop = (e) => {
+    e.preventDefault();
+    const file = e.dataTransfer.files[0];
+    if (!file) return;
+    const fakeEvent = { target: { files: [file] } };
+    handleFileSelect(fakeEvent);
+  };
+
+  const handleClearWorkspace = () => {
+    if (!confirmClear) { setConfirmClear(true); return; }
+    setNodes([]);
+    setEdges([]);
+    setMachines([]);
+    setIot([]);
+    setTaskTypes([]);
+    setScenarioRows([]);
+    setMachineConfig([]);
+    Object.keys(colorMemory).forEach((k) => delete colorMemory[k]);
+    window.dispatchEvent(new Event("taskColorChanged"));
+    setConfirmClear(false);
+    notify("Workspace cleared!");
+    closePanel();
+  };
+
+  // ── Nav items ─────────────────────────────────────────────────────────────
+
+  const navItems = [
+    { id: "open",   label: "Open",    icon: <MdFolderOpen size={16} /> },
+    { id: "saveAs", label: "Save As", icon: <MdSaveAs size={16} /> },
+    { id: "save",   label: "Save",    icon: <MdSave size={16} /> },
+    { id: "import", label: "Import",  icon: <MdUploadFile size={16} /> },
+    { id: "export", label: "Export",  icon: <MdDownload size={16} /> },
+  ];
+
+  // ── Content sections ──────────────────────────────────────────────────────
+
+  const renderContent = () => {
+    switch (activeSection) {
+      case "open":
+        return (
+          <div className="bs-content-inner">
+            <h2 className="bs-content-title">Open</h2>
+            <p className="bs-content-subtitle">Select a saved simulation to load onto the canvas.</p>
+            {files.length === 0 ? (
+              <p className="bs-empty">No saved simulations yet. Use Save As to create one.</p>
+            ) : (
+              <ul className="bs-file-list">
+                {files.map((file) => (
+                  <li
+                    key={file}
+                    className={`bs-file-item${selectedFile === file ? " selected" : ""}`}
+                    onClick={() => setSelectedFile(file)}
+                  >
+                    {confirmDelete === file ? (
+                      <>
+                        <span className="bs-confirm-text">Are you sure you want to delete <strong>{file}</strong>?</span>
+                        <div className="bs-file-actions">
+                          <button className="bs-file-btn bs-btn-delete" onClick={(e) => { e.stopPropagation(); deleteFile(file); setConfirmDelete(null); }}>Delete</button>
+                          <button className="bs-file-btn bs-btn-cancel" onClick={(e) => { e.stopPropagation(); setConfirmDelete(null); }}>Cancel</button>
+                        </div>
+                      </>
+                    ) : (
+                      <>
+                        <div className="bs-file-info">
+                          <VscFiles size={14} className="bs-file-icon" />
+                          <span className="bs-file-name">{file}</span>
+                        </div>
+                        <div className="bs-file-actions">
+                          <button className="bs-file-btn bs-btn-load bs-btn-load-lg" onClick={(e) => { e.stopPropagation(); load(file); }}>
+                            Open
+                          </button>
+                          <button className="bs-file-btn bs-btn-delete" onClick={(e) => { e.stopPropagation(); setConfirmDelete(file); }} title="Delete">
+                            <MdDeleteOutline size={13} />
+                          </button>
+                        </div>
+                      </>
+                    )}
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+        );
+
+      case "save":
+        return (
+          <div className="bs-content-inner">
+            <h2 className="bs-content-title">Save</h2>
+            <p className="bs-content-subtitle">
+              {selectedFile
+                ? `Overwrite "${selectedFile}" with the current workspace.`
+                : "Select a file from Open first, or use Save As to create a new one."}
+            </p>
+            {selectedFile && (
+              <div className="bs-selected-file">
+                <VscFiles size={14} /> {selectedFile}
+              </div>
+            )}
+            <button className="bs-action-btn bs-btn-primary" onClick={save} disabled={!selectedFile}>
+              <MdSave size={15} /> Save
+            </button>
+            {status && <div className={`bs-status ${status.error ? "bs-status-error" : "bs-status-ok"}`}>{status.msg}</div>}
+          </div>
+        );
+
+      case "saveAs":
+        return (
+          <div className="bs-content-inner">
+            <h2 className="bs-content-title">Save As</h2>
+            <p className="bs-content-subtitle">Save the current workspace as a new simulation file.</p>
+            <label className="bs-label">Filename</label>
+            <input
+              className="bs-input"
+              type="text"
+              placeholder="e.g. hospital_icu"
+              value={newFileName}
+              onChange={(e) => setNewFileName(e.target.value)}
+              onKeyDown={(e) => { if (e.key === "Enter") saveAs(); }}
+            />
+            <button className="bs-action-btn bs-btn-primary" onClick={saveAs}>
+              <MdSaveAs size={15} /> Save As
+            </button>
+            {status && <div className={`bs-status ${status.error ? "bs-status-error" : "bs-status-ok"}`}>{status.msg}</div>}
+          </div>
+        );
+
+      case "import":
+        return (
+          <div className="bs-content-inner">
+            <h2 className="bs-content-title">Import</h2>
+            <p className="bs-content-subtitle">Load a simulation from a JSON file on your computer.</p>
+            <label className="bs-label">Select file</label>
+            <input
+              type="file"
+              accept=".json"
+              className="bs-file-input"
+              onChange={handleFileSelect}
+            />
+            <div
+              className="bs-drop-zone"
+              onDrop={handleDrop}
+              onDragOver={(e) => e.preventDefault()}
+            >
+              <MdUploadFile size={28} className="bs-drop-icon" />
+              <span>Or drag and drop a .json file here</span>
+            </div>
+            {status && <div className={`bs-status ${status.error ? "bs-status-error" : "bs-status-ok"}`}>{status.msg}</div>}
+          </div>
+        );
+
+      case "export":
+        return (
+          <div className="bs-content-inner">
+            <h2 className="bs-content-title">Export</h2>
+            <p className="bs-content-subtitle">Download the current workspace as a JSON file to share or back up.</p>
+            <label className="bs-label">Filename (optional)</label>
+            <input
+              className="bs-input"
+              type="text"
+              placeholder={selectedFile ? selectedFile.replace(/\.json$/, "") : "workspace"}
+              value={newFileName}
+              onChange={(e) => setNewFileName(e.target.value)}
+            />
+            <button className="bs-action-btn bs-btn-primary" onClick={exportWorkspace}>
+              <MdDownload size={15} /> Download JSON
+            </button>
+            {status && <div className={`bs-status ${status.error ? "bs-status-error" : "bs-status-ok"}`}>{status.msg}</div>}
+          </div>
+        );
+
+      default:
+        return null;
     }
   };
 
-  // Render
+  // ── Render ────────────────────────────────────────────────────────────────
+
   return (
     <>
-      <button
-        onClick={openModal}
-        title="Save / Load"
-        className="text-2l hover:underline"
-      >
+      <button onClick={openPanel} className="text-2l hover:underline">
         File
       </button>
 
-      <Modal
-        isOpen={modalOpen}
-        onRequestClose={closeModal}
-        contentLabel="Save/Load React Flow State"
-        className="modal-content"
-        overlayClassName="modal-overlay"
-        style={{
-          content: {
-            top: modalPosition.top,
-            left: modalPosition.left,
-            transform: "none",
-            width: "560px",
-            maxHeight: "85vh",
-            padding: "0",
-          },
-        }}
-      >
-        {/* Header */}
-        <div
-          className="modal-header"
-          onMouseDown={startDrag}
-          onMouseMove={onDrag}
-          onMouseUp={stopDrag}
-          onMouseLeave={stopDrag}
-        >
-          <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-            <span className="text-xl">Saved States</span>
-          </div>
-          <button className="close-btn" onClick={closeModal}>
-            <MdClose size={18} />
-          </button>
-        </div>
+      {open && (
+        <div className="bs-overlay" onClick={closePanel}>
+          <div className="bs-panel" onClick={(e) => e.stopPropagation()}>
 
-        <div className="modal-body">
-          {status && (
-            <div
-              className={`status-bar ${status.error ? "status-error" : "status-ok"}`}
-            >
-              {status.msg}
-            </div>
-          )}
+            {/* Left nav */}
+            <div className="bs-nav">
+              <div className="bs-nav-top">
+                <button className="bs-back-btn" onClick={closePanel}>
+                  <MdClose size={16} /> Close
+                </button>
+                <div className="bs-nav-divider" />
+                {navItems.map((item) => (
+                  <button
+                    key={item.id}
+                    className={`bs-nav-item${activeSection === item.id ? " active" : ""}`}
+                    onClick={() => setActiveSection(item.id)}
+                  >
+                    {item.icon}
+                    {item.label}
+                  </button>
+                ))}
+              </div>
 
-          {/* File list */}
-          <p className="section-label">Saved Simulations</p>
-          {files.length === 0 ? (
-            <p className="empty-state">No saved states yet.</p>
-          ) : (
-            <ul className="file-list">
-              {files.map((file) => (
-                <li
-                  key={file}
-                  className={selectedFile === file ? "selected" : ""}
-                  onClick={() => setSelectedFile(file)}
+              <div className="bs-nav-bottom">
+                <div className="bs-nav-divider" />
+                <button
+                  className={`bs-nav-item bs-nav-danger${confirmClear ? " confirming" : ""}`}
+                  onClick={handleClearWorkspace}
                 >
-                  <span className="file-name">
-                    <VscFiles
-                      size={13}
-                      style={{ flexShrink: 0, opacity: 0.6 }}
-                    />
-                    {file}
-                  </span>
-                  <div style={{ display: "flex", gap: "5px", flexShrink: 0 }}>
-                    <button
-                      className="file-btn"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        load(file);
-                      }}
-                    >
-                      Load
-                    </button>
-                    <button
-                      className="file-btn file-btn-export"
-                      onClick={(e) => exportSaved(file, e)}
-                      title="Download as file"
-                    >
-                      <MdDownload size={13} />
-                      Export
-                    </button>
-                  </div>
-                </li>
-              ))}
-            </ul>
-          )}
+                  <MdDeleteOutline size={16} />
+                  {confirmClear ? "Click again to confirm" : "Clear Workspace"}
+                </button>
+              </div>
+            </div>
 
-          {/* Actions */}
-          <p className="section-label" style={{ marginTop: "16px" }}>
-            Actions
-          </p>
-          <input
-            className="filename-input"
-            type="text"
-            placeholder="Filename (e.g. my-workspace)"
-            value={newFileName}
-            onChange={(e) => setNewFileName(e.target.value)}
-          />
-          <div className="btn-group">
-            <button
-              className="action-btn btn-saveas"
-              onClick={saveAs}
-              title="Save as new file"
-            >
-              <MdSaveAs size={14} /> Save As
-            </button>
-            <button
-              className="action-btn btn-save"
-              onClick={save}
-              title="Save to selected file"
-            >
-              <MdSave size={14} /> Update
-            </button>
-            <button
-              className="action-btn btn-rename"
-              onClick={renameFile}
-              title="Rename selected file"
-            >
-              <MdDriveFileRenameOutline size={14} /> Rename
-            </button>
-            <button
-              className="action-btn btn-delete"
-              onClick={deleteFile}
-              title="Delete selected file"
-            >
-              <MdDeleteOutline size={14} /> Delete
-            </button>
-          </div>
+            {/* Content area */}
+            <div className="bs-content">
+              {renderContent()}
+            </div>
 
-          {/* Export */}
-          <p className="section-label" style={{ marginTop: "16px" }}>
-            Import
-          </p>
-          <input
-            type="file"
-            accept=".json"
-            className="w-full action-btn btn-export"
-            placeholder="Select File"
-            onChange={handleFileSelect}
-          />
-
-          {/* Drop zone */}
-          <div
-            className="drop-zone"
-            onDrop={handleDrop}
-            onDragOver={allowDrop}
-            style={{ marginTop: "12px" }}
-          >
-            <MdUploadFile size={22} style={{ opacity: 0.4 }} />
-            <span>Drop a Simulation file to import (.json only)</span>
           </div>
         </div>
-      </Modal>
+      )}
     </>
   );
 }

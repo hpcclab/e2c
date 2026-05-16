@@ -1,0 +1,11 @@
+task_type,arrival_time,distribution,data_size
+IOT 4992,1.09,uniform,0.01
+IOT 4992,2.05,uniform,23.62
+IOT 4992,7.07,uniform,0.01
+IOT 4992,10.15,uniform,0.01
+IOT 4992,13.15,uniform,0.01
+IOT 4992,13.33,uniform,0.01
+IOT 4992,14.11,uniform,43.55
+IOT 4992,14.58,uniform,0.01
+IOT 4992,24.24,uniform,15.58
+IOT 4992,26.32,uniform,44.95

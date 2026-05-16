@@ -1,0 +1,57 @@
+{
+  "parameters": [
+    {
+      "machine_queue_size": 3000,
+      "batch_queue_size": 1,
+      "scheduling_method": "FCFS",
+      "fairness_factor": 1
+    }
+  ],
+  "settings": [
+    {
+      "path_to_output": "./output",
+      "path_to_workload": "./workload",
+      "verbosity": 3,
+      "gui": 1
+    }
+  ],
+  "task_types": [
+    {
+      "id": 1,
+      "name": "image_detect",
+      "urgency": "BestEffort",
+      "deadline": 20
+    },
+    {
+      "id": 2,
+      "name": "face",
+      "urgency": "BestEffort",
+      "deadline": 10
+    }
+  ],
+  "battery": [
+    {
+      "capacity": 5000
+    }
+  ],
+  "machines": [
+    {
+      "name": "ARM",
+      "power": 100,
+      "idle_power": 50,
+      "replicas": 2
+    },
+    {
+      "name": "CPU",
+      "power": 20,
+      "idle_power": 10,
+      "replicas": 2
+    }
+  ],
+  "cloud": [
+    {
+      "bandwidth": 15000,
+      "network_latency": 0.015
+    }
+  ]
+}
