@@ -58,6 +58,7 @@ export default function FlowSaveLoadPanel() {
   const [confirmClear, setConfirmClear] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(null);
   const statusTimer = useRef(null);
+  const fileInputRef = useRef(null);
 
   const notify = (msg, error = false) => {
     clearTimeout(statusTimer.current);
@@ -426,17 +427,21 @@ export default function FlowSaveLoadPanel() {
           <div className="bs-content-inner">
             <h2 className="bs-content-title">Import</h2>
             <p className="bs-content-subtitle">Load a simulation from a JSON file on your computer.</p>
-            <label className="bs-label">Select file</label>
             <input
+              ref={fileInputRef}
               type="file"
               accept=".json"
-              className="bs-file-input"
+              style={{ display: "none" }}
               onChange={handleFileSelect}
             />
+            <button className="bs-action-btn bs-btn-primary" onClick={() => fileInputRef.current.click()}>
+              <MdUploadFile size={15} /> Choose File
+            </button>
             <div
               className="bs-drop-zone"
               onDrop={handleDrop}
               onDragOver={(e) => e.preventDefault()}
+              onClick={() => fileInputRef.current.click()}
             >
               <MdUploadFile size={28} className="bs-drop-icon" />
               <span>Or drag and drop a .json file here</span>
