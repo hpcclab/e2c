@@ -40,7 +40,6 @@ const App = () => {
 
 const Home = () => (
   <div className="flex flex-col" style={{ height: "calc(100vh - 60px)" }}>
-
     {/* Body */}
     <div className="flex-1 flex flex-col items-center justify-center gap-6 px-8">
       <h2 className="text-6xl font-bold text-gray-800 text-center">
@@ -48,7 +47,10 @@ const Home = () => (
       </h2>
       <p className="text-4xl text-gray-600 text-center">
         Let&apos;s try our{" "}
-        <Link to="/e2c/simulate" className="text-blue-500 underline hover:text-blue-700 transition-colors">
+        <Link
+          to="/e2c/simulate"
+          className="text-blue-500 underline hover:text-blue-700 transition-colors"
+        >
           simulator
         </Link>
         !
@@ -60,20 +62,50 @@ const Home = () => (
       <div className="flex flex-col items-center gap-6">
         <p className="text-gray-800 text-base font-semibold">
           Made by{" "}
-          <a href="https://www.linkedin.com/in/jakegonza1es/" target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">Jake Gonzales</a>{" "}
+          <a
+            href="https://www.linkedin.com/in/joshyao/"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-blue-600 hover:underline"
+          >
+            Joshua Yao
+          </a>{" "}
           &{" "}
-          <a href="https://www.linkedin.com/in/joshyao/" target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">Joshua Yao</a>
+          <a
+            href="https://www.linkedin.com/in/jakegonza1es/"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-blue-600 hover:underline"
+          >
+            Jake Gonzales
+          </a>
         </p>
         <div className="flex gap-16 items-center">
-          <img src="/e2c/logos/nsf-logo.jpeg"  alt="NSF"      className="h-20 object-contain" />
-          <a href="https://hpcclab.org/" target="_blank" rel="noopener noreferrer" className="ml-12 transition-opacity hover:opacity-70">
-            <img src="/e2c/logos/hpcc-logo.png" alt="HPCC Lab" className="h-20 object-contain" />
+          <img
+            src="/e2c/logos/nsf-logo.jpeg"
+            alt="NSF"
+            className="h-20 object-contain"
+          />
+          <a
+            href="https://hpcclab.org/"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="ml-12 transition-opacity hover:opacity-70"
+          >
+            <img
+              src="/e2c/logos/hpcc-logo.png"
+              alt="HPCC Lab"
+              className="h-20 object-contain"
+            />
           </a>
-          <img src="/e2c/logos/unt-logo.png"  alt="UNT"      className="h-20 object-contain" />
+          <img
+            src="/e2c/logos/unt-logo.png"
+            alt="UNT"
+            className="h-20 object-contain"
+          />
         </div>
       </div>
     </footer>
-
   </div>
 );
 

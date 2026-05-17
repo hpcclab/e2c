@@ -317,7 +317,7 @@ const SimulationReport = ({
               {/* Tasks In Progress */}
               <div className="bg-pink-50 rounded-lg p-4 text-center">
                 <div className="text-3xl font-bold text-pink-700">
-                  {summaryStats.tasksMapped}
+                  {summaryStats.inProgress}
                 </div>
                 <div className="text-sm text-pink-600 font-medium">
                   Tasks In Progress
