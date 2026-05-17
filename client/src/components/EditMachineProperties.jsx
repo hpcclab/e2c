@@ -364,7 +364,7 @@ const EditMachineProperties = ({
         {iot.length > 0 && (
           <div className="border-t pt-2 mt-4">
             <label className="block text-sm font-semibold text-gray-700 mb-2">
-              EET (s) per Task Type
+              Est. Execution Time
             </label>
             <table className="table-auto border-collapse border border-gray-300 w-full text-sm">
               <thead>

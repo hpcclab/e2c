@@ -46,6 +46,7 @@ export default function FlowSaveLoadPanel() {
     scenarioRows,
     setScenarioRows,
     generateMachineConfig,
+    setIsRunning,
   } = useGlobalState();
 
   const { fitView } = useReactFlow();
@@ -80,7 +81,9 @@ export default function FlowSaveLoadPanel() {
 
   // Close on ESC
   useEffect(() => {
-    const handleKey = (e) => { if (e.key === "Escape") closePanel(); };
+    const handleKey = (e) => {
+      if (e.key === "Escape") closePanel();
+    };
     if (open) window.addEventListener("keydown", handleKey);
     return () => window.removeEventListener("keydown", handleKey);
   }, [open]);
@@ -139,14 +142,22 @@ export default function FlowSaveLoadPanel() {
     const filename = newFileName.trim();
     if (!filename) return notify("Enter a filename", true);
     const fileWithExtension = filename.toLowerCase().endsWith(".json")
-      ? filename : `${filename}.json`;
+      ? filename
+      : `${filename}.json`;
     try {
       if (!machineConfig) generateMachineConfig(machines, taskTypes);
       const persistedColorMemory = getPersistedTaskColorMemory(iot);
       await localStore.saveAs(fileWithExtension, {
-        nodes, edges, machines, iot,
-        workloadFileName, profilingFileName, configFileName,
-        machineConfig, taskTypes, scenarioRows,
+        nodes,
+        edges,
+        machines,
+        iot,
+        workloadFileName,
+        profilingFileName,
+        configFileName,
+        machineConfig,
+        taskTypes,
+        scenarioRows,
         colorMemory: persistedColorMemory,
         filename: fileWithExtension,
       });
@@ -166,9 +177,16 @@ export default function FlowSaveLoadPanel() {
       if (!machineConfig) generateMachineConfig(machines, taskTypes);
       const persistedColorMemory = getPersistedTaskColorMemory(iot);
       await localStore.saveState(selectedFile, {
-        nodes, edges, machines, iot,
-        workloadFileName, profilingFileName, configFileName,
-        machineConfig, taskTypes, scenarioRows,
+        nodes,
+        edges,
+        machines,
+        iot,
+        workloadFileName,
+        profilingFileName,
+        configFileName,
+        machineConfig,
+        taskTypes,
+        scenarioRows,
         colorMemory: persistedColorMemory,
         filename: selectedFile,
       });
@@ -190,12 +208,16 @@ export default function FlowSaveLoadPanel() {
         (n) => n.type !== "machineNode" && n.type !== "iotNode",
       );
       const machinesArr = loadedMachines.map((m) => ({
-        id: `${m.id}`, type: "machineNode",
-        position: m.position || { x: 0, y: 0 }, data: m,
+        id: `${m.id}`,
+        type: "machineNode",
+        position: m.position || { x: 0, y: 0 },
+        data: m,
       }));
       const iotArr = loadedIots.map((i) => ({
-        id: `${i.id}`, type: "iotNode",
-        position: i.position || { x: 0, y: 0 }, data: i,
+        id: `${i.id}`,
+        type: "iotNode",
+        position: i.position || { x: 0, y: 0 },
+        data: i,
       }));
 
       setMachineConfig(data.machineConfig || []);
@@ -207,8 +229,8 @@ export default function FlowSaveLoadPanel() {
       setIot(loadedIots);
       restoreTaskColorMemory(loadedIots, data.colorMemory || {});
       setSelectedFile(file);
-
       notify("Loaded " + file);
+      setIsRunning(false);
       fitView({ padding: 0.5, duration: 600, interpolate: "smooth" });
       closePanel();
     } catch (err) {
@@ -230,7 +252,9 @@ export default function FlowSaveLoadPanel() {
   };
 
   const triggerDownload = (filename, data) => {
-    const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
+    const blob = new Blob([JSON.stringify(data, null, 2)], {
+      type: "application/json",
+    });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
@@ -240,9 +264,19 @@ export default function FlowSaveLoadPanel() {
   };
 
   const exportWorkspace = () => {
-    const filename = (newFileName.trim() || selectedFile || "workspace").replace(/\.json$/, "") + ".json";
+    const filename =
+      (newFileName.trim() || selectedFile || "workspace").replace(
+        /\.json$/,
+        "",
+      ) + ".json";
     triggerDownload(filename, {
-      nodes, edges, machines, iot, taskTypes, scenarioRows, machineConfig,
+      nodes,
+      edges,
+      machines,
+      iot,
+      taskTypes,
+      scenarioRows,
+      machineConfig,
       colorMemory: getPersistedTaskColorMemory(iot),
     });
     notify("Exported " + filename);
@@ -259,16 +293,21 @@ export default function FlowSaveLoadPanel() {
       try {
         const data = JSON.parse(event.target.result);
         if (data.machines && data.iot && data.edges) {
-          const otherNodes = data.nodes?.filter(
-            (n) => n.type !== "machineNode" && n.type !== "iotNode",
-          ) || [];
+          const otherNodes =
+            data.nodes?.filter(
+              (n) => n.type !== "machineNode" && n.type !== "iotNode",
+            ) || [];
           const machineNodes = data.machines.map((m) => ({
-            id: `machine-${m.id}`, type: "machineNode",
-            position: m.position || { x: 0, y: 0 }, data: m,
+            id: `machine-${m.id}`,
+            type: "machineNode",
+            position: m.position || { x: 0, y: 0 },
+            data: m,
           }));
           const iotNodes = data.iot.map((i) => ({
-            id: `iot-${i.id}`, type: "iotNode",
-            position: i.position || { x: 0, y: 0 }, data: i,
+            id: `iot-${i.id}`,
+            type: "iotNode",
+            position: i.position || { x: 0, y: 0 },
+            data: i,
           }));
           setNodes([...otherNodes, ...machineNodes, ...iotNodes]);
           setEdges(data.edges);
@@ -282,7 +321,10 @@ export default function FlowSaveLoadPanel() {
             ...normalizeTaskColorMemory(data.colorMemory || {}),
           };
           restoreTaskColorMemory(data.iot, importedColorMemory);
-          await localStore.saveAs(file.name, { ...data, colorMemory: importedColorMemory });
+          await localStore.saveAs(file.name, {
+            ...data,
+            colorMemory: importedColorMemory,
+          });
           notify("Imported and saved!");
           fetchFiles();
           setActiveSection("open");
@@ -305,7 +347,10 @@ export default function FlowSaveLoadPanel() {
   };
 
   const handleClearWorkspace = () => {
-    if (!confirmClear) { setConfirmClear(true); return; }
+    if (!confirmClear) {
+      setConfirmClear(true);
+      return;
+    }
     setNodes([]);
     setEdges([]);
     setMachines([]);
@@ -323,11 +368,11 @@ export default function FlowSaveLoadPanel() {
   // ── Nav items ─────────────────────────────────────────────────────────────
 
   const navItems = [
-    { id: "open",   label: "Open",    icon: <MdFolderOpen size={16} /> },
+    { id: "open", label: "Open", icon: <MdFolderOpen size={16} /> },
     { id: "saveAs", label: "Save As", icon: <MdSaveAs size={16} /> },
-    { id: "save",   label: "Save",    icon: <MdSave size={16} /> },
-    { id: "import", label: "Import",  icon: <MdUploadFile size={16} /> },
-    { id: "export", label: "Export",  icon: <MdDownload size={16} /> },
+    { id: "save", label: "Save", icon: <MdSave size={16} /> },
+    { id: "import", label: "Import", icon: <MdUploadFile size={16} /> },
+    { id: "export", label: "Export", icon: <MdDownload size={16} /> },
   ];
 
   // ── Content sections ──────────────────────────────────────────────────────
@@ -338,9 +383,13 @@ export default function FlowSaveLoadPanel() {
         return (
           <div className="bs-content-inner">
             <h2 className="bs-content-title">Open</h2>
-            <p className="bs-content-subtitle">Select a saved simulation to load onto the canvas.</p>
+            <p className="bs-content-subtitle">
+              Select a saved simulation to load onto the canvas.
+            </p>
             {files.length === 0 ? (
-              <p className="bs-empty">No saved simulations yet. Use Save As to create one.</p>
+              <p className="bs-empty">
+                No saved simulations yet. Use Save As to create one.
+              </p>
             ) : (
               <ul className="bs-file-list">
                 {files.map((file) => (
@@ -351,10 +400,30 @@ export default function FlowSaveLoadPanel() {
                   >
                     {confirmDelete === file ? (
                       <>
-                        <span className="bs-confirm-text">Are you sure you want to delete <strong>{file}</strong>?</span>
+                        <span className="bs-confirm-text">
+                          Are you sure you want to delete{" "}
+                          <strong>{file}</strong>?
+                        </span>
                         <div className="bs-file-actions">
-                          <button className="bs-file-btn bs-btn-delete" onClick={(e) => { e.stopPropagation(); deleteFile(file); setConfirmDelete(null); }}>Delete</button>
-                          <button className="bs-file-btn bs-btn-cancel" onClick={(e) => { e.stopPropagation(); setConfirmDelete(null); }}>Cancel</button>
+                          <button
+                            className="bs-file-btn bs-btn-delete"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              deleteFile(file);
+                              setConfirmDelete(null);
+                            }}
+                          >
+                            Delete
+                          </button>
+                          <button
+                            className="bs-file-btn bs-btn-cancel"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setConfirmDelete(null);
+                            }}
+                          >
+                            Cancel
+                          </button>
                         </div>
                       </>
                     ) : (
@@ -364,10 +433,23 @@ export default function FlowSaveLoadPanel() {
                           <span className="bs-file-name">{file}</span>
                         </div>
                         <div className="bs-file-actions">
-                          <button className="bs-file-btn bs-btn-load bs-btn-load-lg" onClick={(e) => { e.stopPropagation(); load(file); }}>
+                          <button
+                            className="bs-file-btn bs-btn-load bs-btn-load-lg"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              load(file);
+                            }}
+                          >
                             Open
                           </button>
-                          <button className="bs-file-btn bs-btn-delete" onClick={(e) => { e.stopPropagation(); setConfirmDelete(file); }} title="Delete">
+                          <button
+                            className="bs-file-btn bs-btn-delete"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setConfirmDelete(file);
+                            }}
+                            title="Delete"
+                          >
                             <MdDeleteOutline size={13} />
                           </button>
                         </div>
@@ -394,10 +476,20 @@ export default function FlowSaveLoadPanel() {
                 <VscFiles size={14} /> {selectedFile}
               </div>
             )}
-            <button className="bs-action-btn bs-btn-primary" onClick={save} disabled={!selectedFile}>
+            <button
+              className="bs-action-btn bs-btn-primary"
+              onClick={save}
+              disabled={!selectedFile}
+            >
               <MdSave size={15} /> Save
             </button>
-            {status && <div className={`bs-status ${status.error ? "bs-status-error" : "bs-status-ok"}`}>{status.msg}</div>}
+            {status && (
+              <div
+                className={`bs-status ${status.error ? "bs-status-error" : "bs-status-ok"}`}
+              >
+                {status.msg}
+              </div>
+            )}
           </div>
         );
 
@@ -405,7 +497,9 @@ export default function FlowSaveLoadPanel() {
         return (
           <div className="bs-content-inner">
             <h2 className="bs-content-title">Save As</h2>
-            <p className="bs-content-subtitle">Save the current workspace as a new simulation file.</p>
+            <p className="bs-content-subtitle">
+              Save the current workspace as a new simulation file.
+            </p>
             <label className="bs-label">Filename</label>
             <input
               className="bs-input"
@@ -413,12 +507,20 @@ export default function FlowSaveLoadPanel() {
               placeholder="e.g. hospital_icu"
               value={newFileName}
               onChange={(e) => setNewFileName(e.target.value)}
-              onKeyDown={(e) => { if (e.key === "Enter") saveAs(); }}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") saveAs();
+              }}
             />
             <button className="bs-action-btn bs-btn-primary" onClick={saveAs}>
               <MdSaveAs size={15} /> Save As
             </button>
-            {status && <div className={`bs-status ${status.error ? "bs-status-error" : "bs-status-ok"}`}>{status.msg}</div>}
+            {status && (
+              <div
+                className={`bs-status ${status.error ? "bs-status-error" : "bs-status-ok"}`}
+              >
+                {status.msg}
+              </div>
+            )}
           </div>
         );
 
@@ -426,7 +528,9 @@ export default function FlowSaveLoadPanel() {
         return (
           <div className="bs-content-inner">
             <h2 className="bs-content-title">Import</h2>
-            <p className="bs-content-subtitle">Load a simulation from a JSON file on your computer.</p>
+            <p className="bs-content-subtitle">
+              Load a simulation from a JSON file on your computer.
+            </p>
             <input
               ref={fileInputRef}
               type="file"
@@ -434,7 +538,10 @@ export default function FlowSaveLoadPanel() {
               style={{ display: "none" }}
               onChange={handleFileSelect}
             />
-            <button className="bs-action-btn bs-btn-primary" onClick={() => fileInputRef.current.click()}>
+            <button
+              className="bs-action-btn bs-btn-primary"
+              onClick={() => fileInputRef.current.click()}
+            >
               <MdUploadFile size={15} /> Choose File
             </button>
             <div
@@ -446,7 +553,13 @@ export default function FlowSaveLoadPanel() {
               <MdUploadFile size={28} className="bs-drop-icon" />
               <span>Or drag and drop a .json file here</span>
             </div>
-            {status && <div className={`bs-status ${status.error ? "bs-status-error" : "bs-status-ok"}`}>{status.msg}</div>}
+            {status && (
+              <div
+                className={`bs-status ${status.error ? "bs-status-error" : "bs-status-ok"}`}
+              >
+                {status.msg}
+              </div>
+            )}
           </div>
         );
 
@@ -454,19 +567,32 @@ export default function FlowSaveLoadPanel() {
         return (
           <div className="bs-content-inner">
             <h2 className="bs-content-title">Export</h2>
-            <p className="bs-content-subtitle">Download the current workspace as a JSON file to share or back up.</p>
+            <p className="bs-content-subtitle">
+              Download the current workspace as a JSON file to share or back up.
+            </p>
             <label className="bs-label">Filename (optional)</label>
             <input
               className="bs-input"
               type="text"
-              placeholder={selectedFile ? selectedFile.replace(/\.json$/, "") : "workspace"}
+              placeholder={
+                selectedFile ? selectedFile.replace(/\.json$/, "") : "workspace"
+              }
               value={newFileName}
               onChange={(e) => setNewFileName(e.target.value)}
             />
-            <button className="bs-action-btn bs-btn-primary" onClick={exportWorkspace}>
+            <button
+              className="bs-action-btn bs-btn-primary"
+              onClick={exportWorkspace}
+            >
               <MdDownload size={15} /> Download JSON
             </button>
-            {status && <div className={`bs-status ${status.error ? "bs-status-error" : "bs-status-ok"}`}>{status.msg}</div>}
+            {status && (
+              <div
+                className={`bs-status ${status.error ? "bs-status-error" : "bs-status-ok"}`}
+              >
+                {status.msg}
+              </div>
+            )}
           </div>
         );
 
@@ -486,7 +612,6 @@ export default function FlowSaveLoadPanel() {
       {open && (
         <div className="bs-overlay" onClick={closePanel}>
           <div className="bs-panel" onClick={(e) => e.stopPropagation()}>
-
             {/* Left nav */}
             <div className="bs-nav">
               <div className="bs-nav-top">
@@ -519,10 +644,7 @@ export default function FlowSaveLoadPanel() {
             </div>
 
             {/* Content area */}
-            <div className="bs-content">
-              {renderContent()}
-            </div>
-
+            <div className="bs-content">{renderContent()}</div>
           </div>
         </div>
       )}

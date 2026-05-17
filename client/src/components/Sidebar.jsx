@@ -118,6 +118,28 @@ const NODE_CONFIG = [
     bg: "rgba(250,204,21,0.08)",
     border: "rgba(250,204,21,0.25)",
   },
+  {
+    type: "autoScaler",
+    label: "Auto Scaler",
+    icon: (
+      <svg
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.5"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      >
+        <line x1="12" y1="3" x2="12" y2="21" />
+        <path d="M3 9l9-7 9 7" />
+        <path d="M3 15l9 7 9-7" />
+      </svg>
+    ),
+    description: "Coming soon!",
+    accent: "#fa1515",
+    bg: "rgba(250, 21, 21, 0.08)",
+    border: "rgba(250, 21, 21, 0.25)",
+  },
 ];
 
 // Shared card inner content — used both in sidebar and in the portal ghost
@@ -382,10 +404,10 @@ export default function Sidebar() {
             dataInput: "default",
             meanSize: 6,
             urgency: "BestEffort",
-            slack: 0,
+            slack: 1,
             numTasks: 10,
             startTime: 0,
-            endTime: 30,
+            endTime: 15,
             distribution: distributionOptions[0],
             deviceRole: "sensor",
             frequency: 0,

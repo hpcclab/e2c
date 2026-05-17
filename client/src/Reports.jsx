@@ -1,49 +1,26 @@
 import React, { useState } from "react";
-import ScenarioTab from "./workload/tabs/ScenarioTab";
-import TaskTypesTab from "./workload/tabs/TaskTypesTab";
-import MachineTypesTab from "./workload/tabs/MachineTypesTab";
-import EETTab from "./workload/tabs/EETTab";
-import WorkloadPreviewTab from "./workload/tabs/WorkloadPreviewTab";
 import { useGlobalState } from "./context/GlobalStates";
 import SimulationReport from "./components/SimulationReport";
 
 const Reports = () => {
-  const [activeTab, setActiveTab] = useState("scenario");
-
   const {
-    taskTypes,
-    setTaskTypes,
-    scenarioRows,
-    setScenarioRows,
-    machineTypes,
-    setMachineTypes,
-    showReport,
-    setShowReport,
     unassignedTasks,
-    setUnassignedTasks,
     missedTasks,
-    setMissedTasks,
     dataResults,
-    setDataResults,
+    totalTasks,
     completedTasks,
     simulationTime,
     machines,
+    setIsPaused,
   } = useGlobalState();
 
-  const [eet, setEET] = useState([
-    ["", "", ""],
-    ["", "", ""],
-    ["", "", ""],
-  ]);
-  const [setWorkloadTableData] = useState([]);
-  const [workloadFiles, setWorkloadFiles] = useState([]); // Array of workload arrays
-  const [selectedWorkloadIdx, setSelectedWorkloadIdx] = useState(0);
-
   const renderTab = () => {
+    setIsPaused(true); // pauses the simulation to persist data, however this causes a bad state call error.
     return (
       <>
         <SimulationReport
           dataResults={dataResults}
+          totTasks={totalTasks}
           completedTasks={completedTasks}
           missedTasks={missedTasks}
           unassignedTasks={unassignedTasks}

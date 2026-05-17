@@ -67,7 +67,9 @@ export const Machine = ({
       replicaNumber: replicaIndex + 1,
       displayName: `${machine.name} #${replicaIndex + 1}`,
       colorIndex: machineIndex,
-      queue: queue.filter((_, taskIndex) => taskIndex % replicaCount === replicaIndex),
+      queue: queue.filter(
+        (_, taskIndex) => taskIndex % replicaCount === replicaIndex,
+      ),
     }));
   };
 
@@ -122,9 +124,13 @@ export const Machine = ({
               className="flex flex-col items-center cursor-pointer hover:scale-105 transition"
               title={`${totalTasks} tasks, ${utilDisplay.value}${utilDisplay.unit} × $${machine.price}/h = $${totalCost}`}
             >
-              {(() => { const Icon = MACHINE_ICON_MAP[machine.icon]; return <Icon size={28} className="text-blue-600" />; })()}
+              {(() => {
+                const Icon = MACHINE_ICON_MAP[machine.icon];
+                return <Icon size={28} className="text-blue-600" />;
+              })()}
               <span className="text-xs text-gray-700 font-semibold mt-0.5 max-w-[72px] truncate text-center">
-                {machine.name}{hasReplicas && ` (${machine.replicas})`}
+                {machine.name}
+                {hasReplicas && ` (${machine.replicas})`}
               </span>
             </div>
           ) : (
@@ -147,7 +153,9 @@ export const Machine = ({
         <div className="ml-8 mt-2 space-y-2">
           {replicas.map((replica) => {
             const replicaCost = calculateCost(replica);
-            const replicaDisplay = formatUtilizationTime(replica.utilization_time || 0);
+            const replicaDisplay = formatUtilizationTime(
+              replica.utilization_time || 0,
+            );
             const replicaTasks = replica.total_tasks || 0;
 
             return (

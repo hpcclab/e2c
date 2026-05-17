@@ -18,6 +18,7 @@ export const GlobalProvider = ({ children }) => {
 
   // Define States
   const [colorMemory, SetcolorMemory] = useState({});
+  const [totalTasks, setTotalTasks] = useState(0);
   const [selectedMachine, setSelectedMachine] = useState({
     id: -1,
     name: "",
@@ -104,6 +105,8 @@ export const GlobalProvider = ({ children }) => {
   const [isRunning, setIsRunning] = useState(false);
   const [isPaused, setIsPaused] = useState(false);
   const [simTotal, setSimTotal] = useState(Infinity);
+  const schedulerRef = useRef(null);
+  const [policyAlias, setPolicyAlias] = useState("FCFS");
 
   const getNeighbors = (sourceID) => {
     let outies =
@@ -435,6 +438,9 @@ export const GlobalProvider = ({ children }) => {
   const batchSlotsRef = useRef([]);
   const machineSlotsRef = useRef({});
   const loadBalancerRef = useRef(null);
+  const simulationIntervalRef = useRef(null);
+  const simCurrentRef = useRef(0);
+  const totalSimTimeRef = useRef(Infinity);
 
   // End Define States
 
@@ -538,6 +544,14 @@ export const GlobalProvider = ({ children }) => {
     setIsPaused,
     simTotal,
     setSimTotal,
+    setTotalTasks,
+    totalTasks,
+    schedulerRef,
+    policyAlias,
+    setPolicyAlias,
+    simulationIntervalRef,
+    simCurrentRef,
+    totalSimTimeRef,
   };
 
   return (

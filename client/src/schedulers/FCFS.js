@@ -7,6 +7,7 @@ export class FCFS extends BaseScheduler {
   }
 
   firstAvailableMachine() {
+    // fcfs helper
     // Prefer idle machines first
     for (const m of this.machines) {
       if (!m.queue?.length) return m;
