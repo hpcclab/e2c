@@ -17,10 +17,12 @@ import {
   Tooltip,
   ResponsiveContainer,
 } from "recharts";
+import { useGlobalState } from "../context/GlobalStates";
 
 const SimulationReport = ({
   dataResults,
   completedTasks = [],
+  totTasks,
   missedTasks,
   unassignedTasks = [],
   simulationTime,
@@ -60,7 +62,14 @@ const SimulationReport = ({
       ? machines.filter((m) => m.id !== -1)
       : [];
 
-    const totalTasks = results.length;
+    const totalTasks = totTasks; // shows up to date batch Q length
+    let inProgress =
+      totTasks - (done.length + unassigned.length + missed.length);
+    inProgress > 0 ? inProgress : (inProgress = 0);
+    inProgress != totTasks ? inProgress : (inProgress = 0); // in progress should never equal total tasks ( occurs when reset button is pressed but never played)
+
+    const totalTasksPreview =
+      done.length + unassigned.length + missed.length + inProgress; // shows preview of total tasks based on sim current position
     // Dynamic: tasks that have been fully processed (completed + missed) so far
     const tasksMapped = done.length + missed.length;
     const tasksCancelled = results.filter(
@@ -128,6 +137,8 @@ const SimulationReport = ({
       totalEnergyConsumed,
       totalCost,
       tasksPerMachine,
+      inProgress,
+      totalTasksPreview,
     };
   }, [dataResults, completedTasks, missedTasks, unassignedTasks, machines]);
 
@@ -242,7 +253,15 @@ const SimulationReport = ({
           <p className="text-sm text-gray-700 mt-2 flex justify-center items-center space-x-4">
             <span className="flex items-center">
               <span className="w-3 h-3 bg-blue-500 rounded-full mr-1"></span>
-              Total: {dataResults.length}
+              Total: {summaryStats.totalTasksPreview}
+            </span>
+            <span className="flex items-center">
+              <span className="w-3 h-3 bg-yellow-500 rounded-full mr-1"></span>
+              Unassigned: {unassignedTasks.length}
+            </span>
+            <span className="flex items-center">
+              <span className="w-3 h-3 bg-pink-500 rounded-full mr-1"></span>
+              In Progress: {summaryStats.inProgress}
             </span>
             <span className="flex items-center">
               <span className="w-3 h-3 bg-green-500 rounded-full mr-1"></span>
@@ -275,7 +294,7 @@ const SimulationReport = ({
             </h4>
 
             {/* Main Stats Grid */}
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+            <div className="grid grid-cols-2 md:grid-cols-5 gap-3 mb-6">
               {/* Total Tasks */}
               <div className="bg-blue-50 rounded-lg p-4 text-center">
                 <div className="text-3xl font-bold text-blue-700">
@@ -283,6 +302,25 @@ const SimulationReport = ({
                 </div>
                 <div className="text-sm text-blue-600 font-medium">
                   Total Tasks
+                </div>
+              </div>
+              {/* Tasks Unassigned */}
+              <div className="bg-yellow-50 rounded-lg p-4 text-center">
+                <div className="text-3xl font-bold text-yellow-700">
+                  {summaryStats.tasksUnassigned}
+                </div>
+                <div className="text-sm text-amber-600 font-medium">
+                  Tasks Unassigned
+                </div>
+              </div>
+
+              {/* Tasks In Progress */}
+              <div className="bg-pink-50 rounded-lg p-4 text-center">
+                <div className="text-3xl font-bold text-pink-700">
+                  {summaryStats.tasksMapped}
+                </div>
+                <div className="text-sm text-pink-600 font-medium">
+                  Tasks In Progress
                 </div>
               </div>
 
@@ -293,16 +331,6 @@ const SimulationReport = ({
                 </div>
                 <div className="text-sm text-green-600 font-medium">
                   Tasks Completed
-                </div>
-              </div>
-
-              {/* Tasks Unassigned */}
-              <div className="bg-amber-50 rounded-lg p-4 text-center">
-                <div className="text-3xl font-bold text-amber-700">
-                  {summaryStats.tasksUnassigned}
-                </div>
-                <div className="text-sm text-amber-600 font-medium">
-                  Tasks Unassigned
                 </div>
               </div>
 
@@ -332,10 +360,18 @@ const SimulationReport = ({
               <tbody>
                 <tr className="hover:bg-gray-50">
                   <td className="border border-gray-300 px-4 py-2 font-medium">
-                    Total Tasks
+                    Tasks Unassigned
                   </td>
                   <td className="border border-gray-300 px-4 py-2 text-right">
-                    {summaryStats.totalTasks}
+                    {summaryStats.tasksUnassigned}
+                  </td>
+                </tr>
+                <tr className="hover:bg-gray-50">
+                  <td className="border border-gray-300 px-4 py-2 font-medium">
+                    Tasks In Progress
+                  </td>
+                  <td className="border border-gray-300 px-4 py-2 text-right">
+                    {summaryStats.inProgress}
                   </td>
                 </tr>
                 <tr className="hover:bg-gray-50">
@@ -346,28 +382,31 @@ const SimulationReport = ({
                     {summaryStats.tasksMapped}
                   </td>
                 </tr>
-                <tr className="hover:bg-gray-50">
+
+                {/* <tr className="hover:bg-gray-50">
                   <td className="border border-gray-300 px-4 py-2 font-medium">
                     Tasks Cancelled
                   </td>
                   <td className="border border-gray-300 px-4 py-2 text-right">
                     {summaryStats.tasksCancelled}
                   </td>
-                </tr>
-                <tr className="hover:bg-gray-50">
-                  <td className="border border-gray-300 px-4 py-2 font-medium">
-                    Tasks Unassigned
-                  </td>
-                  <td className="border border-gray-300 px-4 py-2 text-right">
-                    {summaryStats.tasksUnassigned}
-                  </td>
-                </tr>
+                </tr> */}
+
                 <tr className="hover:bg-gray-50">
                   <td className="border border-gray-300 px-4 py-2 font-medium">
                     Tasks Missed
                   </td>
                   <td className="border border-gray-300 px-4 py-2 text-right">
                     {summaryStats.totalMissed}
+                  </td>
+                </tr>
+
+                <tr className="hover:bg-gray-50">
+                  <td className="border border-gray-300 px-4 py-2 font-medium">
+                    Total Tasks
+                  </td>
+                  <td className="border border-gray-300 px-4 py-2 text-right">
+                    {summaryStats.totalTasks}
                   </td>
                 </tr>
                 <tr className="hover:bg-gray-50 bg-blue-50">
@@ -598,6 +637,10 @@ const SimulationReport = ({
                         name: "Unassigned",
                         value: summaryStats.tasksUnassigned,
                       },
+                      {
+                        name: "In Progress",
+                        value: summaryStats.inProgress,
+                      },
                     ].filter((d) => d.value > 0)}
                     cx="50%"
                     cy="50%"
@@ -612,6 +655,7 @@ const SimulationReport = ({
                       "#ef4444", // red - missed
                       "#f97316", // orange - cancelled
                       "#f59e0b", // amber - unassigned
+                      "#f50bf5", // pink - in progress
                     ].map((color, i) => (
                       <Cell key={i} fill={color} />
                     ))}
