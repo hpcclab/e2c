@@ -3,6 +3,7 @@ import { useReactFlow } from "@xyflow/react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { useGlobalState } from "../context/GlobalStates";
+import { colorMemory } from "./Task";
 
 // Contains node spawners through drag and drop
 // Simple ID generator for nodes
@@ -333,6 +334,16 @@ export default function Sidebar() {
   } = useReactFlow();
 
   const distributionOptions = ["uniform", "normal", "exponential", "spiky"];
+  const colorNames = [
+    "Slate",
+    "Sky",
+    "Teal",
+    "Emerald",
+    "Violet",
+    "Rose",
+    "Amber",
+    "Fuchsia",
+  ];
 
   const handleNodeDrop = useCallback(
     (nodeType, screenPosition) => {
@@ -413,7 +424,7 @@ export default function Sidebar() {
             frequency: 0,
             connectivity: "WiFi",
             energySource: "Wired",
-            taskColor: "Slate",
+            taskColor: colorNames[Date.now() % colorNames.length],
           },
           queue: [],
           position: relativePosition,
@@ -462,6 +473,10 @@ export default function Sidebar() {
             }),
           );
         }
+        colorMemory[newIot.properties.task_type] = colorNames.indexOf(
+          newIot.properties.taskColor,
+        );
+        window.dispatchEvent(new Event("taskColorChanged"));
       } else if (
         nodeType === "workloadNode" ||
         nodeType === "edgeSpace" ||

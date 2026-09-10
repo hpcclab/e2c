@@ -31,7 +31,7 @@ export class MEET extends BaseScheduler {
     // Collect machine execution times
     const eets = this.machines.map((m) => ({
       machine: m,
-      eet: task.estimated_time?.[m.type?.name] ?? Infinity,
+      eet: Number(m.eet?.[task.task_type] ?? 1),
     }));
 
     if (!eets.length) return null;
@@ -40,7 +40,7 @@ export class MEET extends BaseScheduler {
     const minEet = Math.min(...eets.map((e) => e.eet));
 
     // Find all tied machines
-    const ties = eets.filter((e) => e.eet === minEet);
+    const ties = eets.filter((e) => e.eet == minEet);
 
     if (!ties.length) return null;
 
@@ -51,10 +51,6 @@ export class MEET extends BaseScheduler {
     const assignedMachine = ties[selectedIndex].machine;
 
     this.map(assignedMachine);
-
-    // console.log(
-    //   `task:${task.id} assigned to:${assignedMachine.type?.name} delta:${task.deadline}`,
-    // );
 
     return assignedMachine;
   }

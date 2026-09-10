@@ -87,7 +87,7 @@ export default function Task({ task, setSelectedTask }) {
 
   if (!(task.id >= 0)) return null;
 
-  const idx = colorMemory[details.task_type] ?? 0;
+  const idx = colorMemory[task.task_type] ?? 0;
   const color = PALETTE[idx];
 
   return (

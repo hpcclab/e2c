@@ -31,10 +31,10 @@ export class MECT extends BaseScheduler {
     // Calculate provisional completion times
     const pcts = this.machines.map((machine) => ({
       machine,
-      pct:
-        typeof machine.provisional_map === "function"
-          ? machine.provisional_map(task)
-          : Infinity,
+      pct: machine.queue.reduce((sum, t) => {
+        sum += parseInt(machine.eet?.[t.task_type] ?? 1);
+        return sum;
+      }, 0),
     }));
 
     if (!pcts.length) return null;
@@ -43,7 +43,7 @@ export class MECT extends BaseScheduler {
     const minPct = Math.min(...pcts.map((p) => p.pct));
 
     // Find all tied machines
-    const ties = pcts.filter((p) => p.pct === minPct);
+    const ties = pcts.filter((p) => p.pct == minPct);
 
     if (!ties.length) return null;
 
@@ -54,10 +54,6 @@ export class MECT extends BaseScheduler {
     const assignedMachine = ties[selectedIndex].machine;
 
     this.map(assignedMachine);
-
-    // console.log(
-    //   `task:${task.id} assigned to:${assignedMachine.type?.name} delta:${task.deadline} min_pct:${minPct}`,
-    // );
 
     return assignedMachine;
   }
