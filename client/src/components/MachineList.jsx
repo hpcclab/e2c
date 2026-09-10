@@ -48,7 +48,9 @@ export default function MachineList({
       replicaNumber: replicaIndex + 1,
       displayName: `${machine.name} #${replicaIndex + 1}`,
       colorIndex: machineIndex,
-      queue: queue.filter((_, taskIndex) => taskIndex % replicaCount === replicaIndex),
+      queue: queue.filter(
+        (_, taskIndex) => taskIndex % replicaCount === replicaIndex,
+      ),
     }));
   };
 
@@ -88,7 +90,9 @@ export default function MachineList({
         const isExpanded = expandedMachines[machine.id];
         const replicas = getMachineReplicas(machine, machineIndex);
         const totalCost = calculateCost(machine);
-        const utilDisplay = formatUtilizationTime(machine.utilization_time || 0);
+        const utilDisplay = formatUtilizationTime(
+          machine.utilization_time || 0,
+        );
         const totalTasks = machine.total_tasks || 0;
 
         return (
@@ -141,7 +145,9 @@ export default function MachineList({
               <div className="ml-8 mt-2 space-y-2">
                 {replicas.map((replica) => {
                   const replicaCost = calculateCost(replica);
-                  const replicaDisplay = formatUtilizationTime(replica.utilization_time || 0);
+                  const replicaDisplay = formatUtilizationTime(
+                    replica.utilization_time || 0,
+                  );
                   const replicaTasks = replica.total_tasks || 0;
 
                   return (

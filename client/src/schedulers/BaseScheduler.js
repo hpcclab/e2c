@@ -132,7 +132,7 @@ export class BaseScheduler {
       if (eet == null) continue;
 
       const life = this.getTime() - task.start_time;
-      if (life >= task.deadline) {
+      if (life >= task.deadline || task.start_time >= task.deadline) {
         task.status = "MISSED";
         this.stats.missed.push(task);
         this.dequeue(m.id);

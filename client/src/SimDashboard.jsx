@@ -237,40 +237,13 @@ const SimDashboard = () => {
   );
   const onPaneClick = useCallback(() => setMenu(null), [setMenu]); // Close the context menu if it's open whenever the window is clicked.
 
-  const stopAnimation = (edgeId) => {
-    setEdges((eds) =>
-      eds.map((edge) =>
-        edge.id === edgeId
-          ? { ...edge, data: { ...edge.data, animate: false } }
-          : edge,
-      ),
-    );
-  };
-
-  const startAnimation = (edgeId) => {
-    const packetId = `${edgeId}-${Date.now()}`;
-
-    setEdges((eds) =>
-      eds.map((edge) =>
-        edge.id === edgeId
-          ? {
-              ...edge,
-              data: {
-                ...edge.data,
-                packets: [...(edge.data?.packets ?? []), packetId],
-              },
-            }
-          : edge,
-      ),
-    );
-  };
-
   // END DND
 
   // State assignments and functions
   // - Load balancer handlers
   const [scheduling, setScheduling] = useState("immediate");
   const [policy, setPolicy] = useState("FirstCome-FirstServe");
+  const [policyUpdated, setPolicyUpdated] = useState(false);
   const [queueSize, setQueueSize] = useState("unlimited");
   const policyNames = [
     "FirstCome-FirstServe",
@@ -304,7 +277,7 @@ const SimDashboard = () => {
     return new SchedulerClass(opts);
   }
   useEffect(() => {
-    if (isPaused) return;
+    if (isPaused && !policyUpdated) return;
     schedulerRef.current = new createScheduler(policyAlias, {
       machines,
       iot,
@@ -313,7 +286,8 @@ const SimDashboard = () => {
       isNeighbors,
       config: { LB_ID },
     });
-  }, [policyAlias]);
+    setPolicyUpdated(false);
+  }, [policyAlias, policyUpdated]);
   useEffect(() => {
     if (!schedulerRef.current) return;
 
@@ -483,23 +457,11 @@ const SimDashboard = () => {
   };
 
   const handleSubmitWorkloadAndProfiling = async () => {
-    if (
-      !workloadFileUploaded ||
-      !profilingFileUploaded ||
-      !configFileUploaded
-    ) {
-      alert(
-        "Please upload the workload (.wkl), profiling table (.eet), and configuration (.json) files before submitting.",
-      );
-
-      return;
-    }
-
     try {
       // Simulate submission logic
       setWorkloadSubmissionStatus("Submitting...");
-      await new Promise((resolve) => setTimeout(resolve, 1000)); // Simulate API call delay
-      setWorkloadSubmissionStatus("Submission successful!");
+      alert("CLicked");
+      setWorkloadSubmissionStatus("Submission help!");
     } catch (error) {
       setWorkloadSubmissionStatus("Submission failed.");
     }
@@ -866,20 +828,10 @@ const SimDashboard = () => {
     try {
       // Simulate submission logic
       setSubmissionStatus("Submitting...");
+      setPolicyUpdated(true);
       setSubmissionStatus("Submission successful!");
     } catch (error) {
       setSubmissionStatus("Submission failed.");
-    }
-  };
-
-  const handleSubmitProfilingWorktable = async () => {
-    try {
-      // Simulate submission logic
-      setProfilingSubmissionStatus("Submitting...");
-      await new Promise((resolve) => setTimeout(resolve, 1000)); // Simulate API call delay
-      setProfilingSubmissionStatus("Submission successful!");
-    } catch (error) {
-      setProfilingSubmissionStatus("Submission failed.");
     }
   };
 
