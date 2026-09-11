@@ -1077,9 +1077,6 @@ const SimDashboard = () => {
                         <th className="px-4 py-2 text-sm font-semibold text-gray-700">
                           Deadline
                         </th>
-                        <th className="px-4 py-2 text-sm font-semibold text-gray-700">
-                          Source
-                        </th>
                       </tr>
                     </thead>
                     <tbody className=" flex flex-col gap-3">
@@ -1092,7 +1089,6 @@ const SimDashboard = () => {
                         "start_time",
                         "end_time",
                         "deadline",
-                        "source",
                       ].map((key, index) => (
                         <td
                           key={`task-param-${key}-${index}`}

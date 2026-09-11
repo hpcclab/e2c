@@ -69,6 +69,7 @@ export const GlobalProvider = ({ children }) => {
     start: "",
     end: "",
     status: "",
+    source: "",
   });
   const workspace = {
     id: -3030,
