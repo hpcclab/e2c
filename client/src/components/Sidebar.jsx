@@ -141,6 +141,28 @@ const NODE_CONFIG = [
     bg: "rgba(250, 21, 21, 0.08)",
     border: "rgba(250, 21, 21, 0.25)",
   },
+  {
+    type: "userNode",
+    label: "User",
+    icon: (
+      <svg
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.5"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      >
+        <circle cx="12" cy="12" r="3" />
+        <path d="M6.3 6.3a8 8 0 0 0 0 11.4M17.7 6.3a8 8 0 0 1 0 11.4" />
+        <path d="M3.05 3.05a14 14 0 0 0 0 17.9M20.95 3.05a14 14 0 0 1 0 17.9" />
+      </svg>
+    ),
+    description: "Human",
+    accent: "#a200ff",
+    bg: "rgba(219, 60, 251, 0.08)",
+    border: "rgba(206, 60, 251, 0.25)",
+  },
 ];
 
 // Shared card inner content — used both in sidebar and in the portal ghost
@@ -425,6 +447,79 @@ export default function Sidebar() {
             connectivity: "WiFi",
             energySource: "Wired",
             taskColor: colorNames[Date.now() % colorNames.length],
+            user: false,
+          },
+          queue: [],
+          position: relativePosition,
+          parentId,
+          extent: parentId ? "parent" : undefined,
+        };
+        setIot((prev) => [...prev, newIot]);
+        setTaskTypes((prev) => [
+          ...prev,
+          {
+            srcID: newIot.id,
+            name: newIot.name,
+            dataInput: newIot.properties.dataInput,
+            meanSize: newIot.properties.meanSize,
+            urgency: newIot.properties.urgency,
+            slack: newIot.properties.slack,
+            numTasks: newIot.properties.numTasks,
+            startTime: newIot.properties.startTime,
+            endTime: newIot.properties.endTime,
+          },
+        ]);
+        setScenarioRows((prev) => [
+          ...prev,
+          {
+            srcID: newIot.id,
+            taskType: newIot.properties.task_type,
+            numTasks: newIot.properties.numTasks,
+            startTime: newIot.properties.startTime,
+            endTime: newIot.properties.endTime,
+            distribution: newIot.properties.distribution,
+          },
+        ]);
+        setMachines((prev) =>
+          prev.map((m) => ({
+            ...m,
+            eet: { ...(m.eet || {}), [newIot.name]: "1" },
+          })),
+        );
+        if (parentId) {
+          setWorkspaces((prev) =>
+            prev.map((ws) => {
+              const workspaceId = parentId.replace("nd-", "");
+              if (ws.id.toString() === workspaceId)
+                return { ...ws, iots: [...ws.iots, newIot.id] };
+              return ws;
+            }),
+          );
+        }
+        colorMemory[newIot.properties.task_type] = colorNames.indexOf(
+          newIot.properties.taskColor,
+        );
+        window.dispatchEvent(new Event("taskColorChanged"));
+      } else if (nodeType === "userNode") {
+        const newIot = {
+          id: Date.now(),
+          name: `User ${Date.now().toString().slice(-3)}`,
+          properties: {
+            task_type: `IOT ${Date.now().toString().slice(-4)}`,
+            dataInput: "default",
+            meanSize: 6,
+            urgency: "BestEffort",
+            slack: 1,
+            numTasks: 10,
+            startTime: 0,
+            endTime: 15,
+            distribution: distributionOptions[0],
+            deviceRole: "sensor",
+            frequency: 0,
+            connectivity: "WiFi",
+            energySource: "Wired",
+            taskColor: colorNames[Date.now() % colorNames.length],
+            user: true,
           },
           queue: [],
           position: relativePosition,
@@ -706,10 +801,21 @@ export default function Sidebar() {
           </div>
 
           <div className="sb-divider" />
-
           <div className="sb-section-label">Topology</div>
           <div className="sb-node-list">
-            {NODE_CONFIG.slice(4).map((cfg) => (
+            {NODE_CONFIG.slice(4, 6).map((cfg) => (
+              <DraggableNode
+                key={cfg.type}
+                config={cfg}
+                onDrop={handleNodeDrop}
+              />
+            ))}
+          </div>
+
+          <div className="sb-divider" />
+          <div className="sb-section-label">User</div>
+          <div className="sb-node-list">
+            {NODE_CONFIG.slice(6).map((cfg) => (
               <DraggableNode
                 key={cfg.type}
                 config={cfg}

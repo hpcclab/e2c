@@ -75,6 +75,7 @@ export default function Task({ task, setSelectedTask }) {
     end_time: String(task.end_time),
     missed_time: String(task.missed_time),
     status: String(task.status),
+    source: String(task.source),
   };
 
   // Re-render when any IoT updates a task_type color

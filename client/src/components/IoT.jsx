@@ -22,7 +22,10 @@ export default function IoT({ iot, setSelectedIOT, onClicked }) {
     >
       {iot.icon && IOT_ICON_MAP[iot.icon] ? (
         <>
-          {(() => { const Icon = IOT_ICON_MAP[iot.icon]; return <Icon size={28} className="text-blue-600" />; })()}
+          {(() => {
+            const Icon = IOT_ICON_MAP[iot.icon];
+            return <Icon size={28} className="text-blue-600" />;
+          })()}
           <span className="text-xs text-gray-700 font-semibold mt-1 text-center max-w-[80px] truncate">
             {iot.name}
           </span>

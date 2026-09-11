@@ -3,24 +3,32 @@ import { BrowserRouter as Router, Routes, Route, Link } from "react-router-dom";
 import SimDashboard from "./SimDashboard";
 import "./assets/index.css";
 import Reports from "./Reports";
+import FlowSaveLoadPanel from "./components/SaveLoadPanel";
 
 const App = () => {
   return (
     <Router>
-      <div className="max-w-screen max-h-screen bg-gray-50 overflow-x-hidden">
-        <header className="bg-blue-500 text-white p-3 shadow-md overflow-hidden">
-          <nav className="mx-auto flex justify-between items-center overflow-hidden ">
-            <h1 className="text-3xl font-bold">E2C</h1>
-            <ul className="flex space-x-6 text-lg max-w-screen overflow-hidden">
-              <li>
-                <Link to="/e2c" className="hover:underline">
-                  Home
-                </Link>
-              </li>
+      <div className="max-w-screen max-h-screen bg-gray-50 ">
+        <header className="bg-blue-500 text-white p-3 shadow-md ">
+          <nav className="flex justify-between items-center mx-7">
+            <h1 className="text-3xl font-bold">
+              <Link to="/e2c" className="hover:underline">
+                E2C
+              </Link>
+            </h1>
+            <ul className="flex space-x-7 text-lg">
               <li>
                 <Link to="/e2c/simulate" className="hover:underline">
                   Simulation
                 </Link>
+              </li>
+              <li>
+                <Link to="/e2c/reports/*" className="hover:underline">
+                  Reports
+                </Link>
+              </li>
+              <li className="mr-3">
+                <FlowSaveLoadPanel />
               </li>
             </ul>
           </nav>

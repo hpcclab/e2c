@@ -20,7 +20,14 @@ export default memo(({ data, isConnectable }) => {
   return (
     <>
       <div>
-        {iot ? (
+        {iot.properties.user ? (
+          <IoT
+            key={iot.id}
+            iot={iot}
+            setSelectedIOT={setSelectedIOT}
+            onClicked={() => openSidebar("user")}
+          />
+        ) : !iot.properties.user ? (
           <IoT
             key={iot.id}
             iot={iot}

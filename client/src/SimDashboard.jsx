@@ -1,48 +1,25 @@
 import React, { useEffect, useState, useCallback, useRef } from "react";
-import axios from "axios";
-import {
-  motion,
-  AnimatePresence,
-  useForceUpdate,
-  animate,
-} from "framer-motion";
-import { TrashIcon } from "@heroicons/react/24/outline";
 
-import { WorkloadSidebar } from "./components/SidebarContent";
-import AdmissionsOverlay from "./components/AdmissionsOverlay";
+import { motion, AnimatePresence } from "framer-motion";
 import EditMachineProperties from "./components/EditMachineProperties";
 import EditIoTProperties from "./components/EditIoTProperties";
+import EditUserProperties from "./components/EditUserProperties";
 import EditEdgeProperties from "./components/EditEdgeProperties";
-import SimulationReport from "./components/SimulationReport";
-import { processDequeue, autoMapMachineNames } from "./utils/dequeueProcess";
-import { eetTable } from "./utils/exportCSV";
 
 // Drag and drop imports and requirements
-import {
-  Background,
-  Controls,
-  Panel,
-  ReactFlow,
-  ReactFlowProvider,
-  addEdge,
-  useEdgesState,
-  useNodesState,
-} from "@xyflow/react";
+import { Background, Controls, ReactFlow, addEdge } from "@xyflow/react";
 
 import Sidebar from "./components/Sidebar";
 import ContextMenu from "./context/ContextMenu";
 import machineNode from "./components/machineNode";
 import iotNode from "./components/iotNode";
-import cloudSpace from "./components/cloudSpace";
 import edgeLockedNode from "./components/edgeLockedNode";
 import workloadNode from "./components/workloadNode";
 import "./assets/flow.css";
 import "./assets/index.css";
 import { useGlobalState } from "./context/GlobalStates";
 import LBNode from "./components/LBNode";
-import QueueNode from "./components/QueueNode";
-import SaveLoadPanel from "./components/SaveLoadPanel";
-import AnimatedEdge from "./components/AnimatedEdge";
+
 // To future authors - Ensure schedulers are imported here for use in sim
 import { FCFS } from "./schedulers/FCFS";
 import { LC } from "./schedulers/LC";
@@ -51,23 +28,17 @@ import { URI } from "./schedulers/URI";
 import { MEET } from "./schedulers/MEET";
 import { MECT } from "./schedulers/MECT";
 import { SCHEDULER_REGISTRY } from "./schedulers/registry";
-import Reports from "./Reports";
-import { Link, Route, Routes } from "react-router-dom";
 import AutoScalerNode from "./components/AutoScalerNode";
-
-const edgeTypes = {
-  packet: AnimatedEdge,
-};
 const nodeTypes = {
   machineNode: machineNode,
   iotNode: iotNode,
+  userNode: iotNode,
   edgeSpace: workloadNode,
   cloudSpace: workloadNode,
   edgeLockedNode: edgeLockedNode,
   group: workloadNode,
   LBNode: LBNode,
   autoScaler: AutoScalerNode,
-  QueueNode: QueueNode,
 };
 // End Drag and Drop Requirements and Imports
 
@@ -320,6 +291,7 @@ const SimDashboard = () => {
     start_time: "",
     end_time: "",
     status: "",
+    source: "",
   });
   const [metricParams, setMetricParams] = useState({
     mean: "",
@@ -836,31 +808,15 @@ const SimDashboard = () => {
   };
 
   return (
-    <div className=" bg-[#d9d9d9] m-5 h-720 max-h-screen max-w-1600 flex flex-col relative ">
-      {/* Navbar */}
-      <div className="max-w-screen max-h-screen  bg-gray-50 overflow-hidden">
-        <header className="bg-blue-500 h-12 text-white p-3 shadow-md overflow-hidden">
-          <nav className="mx-auto flex justify-between items-center overflow-hidden ">
-            <SaveLoadPanel />
-            <Link to="/e2c/reports" className="hover:underline">
-              Reports
-            </Link>
-          </nav>
-        </header>
-        <Routes>
-          <Route path="/e2c/reports" element={<Reports />} />
-        </Routes>
-      </div>
-
+    <div className=" bg-[#d9d9d9] m-5 h-720 max-h-screen max-w-1500 flex flex-col relative ">
       {/* DND */}
-      <div className=" p-3 bg-gray-100 h-dvh max-w-screen max-h-screen relative">
+      <div className=" p-5 bg-gray-100 h-dvh max-w-screen max-h-screen relative">
         <div className="dndflow flex gap-1">
           <div className="reactflow-wrapper" ref={reactFlowWrapper}>
             <ReactFlow
               nodes={nodes}
               edges={edges}
               nodeTypes={nodeTypes}
-              edgeTypes={edgeTypes}
               onNodesChange={onNodesChange}
               onNodeDragStop={onDragStop}
               onEdgesChange={onEdgesChange}
@@ -882,17 +838,8 @@ const SimDashboard = () => {
           </div>
           <Sidebar setNodes={setNodes} />
         </div>
-        <div className="absolute bottom-8 left-1/2 transform -translate-x-1/2 z-10">
+        <div className="absolute top-8 left-1/2 transform -translate-x-1/2 z-10">
           <div className="flex flex-col gap-1">
-            {isRunning ? (
-              <div className="bg-white rounded-full shadow-lg px-6 py-3">
-                <h3 className="text-xl font-bold text-gray-800 bg-white">
-                  Sim Time: {simulationTime.toFixed(2)} seconds
-                </h3>
-              </div>
-            ) : (
-              ""
-            )}
             <div className="flex justify-between space-x-4 bg-white rounded-full shadow-lg px-6 py-3">
               <>
                 <button
@@ -923,6 +870,15 @@ const SimDashboard = () => {
                 </button>
               </>
             </div>
+            {isRunning ? (
+              <div className="bg-white rounded-full shadow-lg px-6 py-3">
+                <h3 className="text-xl font-bold text-gray-800 bg-white">
+                  Sim Time: {simulationTime.toFixed(2)} seconds
+                </h3>
+              </div>
+            ) : (
+              ""
+            )}
           </div>
         </div>
       </div>
@@ -952,7 +908,9 @@ const SimDashboard = () => {
                           ? `Machine: ${selectedMachine.name?.toUpperCase()}`
                           : sidebarMode === "IOT"
                             ? `IOT: ${selectedIOT.name?.toUpperCase()}`
-                            : "Drag and Drop Templates"}
+                            : sidebarMode === "user"
+                              ? `User: ${selectedIOT.name?.toUpperCase()}`
+                              : "Drag and Drop Templates"}
               </h2>
               <button
                 onClick={() => setShowSidebar(false)}
@@ -961,16 +919,6 @@ const SimDashboard = () => {
                 &times;
               </button>
             </div>
-
-            {sidebarMode === "workload" && (
-              <WorkloadSidebar
-                handleSubmitWorkloadAndProfiling={
-                  handleSubmitWorkloadAndProfiling
-                }
-                handleResetWorkload={handleResetWorkload}
-                selectedTask={selectedTask}
-              />
-            )}
 
             {sidebarMode === "loadBalancer" && (
               <form className="space-y-6">
@@ -1129,6 +1077,9 @@ const SimDashboard = () => {
                         <th className="px-4 py-2 text-sm font-semibold text-gray-700">
                           Deadline
                         </th>
+                        <th className="px-4 py-2 text-sm font-semibold text-gray-700">
+                          Source
+                        </th>
                       </tr>
                     </thead>
                     <tbody className=" flex flex-col gap-3">
@@ -1141,6 +1092,7 @@ const SimDashboard = () => {
                         "start_time",
                         "end_time",
                         "deadline",
+                        "source",
                       ].map((key, index) => (
                         <td
                           key={`task-param-${key}-${index}`}
@@ -1229,10 +1181,41 @@ const SimDashboard = () => {
                 )}
               </div>
             )}
+            {sidebarMode === "user" && (
+              <div className="space-y-6">
+                {/* IOT Sidebar Content */}
+                <div className="flex space-x-4 border-b pb-2">
+                  <button
+                    onClick={() => setIOTTab("details")}
+                    className={`text-sm font-semibold ${
+                      IOTTab === "details"
+                        ? "text-blue-600 border-b-2 border-blue-600"
+                        : "text-gray-500"
+                    }`}
+                  >
+                    Properties
+                  </button>
+                </div>
+
+                {IOTTab === "details" && (
+                  <div className="space-y-6">
+                    {/* IOT Details Tab */}
+                    <div className="space-y-2">
+                      <EditUserProperties
+                        selectedIOT={selectedIOT}
+                        setSelectedIOT={setSelectedIOT}
+                        onSave={handleIOTPropertySave}
+                        animatedIOTs={animatedIOTs}
+                        setAnimatedIOTs={setAnimatedIOTs}
+                      />
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
           </motion.div>
         )}
       </AnimatePresence>
-      <AdmissionsOverlay flyers={flyers} />
     </div>
   );
 };
