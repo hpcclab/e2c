@@ -1,0 +1,1228 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta
+      name="description"
+      content="Help for building and running edge-to-cloud simulations with E2C."
+    />
+    <title>E2C Help</title>
+    <script>
+      if (new URLSearchParams(window.location.search).has("embedded")) {
+        document.documentElement.classList.add("embedded");
+      }
+    </script>
+    <style>
+      :root {
+        color-scheme: light;
+        --brand: #3b82f6;
+        --brand-dark: #2563eb;
+        --brand-deep: #1d4ed8;
+        --brand-soft: #eff6ff;
+        --ink: #111827;
+        --body: #374151;
+        --muted: #6b7280;
+        --line: #e5e7eb;
+        --surface: #f9fafb;
+        --surface-raised: #ffffff;
+        --success: #16a34a;
+        --header-height: 60px;
+        --sidebar-width: 304px;
+        font-family:
+          Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont,
+          "Segoe UI", sans-serif;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      html {
+        scroll-behavior: smooth;
+        scroll-padding-top: calc(var(--header-height) + 28px);
+      }
+
+      body {
+        margin: 0;
+        background: #f9fafb;
+        color: var(--body);
+        font-size: 16px;
+        line-height: 1.7;
+      }
+
+      a {
+        color: inherit;
+      }
+
+      button,
+      input {
+        font: inherit;
+      }
+
+      img {
+        display: block;
+        max-width: 100%;
+      }
+
+      .skip-link {
+        position: fixed;
+        left: 18px;
+        top: -60px;
+        z-index: 100;
+        border-radius: 8px;
+        background: #fff;
+        color: var(--brand-deep);
+        padding: 10px 14px;
+        font-weight: 700;
+        box-shadow: 0 8px 20px rgb(15 23 42 / 18%);
+        transition: top 160ms ease;
+      }
+
+      .skip-link:focus {
+        top: 10px;
+      }
+
+      .site-header {
+        position: fixed;
+        inset: 0 0 auto 0;
+        z-index: 50;
+        height: var(--header-height);
+        background: var(--brand);
+        color: #fff;
+        box-shadow: 0 2px 8px rgb(15 23 42 / 14%);
+      }
+
+      .header-inner {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        width: 100%;
+        height: 100%;
+        padding: 0 28px;
+      }
+
+      .brand {
+        display: inline-flex;
+        align-items: center;
+        color: #fff;
+        text-decoration: none;
+        font-size: 30px;
+        font-weight: 700;
+        letter-spacing: -0.025em;
+      }
+
+      .primary-nav {
+        display: flex;
+        align-items: center;
+        gap: 28px;
+      }
+
+      .primary-nav a {
+        padding: 0;
+        color: #fff;
+        text-decoration: none;
+        font-size: 18px;
+        font-weight: 400;
+      }
+
+      .primary-nav a:hover,
+      .primary-nav a:focus-visible {
+        color: #fff;
+        text-decoration: underline;
+        outline: none;
+      }
+
+      .primary-nav a[aria-current="page"] {
+        background: transparent;
+        color: #fff;
+        font-weight: 600;
+      }
+
+      .menu-button {
+        display: none;
+        align-items: center;
+        gap: 8px;
+        border: 1px solid rgb(255 255 255 / 42%);
+        border-radius: 8px;
+        background: transparent;
+        color: #fff;
+        padding: 7px 10px;
+        font-weight: 700;
+        cursor: pointer;
+      }
+
+      .page-shell {
+        display: grid;
+        grid-template-columns: var(--sidebar-width) minmax(0, 1fr);
+        min-height: 100vh;
+        padding-top: var(--header-height);
+      }
+
+      html.embedded {
+        --header-height: 0px;
+        scroll-padding-top: 28px;
+      }
+
+      html.embedded .site-header {
+        display: none;
+      }
+
+      html.embedded .page-shell {
+        padding-top: 0;
+      }
+
+      html.embedded .docs-sidebar {
+        inset: 0 auto 0 0;
+      }
+
+      .docs-sidebar {
+        position: fixed;
+        inset: var(--header-height) auto 0 0;
+        z-index: 30;
+        width: var(--sidebar-width);
+        overflow-y: auto;
+        border-right: 1px solid var(--line);
+        background: #f3f4f6;
+        padding: 24px 18px 42px;
+      }
+
+      .docs-sidebar::-webkit-scrollbar {
+        width: 10px;
+      }
+
+      .docs-sidebar::-webkit-scrollbar-thumb {
+        border: 3px solid #f3f4f6;
+        border-radius: 999px;
+        background: #cbd5e1;
+      }
+
+      .sidebar-title {
+        margin: 0 8px 13px;
+        color: var(--ink);
+        font-size: 13px;
+        font-weight: 800;
+        letter-spacing: 0.1em;
+        text-transform: uppercase;
+      }
+
+      .search-wrap {
+        position: relative;
+        margin-bottom: 20px;
+      }
+
+      .search-wrap svg {
+        position: absolute;
+        left: 12px;
+        top: 50%;
+        width: 16px;
+        height: 16px;
+        color: var(--muted);
+        transform: translateY(-50%);
+        pointer-events: none;
+      }
+
+      .search-input {
+        width: 100%;
+        border: 1px solid #d1d5db;
+        border-radius: 9px;
+        background: #fff;
+        color: var(--ink);
+        padding: 9px 12px 9px 36px;
+        outline: none;
+      }
+
+      .search-input:focus {
+        border-color: var(--brand);
+        box-shadow: 0 0 0 3px rgb(59 130 246 / 14%);
+      }
+
+      .sidebar-nav details {
+        margin: 3px 0 7px;
+      }
+
+      .sidebar-nav summary {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        list-style: none;
+        border-radius: 8px;
+        color: var(--ink);
+        cursor: pointer;
+        padding: 9px 10px;
+        font-size: 14px;
+        font-weight: 750;
+      }
+
+      .sidebar-nav summary::-webkit-details-marker {
+        display: none;
+      }
+
+      .sidebar-nav summary::after {
+        width: 7px;
+        height: 7px;
+        border-right: 2px solid #64748b;
+        border-bottom: 2px solid #64748b;
+        content: "";
+        transform: rotate(45deg) translateY(-2px);
+        transition: transform 150ms ease;
+      }
+
+      .sidebar-nav details:not([open]) summary::after {
+        transform: rotate(-45deg) translateY(0);
+      }
+
+      .sidebar-nav summary:hover {
+        background: #f1f5f9;
+      }
+
+      .sidebar-nav ul {
+        margin: 2px 0 8px;
+        padding: 0;
+        list-style: none;
+      }
+
+      .sidebar-nav a {
+        display: block;
+        margin: 2px 0;
+        border-left: 2px solid #dbe2ea;
+        border-radius: 0 7px 7px 0;
+        color: #4b5563;
+        padding: 7px 10px 7px 18px;
+        text-decoration: none;
+        font-size: 14px;
+        line-height: 1.35;
+      }
+
+      .sidebar-nav a:hover {
+        border-left-color: #93c5fd;
+        background: #f1f5f9;
+        color: var(--ink);
+      }
+
+      .sidebar-nav a.active {
+        border-left-color: var(--brand);
+        background: var(--brand-soft);
+        color: var(--brand-deep);
+        font-weight: 700;
+      }
+
+      .sidebar-note {
+        margin: 22px 8px 0;
+        border-top: 1px solid var(--line);
+        padding-top: 16px;
+        color: var(--muted);
+        font-size: 12px;
+      }
+
+      .sidebar-note a {
+        color: var(--brand-deep);
+        font-weight: 700;
+      }
+
+      .main-column {
+        grid-column: 2;
+        min-width: 0;
+        background: #f9fafb;
+      }
+
+      .content {
+        width: min(100%, 1120px);
+        margin: 0 auto;
+        padding: 50px 64px 90px;
+      }
+
+      .eyebrow {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        margin: 0 0 10px;
+        color: var(--brand-deep);
+        font-size: 16px;
+        font-weight: 600;
+        letter-spacing: 0;
+      }
+
+      .eyebrow::before {
+        display: none;
+      }
+
+      h2,
+      h3 {
+        color: var(--ink);
+        line-height: 1.18;
+      }
+
+      .doc-section {
+        border-bottom: 1px solid var(--line);
+        padding: 52px 0;
+      }
+
+      .doc-section:last-child {
+        border-bottom: 0;
+      }
+
+      h2 {
+        margin: 0 0 16px;
+        font-size: clamp(30px, 3vw, 38px);
+        letter-spacing: -0.03em;
+      }
+
+      h3 {
+        margin: 38px 0 12px;
+        font-size: 23px;
+        letter-spacing: -0.02em;
+      }
+
+      p {
+        max-width: 820px;
+        margin: 12px 0;
+      }
+
+      .section-intro {
+        max-width: 820px;
+        color: #4b5563;
+        font-size: 18px;
+      }
+
+      .steps {
+        margin: 30px 0 0;
+        padding: 0;
+        list-style: none;
+        counter-reset: guide-step var(--step-start, 0);
+      }
+
+      .step {
+        position: relative;
+        margin: 0 0 34px;
+        padding-left: 54px;
+        counter-increment: guide-step;
+      }
+
+      .step::before {
+        position: absolute;
+        left: 0;
+        top: -2px;
+        display: grid;
+        width: 35px;
+        height: 35px;
+        place-items: center;
+        border-radius: 50%;
+        background: var(--brand-soft);
+        color: var(--brand-deep);
+        content: counter(guide-step);
+        font-size: 14px;
+        font-weight: 800;
+      }
+
+      .step h3 {
+        margin: 0 0 8px;
+        font-size: 19px;
+      }
+
+      .step p {
+        margin: 0;
+      }
+
+      .figure {
+        margin: 25px 0 36px;
+      }
+
+      .figure-frame {
+        overflow: hidden;
+        border: 1px solid var(--line);
+        border-radius: 6px;
+        background: #fff;
+      }
+
+      .figure-frame img {
+        width: 100%;
+        height: auto;
+      }
+
+      /* Hide text and capture borders that are outside the useful UI area. */
+      .crop-basic-topology img {
+        margin-top: -3.7%;
+      }
+
+      .crop-iot-workload img {
+        margin-top: -7%;
+      }
+
+      .crop-black-frame img {
+        width: 100.9%;
+        max-width: none;
+        margin-top: -0.45%;
+        margin-right: -0.45%;
+        margin-bottom: -3.15%;
+        margin-left: -0.45%;
+      }
+
+      .crop-review-save img {
+        margin-top: -9%;
+        margin-bottom: -4.25%;
+      }
+
+      figcaption {
+        margin-top: 10px;
+        color: var(--muted);
+        font-size: 13px;
+        line-height: 1.5;
+      }
+
+      .two-up {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 18px;
+        margin: 24px 0 34px;
+      }
+
+      .two-up .figure {
+        margin: 0;
+      }
+
+      .data-table-wrap {
+        overflow-x: auto;
+        margin: 25px 0 34px;
+        border: 1px solid var(--line);
+        border-radius: 11px;
+        box-shadow: 0 1px 3px rgb(15 23 42 / 5%);
+      }
+
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        background: #fff;
+        font-size: 14px;
+        line-height: 1.55;
+      }
+
+      th,
+      td {
+        border-bottom: 1px solid var(--line);
+        padding: 13px 16px;
+        text-align: left;
+        vertical-align: top;
+      }
+
+      th {
+        background: #f1f5f9;
+        color: var(--ink);
+        font-size: 12px;
+        letter-spacing: 0.055em;
+        text-transform: uppercase;
+      }
+
+      tr:last-child td {
+        border-bottom: 0;
+      }
+
+      tbody tr:nth-child(even) {
+        background: #fafcff;
+      }
+
+      td:first-child {
+        width: 29%;
+        color: var(--ink);
+        font-weight: 700;
+      }
+
+      .field-list {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 10px 26px;
+        margin: 22px 0 32px;
+        padding: 0;
+        list-style: none;
+      }
+
+      .field-list li {
+        border-top: 1px solid var(--line);
+        padding: 12px 0;
+      }
+
+      .field-list strong {
+        display: block;
+        color: var(--ink);
+        font-size: 14px;
+      }
+
+      .field-list span {
+        color: var(--muted);
+        font-size: 14px;
+      }
+
+      .page-footer {
+        border-top: 1px solid var(--line);
+        background: #f3f4f6;
+        padding: 28px 64px;
+      }
+
+      .footer-inner {
+        display: flex;
+        justify-content: space-between;
+        width: min(100%, 992px);
+        margin: 0 auto;
+        color: var(--muted);
+        font-size: 13px;
+      }
+
+      .footer-inner a {
+        color: var(--brand-deep);
+        font-weight: 700;
+        text-decoration: none;
+      }
+
+      .sidebar-overlay {
+        display: none;
+      }
+
+      :focus-visible {
+        outline: 3px solid rgb(59 130 246 / 35%);
+        outline-offset: 2px;
+      }
+
+      @media (max-width: 1020px) {
+        :root {
+          --sidebar-width: 270px;
+        }
+
+        .content {
+          padding-right: 38px;
+          padding-left: 38px;
+        }
+
+      }
+
+      @media (max-width: 760px) {
+        .header-inner {
+          padding: 0 16px;
+        }
+
+        .primary-nav {
+          display: none;
+        }
+
+        .menu-button {
+          display: inline-flex;
+        }
+
+        .page-shell {
+          display: block;
+        }
+
+        .docs-sidebar {
+          width: min(86vw, 320px);
+          transform: translateX(-105%);
+          transition: transform 180ms ease;
+          box-shadow: 14px 0 30px rgb(15 23 42 / 18%);
+        }
+
+        body.sidebar-open .docs-sidebar {
+          transform: translateX(0);
+        }
+
+        .sidebar-overlay {
+          position: fixed;
+          inset: var(--header-height) 0 0;
+          z-index: 20;
+          display: block;
+          visibility: hidden;
+          border: 0;
+          background: rgb(15 23 42 / 35%);
+          opacity: 0;
+          transition:
+            opacity 180ms ease,
+            visibility 180ms ease;
+        }
+
+        body.sidebar-open .sidebar-overlay {
+          visibility: visible;
+          opacity: 1;
+        }
+
+        body.sidebar-open {
+          overflow: hidden;
+        }
+
+        .main-column {
+          min-width: 0;
+        }
+
+        .content {
+          padding: 38px 22px 70px;
+        }
+
+        .two-up,
+        .field-list {
+          grid-template-columns: 1fr;
+        }
+
+        .step {
+          padding-left: 48px;
+        }
+
+        .page-footer {
+          padding: 24px 22px;
+        }
+
+        .footer-inner {
+          flex-direction: column;
+          gap: 8px;
+        }
+      }
+
+      @media print {
+        .site-header,
+        .docs-sidebar,
+        .sidebar-overlay {
+          display: none !important;
+        }
+
+        .page-shell {
+          display: block;
+          padding: 0;
+        }
+
+        .content {
+          width: auto;
+          padding: 24px;
+        }
+
+        .doc-section {
+          break-inside: auto;
+        }
+
+        .figure,
+        tr {
+          break-inside: avoid;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <a class="skip-link" href="#main-content">Skip to help content</a>
+
+    <header class="site-header">
+      <div class="header-inner">
+        <a class="brand" href="/e2c/" target="e2c-workspace" aria-label="E2C home">E2C</a>
+
+        <nav class="primary-nav" aria-label="Primary navigation">
+          <a href="/e2c/simulate" target="e2c-workspace">Simulation</a>
+          <a href="/e2c/reports/" target="e2c-workspace">Reports</a>
+          <a href="/e2c/documentation/index.html" aria-current="page">Help</a>
+          <a href="/e2c/simulate" target="e2c-workspace" id="workspace-file-link">File</a>
+        </nav>
+
+        <button
+          class="menu-button"
+          id="menu-button"
+          type="button"
+          aria-expanded="false"
+          aria-controls="docs-sidebar"
+        >
+          <svg aria-hidden="true" viewBox="0 0 24 24" width="18" height="18">
+            <path
+              d="M4 7h16M4 12h16M4 17h16"
+              fill="none"
+              stroke="currentColor"
+              stroke-linecap="round"
+              stroke-width="2"
+            />
+          </svg>
+          Contents
+        </button>
+      </div>
+    </header>
+
+    <div class="page-shell">
+      <aside class="docs-sidebar" id="docs-sidebar" aria-label="Help navigation">
+        <p class="sidebar-title">Help</p>
+
+        <label class="search-wrap">
+          <span style="position: absolute; width: 1px; height: 1px; overflow: hidden">Search sections</span>
+          <svg aria-hidden="true" viewBox="0 0 24 24">
+            <circle cx="11" cy="11" r="6.5" fill="none" stroke="currentColor" stroke-width="2" />
+            <path d="m16 16 4 4" fill="none" stroke="currentColor" stroke-linecap="round" stroke-width="2" />
+          </svg>
+          <input class="search-input" id="section-search" type="search" placeholder="Find a section" autocomplete="off" />
+        </label>
+
+        <nav class="sidebar-nav" aria-label="On this page">
+          <details open>
+            <summary>Introduction</summary>
+            <ul>
+              <li><a href="#introduction">About E2C</a></li>
+              <li><a href="#terminology">Basic terminology</a></li>
+            </ul>
+          </details>
+
+          <details open>
+            <summary>Getting started</summary>
+            <ul>
+              <li><a href="#quick-start">Build a basic system</a></li>
+            </ul>
+          </details>
+
+          <details open>
+            <summary>Configure the system</summary>
+            <ul>
+              <li><a href="#machines">Machines</a></li>
+              <li><a href="#eet">Execution times</a></li>
+              <li><a href="#iot">IoT devices</a></li>
+              <li><a href="#run">Run controls</a></li>
+            </ul>
+          </details>
+
+          <details open>
+            <summary>Scheduling policies</summary>
+            <ul>
+              <li><a href="#load-balancing">Connect a load balancer</a></li>
+              <li><a href="#policies">Available policies</a></li>
+            </ul>
+          </details>
+
+          <details open>
+            <summary>Reporting</summary>
+            <ul>
+              <li><a href="#reports">Statistics summary</a></li>
+              <li><a href="#charts">Charts and machine data</a></li>
+              <li><a href="#task-results">Task results and export</a></li>
+            </ul>
+          </details>
+
+          <details open>
+            <summary>Projects</summary>
+            <ul>
+              <li><a href="#project-files">Save, open, import, and export</a></li>
+            </ul>
+          </details>
+        </nav>
+
+        <p class="sidebar-note">
+          E2C is an open-source project from the HPCC Lab.
+          <a href="https://github.com/hpcclab/e2c">View the source on GitHub</a>.
+        </p>
+      </aside>
+
+      <button class="sidebar-overlay" id="sidebar-overlay" type="button" aria-label="Close help navigation"></button>
+
+      <div class="main-column">
+        <main class="content" id="main-content">
+          <section class="doc-section" id="introduction">
+            <p class="eyebrow">Introduction</p>
+            <h2>What E2C simulates</h2>
+            <p class="section-intro">
+              E2C is a visual simulator for building a virtual IoT–edge–cloud continuum. It lets you
+              organize computing resources and experiment with how tasks are routed across computing tiers
+              based on the task workload and each machine’s capabilities.
+            </p>
+            <p>
+              An IoT device produces tasks. Edge or cloud machines process those tasks. Direct connections
+              and load balancers determine which machines can receive work, while scheduling policies decide
+              how each eligible task is assigned.
+            </p>
+
+            <h3 id="terminology">Basic terminology</h3>
+            <div class="data-table-wrap">
+              <table>
+                <thead>
+                  <tr><th>Term</th><th>Meaning</th></tr>
+                </thead>
+                <tbody>
+                  <tr><td>IoT device</td><td>A connected device, such as a camera or sensor, that generates tasks for machines.</td></tr>
+                  <tr><td>Edge computing</td><td>Processing that happens near the device generating the data.</td></tr>
+                  <tr><td>Cloud computing</td><td>Processing that happens in a remote data center.</td></tr>
+                  <tr><td>Edge Space</td><td>A canvas group for machines that represent processing close to devices.</td></tr>
+                  <tr><td>Cloud Space</td><td>A canvas group for organizing machines that represent cloud resources.</td></tr>
+                  <tr><td>Machine</td><td>A computing resource that receives and processes incoming tasks.</td></tr>
+                  <tr><td>Load balancer</td><td>A routing node that distributes incoming tasks across connected machines.</td></tr>
+                  <tr><td>Task arrival window</td><td>Start Time and End Time define when an IoT device can generate tasks.</td></tr>
+                  <tr><td>Distribution</td><td>The pattern used to place task arrivals inside the configured time window.</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </section>
+
+          <section class="doc-section" id="getting-started">
+            <p class="eyebrow">Getting started</p>
+            <h2 id="quick-start">Build a basic IoT system</h2>
+            <ol class="steps">
+              <li class="step">
+                <h3>Add an Edge Space and machine</h3>
+                <p>Drag an Edge Space onto the canvas, then drag a machine inside the space.</p>
+              </li>
+              <li class="step">
+                <h3>Add an IoT device</h3>
+                <p>Drag an IoT Device onto the canvas next to the machine.</p>
+              </li>
+            </ol>
+
+            <figure class="figure">
+              <div class="figure-frame crop-basic-topology">
+                <img src="assets/basic-topology.png" alt="IoT device and machine placed on the E2C canvas" />
+              </div>
+              <figcaption>Place an IoT source beside the machine that will process its tasks.</figcaption>
+            </figure>
+
+            <ol class="steps" start="3" style="--step-start: 2">
+              <li class="step">
+                <h3>Configure the task workload</h3>
+                <p>
+                  Open the IoT device’s properties and select <strong>Edit</strong>. Set Num Tasks to
+                  <strong>10</strong>, Start Time to <strong>0</strong>, End Time to <strong>15</strong>,
+                  and Distribution to <strong>uniform</strong>. Save the changes.
+                </p>
+              </li>
+            </ol>
+
+            <figure class="figure">
+              <div class="figure-frame crop-iot-workload">
+                <img src="assets/iot-workload-settings.png" alt="IoT workload settings with task count, time window, and uniform distribution" loading="lazy" />
+              </div>
+              <figcaption>Example beginner workload settings from the IoT properties panel.</figcaption>
+            </figure>
+
+            <ol class="steps" start="4" style="--step-start: 3">
+              <li class="step">
+                <h3>Review the machine</h3>
+                <p>Open the machine’s properties. Keep the default values for the first run.</p>
+              </li>
+              <li class="step">
+                <h3>Connect the devices</h3>
+                <p>Drag from the IoT device’s blue endpoint to the machine’s blue endpoint.</p>
+              </li>
+              <li class="step">
+                <h3>Run and review</h3>
+                <p>
+                  Press the green Play button. Watch simulated time and incoming tasks, then open Reports
+                  when the simulation finishes. You can also save the project from the File menu.
+                </p>
+              </li>
+            </ol>
+
+            <figure class="figure">
+              <div class="figure-frame crop-black-frame">
+                <img src="assets/run-basic-simulation.png" alt="Basic E2C simulation with an IoT device connected to a machine and play control" loading="lazy" />
+              </div>
+              <figcaption>Connect the source and machine before starting the simulation.</figcaption>
+            </figure>
+            <figure class="figure">
+              <div class="figure-frame crop-review-save">
+                <img src="assets/review-and-save.png" alt="Simulation results, Reports navigation, and File menu highlighted" loading="lazy" />
+              </div>
+              <figcaption>Review machine results, open Reports, and save the project.</figcaption>
+            </figure>
+          </section>
+
+          <section class="doc-section" id="machines">
+            <p class="eyebrow">Configure the system</p>
+            <h2>Define machine behavior</h2>
+            <p class="section-intro">
+              Select a machine and choose <strong>Edit</strong>. Start from a CPU, GPU, ARM, or Cloud VM
+              preset, then adjust the resource values for your scenario and save the changes.
+            </p>
+
+            <div class="data-table-wrap">
+              <table>
+                <thead>
+                  <tr><th>Setting</th><th>Purpose</th></tr>
+                </thead>
+                <tbody>
+                  <tr><td>Power W</td><td>Power used while the machine processes tasks.</td></tr>
+                  <tr><td>Idle Power W</td><td>Power used when the machine is not processing a task.</td></tr>
+                  <tr><td>Replicas</td><td>Number of copies or instances of the machine.</td></tr>
+                  <tr><td>Price per second</td><td>Cost of using the machine for one second.</td></tr>
+                  <tr><td>Task Type</td><td>The category of work that the machine processes.</td></tr>
+                  <tr><td>Estimated Execution Time</td><td>Expected time for this machine to process one task of a specific type.</td></tr>
+                </tbody>
+              </table>
+            </div>
+
+            <figure class="figure">
+              <div class="figure-frame">
+                <img src="assets/machine-properties.png" alt="Machine properties with hardware presets, power, idle power, replicas, and price" loading="lazy" />
+              </div>
+              <figcaption>Machine presets provide a starting point; individual values remain editable.</figcaption>
+            </figure>
+
+            <h3 id="eet">Estimated Execution Times</h3>
+            <p>
+              Select a machine and scroll down its properties panel to the EET table. This table appears
+              after an IoT device has been added. Choose <strong>Edit</strong> to set the time, in simulated
+              seconds, that the machine needs for each task type.
+            </p>
+            <p>
+              The same task type can have different EET values on different machines. For example, a task
+              may take one second on Machine A and three seconds on Machine B. These differences affect the
+              MEET and MECT scheduling policies.
+            </p>
+
+            <figure class="figure">
+              <div class="figure-frame">
+                <img src="assets/eet-table.png" alt="Estimated Execution Times table before and during editing" loading="lazy" />
+              </div>
+              <figcaption>Edit EET values to model machine-specific performance for each task type.</figcaption>
+            </figure>
+          </section>
+
+          <section class="doc-section" id="iot">
+            <p class="eyebrow">IoT devices</p>
+            <h2>Configure task sources</h2>
+            <p class="section-intro">
+              Select an IoT device and choose <strong>Edit</strong>. Device presets include Camera,
+              Thermostat, Smart Bulb, Smart Lock, Smart Speaker, Smartphone, Smart TV, and Vehicle Sensor.
+              Task colors make different workloads easier to follow during a run.
+            </p>
+
+            <ul class="field-list">
+              <li><strong>Device role</strong><span>Sensor, actuator, or both.</span></li>
+              <li><strong>Reading frequency</strong><span>Number of readings generated per second.</span></li>
+              <li><strong>Connectivity</strong><span>The device’s connection type.</span></li>
+              <li><strong>Energy source</strong><span>The source that powers the device.</span></li>
+              <li><strong>Data input</strong><span>The type of input the device receives.</span></li>
+              <li><strong>Task type</strong><span>A label for the work the device generates.</span></li>
+              <li><strong>Mean size</strong><span>Average task data size in KB.</span></li>
+              <li><strong>Urgency</strong><span>The priority assigned to the work.</span></li>
+              <li><strong>Slack</strong><span>Additional time allowance for the task.</span></li>
+              <li><strong>Num tasks</strong><span>Total number of tasks to generate.</span></li>
+              <li><strong>Start and end time</strong><span>The simulated task-arrival window.</span></li>
+              <li><strong>Distribution</strong><span>The pattern used to schedule task arrivals.</span></li>
+            </ul>
+
+            <figure class="figure">
+              <div class="figure-frame">
+                <img src="assets/iot-properties.png" alt="IoT properties panel with device, task, and arrival scenario fields" loading="lazy" />
+              </div>
+              <figcaption>The IoT properties panel controls both device metadata and generated workload behavior.</figcaption>
+            </figure>
+
+            <h3 id="run">Run controls</h3>
+            <p>
+              Select <strong>Play</strong> to run the simulation, <strong>Pause</strong> to stop time while
+              reviewing the current state, and <strong>Reset</strong> to return to the beginning and start
+              the workload again.
+            </p>
+
+            <figure class="figure" style="max-width: 620px">
+              <div class="figure-frame">
+                <img src="assets/simulation-controls.png" alt="E2C play, reset, and pause simulation controls" loading="lazy" />
+              </div>
+              <figcaption>Simulation time is shown directly above the run controls.</figcaption>
+            </figure>
+          </section>
+
+          <section class="doc-section" id="load-balancing">
+            <p class="eyebrow">Scheduling policies</p>
+            <h2>Route work through a load balancer</h2>
+            <p class="section-intro">
+              A load balancer decides which connected machine receives each task. Policy choice changes how
+              work is distributed, how long tasks wait, and which resources consume energy or incur cost.
+            </p>
+            <ol class="steps">
+              <li class="step">
+                <h3>Connect the topology</h3>
+                <p>
+                  Drag a Load Balancer onto the canvas. Connect the IoT device’s output to the load balancer’s
+                  input, then connect its output to every machine that should receive tasks.
+                </p>
+              </li>
+              <li class="step">
+                <h3>Choose a policy</h3>
+                <p>
+                  Select the load balancer to open its settings. Under Immediate Scheduling, choose a policy
+                  from the dropdown and select <strong>Submit</strong>.
+                </p>
+              </li>
+            </ol>
+
+            <figure class="figure">
+              <div class="figure-frame">
+                <img src="assets/load-balancer-policy.png" alt="IoT device connected through a load balancer to a machine with policy selector open" loading="lazy" />
+              </div>
+              <figcaption>A load balancer sits between one or more task sources and eligible machines.</figcaption>
+            </figure>
+
+            <h3 id="policies">Available policies</h3>
+            <div class="data-table-wrap">
+              <table>
+                <thead>
+                  <tr><th>Policy</th><th>How it chooses a machine</th></tr>
+                </thead>
+                <tbody>
+                  <tr><td>First Come First Serve FCFS</td><td>Processes tasks in arrival order, preferring an idle machine and otherwise selecting the least-loaded one.</td></tr>
+                  <tr><td>Minimum Expected Completion Time MECT</td><td>Chooses the machine with the smallest amount of expected work already queued.</td></tr>
+                  <tr><td>Minimum Expected Execution Time MEET</td><td>Chooses the machine with the shortest EET for the incoming task type.</td></tr>
+                  <tr><td>Random RAND</td><td>Randomly samples two machines and selects the one with the shorter queue.</td></tr>
+                  <tr><td>URI Based Routing URI</td><td>Hashes the task type to a stable machine index while the machine configuration remains unchanged.</td></tr>
+                  <tr><td>Least Connection LC</td><td>Sends the task to the machine with the shortest current queue.</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </section>
+
+          <section class="doc-section" id="reports">
+            <p class="eyebrow">Reporting</p>
+            <h2>Read simulation results</h2>
+            <p class="section-intro">
+              The Statistics Summary shows total tasks, assignments, work in progress, completions, deadline
+              misses, completion rate, estimated cost, and energy consumption.
+            </p>
+
+            <figure class="figure">
+              <div class="figure-frame">
+                <img src="assets/statistics-summary.png" alt="E2C Statistics Summary with task, cost, and energy metrics" loading="lazy" />
+              </div>
+              <figcaption>The summary combines outcome counts with aggregate cost and energy information.</figcaption>
+            </figure>
+
+            <h3 id="charts">Charts and machine statistics</h3>
+            <p>
+              Charts visualize task status, assignments, energy consumption, and cost by machine. The Machine
+              Statistics table provides the supporting power, utilization, cost, and task values.
+            </p>
+
+            <div class="two-up">
+              <figure class="figure">
+                <div class="figure-frame">
+                  <img src="assets/report-charts.png" alt="E2C report charts for task status, tasks per machine, energy, and cost" loading="lazy" />
+                </div>
+                <figcaption>Charts make differences between machines and task outcomes easier to compare.</figcaption>
+              </figure>
+              <figure class="figure">
+                <div class="figure-frame">
+                  <img src="assets/machine-task-results.png" alt="Machine Statistics and Task Results tables" loading="lazy" />
+                </div>
+                <figcaption>Detailed tables preserve the values behind each visualization.</figcaption>
+              </figure>
+            </div>
+
+            <h3 id="task-results">Task results and export</h3>
+            <p>
+              For each task, the report records its type, assigned machine, arrival time, start and end time,
+              execution time, deadline, and final status. Use the combined export to download one CSV with all
+              report data, or download individual report sections separately.
+            </p>
+          </section>
+
+          <section class="doc-section" id="project-files">
+            <p class="eyebrow">Projects</p>
+            <h2>Save and exchange simulations</h2>
+            <p class="section-intro">
+              Open the File menu from the simulator header to save local work, reopen an existing project,
+              or move a simulation between browsers as JSON.
+            </p>
+
+            <figure class="figure" style="max-width: 620px">
+              <div class="figure-frame">
+                <img src="assets/file-menu.png" alt="File menu in the E2C simulator header" loading="lazy" />
+              </div>
+              <figcaption>The File menu contains project persistence and workspace commands.</figcaption>
+            </figure>
+
+            <div class="data-table-wrap">
+              <table>
+                <thead>
+                  <tr><th>File action</th><th>What it does</th></tr>
+                </thead>
+                <tbody>
+                  <tr><td>Save As</td><td>Create a named project from the current workspace.</td></tr>
+                  <tr><td>Save</td><td>Update the currently open project.</td></tr>
+                  <tr><td>Open</td><td>Load a previously saved simulation.</td></tr>
+                  <tr><td>Export</td><td>Download the current project as JSON for sharing.</td></tr>
+                  <tr><td>Import</td><td>Load a project JSON file and continue editing it.</td></tr>
+                  <tr><td>Clear Workspace</td><td>Remove all nodes from the current canvas.</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </section>
+        </main>
+
+        <footer class="page-footer">
+          <div class="footer-inner">
+            <span>E2C Simulator help</span>
+            <span><a href="https://hpcclab.org/">HPCC Lab</a> · <a href="https://github.com/hpcclab/e2c">GitHub</a></span>
+          </div>
+        </footer>
+      </div>
+    </div>
+
+    <script>
+      (() => {
+        const body = document.body;
+        const menuButton = document.getElementById("menu-button");
+        const overlay = document.getElementById("sidebar-overlay");
+        const workspaceFileLink = document.getElementById("workspace-file-link");
+        const search = document.getElementById("section-search");
+        const navLinks = [...document.querySelectorAll(".sidebar-nav a")];
+        const details = [...document.querySelectorAll(".sidebar-nav details")];
+
+        workspaceFileLink.addEventListener("click", (event) => {
+          if (!window.opener || window.opener.closed) return;
+
+          event.preventDefault();
+          window.opener.postMessage(
+            { type: "e2c:open-file-panel" },
+            window.location.origin,
+          );
+          window.opener.focus();
+        });
+
+        const setSidebar = (open) => {
+          body.classList.toggle("sidebar-open", open);
+          menuButton.setAttribute("aria-expanded", String(open));
+        };
+
+        menuButton.addEventListener("click", () => {
+          setSidebar(!body.classList.contains("sidebar-open"));
+        });
+        overlay.addEventListener("click", () => setSidebar(false));
+        document.addEventListener("keydown", (event) => {
+          if (event.key === "Escape") setSidebar(false);
+        });
+
+        navLinks.forEach((link) => {
+          link.addEventListener("click", () => setSidebar(false));
+        });
+
+        search.addEventListener("input", () => {
+          const query = search.value.trim().toLowerCase();
+          details.forEach((group) => {
+            const links = [...group.querySelectorAll("a")];
+            const summary = group.querySelector("summary").textContent.toLowerCase();
+            let visibleCount = 0;
+
+            links.forEach((link) => {
+              const matches = !query || summary.includes(query) || link.textContent.toLowerCase().includes(query);
+              link.parentElement.hidden = !matches;
+              if (matches) visibleCount += 1;
+            });
+
+            group.hidden = visibleCount === 0;
+            if (query && visibleCount > 0) group.open = true;
+          });
+        });
+
+        const sections = navLinks
+          .map((link) => document.querySelector(link.getAttribute("href")))
+          .filter(Boolean);
+
+        const observer = new IntersectionObserver(
+          (entries) => {
+            const visible = entries
+              .filter((entry) => entry.isIntersecting)
+              .sort((a, b) => a.boundingClientRect.top - b.boundingClientRect.top)[0];
+            if (!visible) return;
+
+            navLinks.forEach((link) => {
+              link.classList.toggle("active", link.getAttribute("href") === `#${visible.target.id}`);
+            });
+          },
+          { rootMargin: "-18% 0px -70% 0px", threshold: 0 },
+        );
+
+        sections.forEach((section) => observer.observe(section));
+      })();
+    </script>
+  </body>
+</html>

@@ -1,36 +1,17 @@
-import React, { useState } from "react";
-import { useGlobalState } from "./context/GlobalStates";
-import SimulationReport from "./components/SimulationReport";
+import React from "react";
 
-const Help = () => {
-  const {
-    unassignedTasks,
-    missedTasks,
-    dataResults,
-    totalTasks,
-    completedTasks,
-    simulationTime,
-    machines,
-    setIsPaused,
-  } = useGlobalState();
-
-  const renderTab = () => {
-    return (
-      <>
-        <h2>Help page coming soon!</h2>
-      </>
-    );
-  };
-
-  return (
-    <div className="min-h-screen bg-gray-100 flex">
-      <main className="flex-1 p-8">
-        <div className="max-w-screen mx-auto bg-white shadow rounded-xl p-8">
-          {renderTab()}
-        </div>
-      </main>
-    </div>
-  );
-};
+const Help = () => (
+  <section
+    aria-label="E2C Help"
+    className="w-full bg-gray-50"
+    style={{ height: "calc(100vh - 60px)" }}
+  >
+    <iframe
+      title="E2C Help"
+      src="/e2c/documentation/index.html?embedded=1"
+      className="h-full w-full border-0"
+    />
+  </section>
+);
 
 export default Help;
