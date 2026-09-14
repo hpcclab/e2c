@@ -1,4 +1,4 @@
-# E2C-Revamp
+# E2C
 
 View our simulation at:
 
