@@ -20,20 +20,24 @@ export default memo(({ data, isConnectable }) => {
   return (
     <>
       <div>
-        {iot.properties.user ? (
-          <IoT
-            key={iot.id}
-            iot={iot}
-            setSelectedIOT={setSelectedIOT}
-            onClicked={() => openSidebar("user")}
-          />
-        ) : !iot.properties.user ? (
-          <IoT
-            key={iot.id}
-            iot={iot}
-            setSelectedIOT={setSelectedIOT}
-            onClicked={() => openSidebar("IOT")}
-          />
+        {iot ? (
+          iot.properties?.user ? (
+            <IoT
+              key={iot.id}
+              iot={iot}
+              setSelectedIOT={setSelectedIOT}
+              onClicked={() => openSidebar("user")}
+            />
+          ) : !iot.properties?.user ? (
+            <IoT
+              key={iot.id}
+              iot={iot}
+              setSelectedIOT={setSelectedIOT}
+              onClicked={() => openSidebar("IOT")}
+            />
+          ) : (
+            <div className="text-gray-500 text-sm p-4">No IOT data</div>
+          )
         ) : (
           <div className="text-gray-500 text-sm p-4">No IOT data</div>
         )}

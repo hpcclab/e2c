@@ -29,6 +29,10 @@ import { MEET } from "./schedulers/MEET";
 import { MECT } from "./schedulers/MECT";
 import { SCHEDULER_REGISTRY } from "./schedulers/registry";
 import AutoScalerNode from "./components/AutoScalerNode";
+import AnimatedEdge from "./components/AnimatedEdge";
+const edgeTypes = {
+  packet: AnimatedEdge,
+};
 const nodeTypes = {
   machineNode: machineNode,
   iotNode: iotNode,
@@ -817,6 +821,7 @@ const SimDashboard = () => {
               nodes={nodes}
               edges={edges}
               nodeTypes={nodeTypes}
+              edgeTypes={edgeTypes}
               onNodesChange={onNodesChange}
               onNodeDragStop={onDragStop}
               onEdgesChange={onEdgesChange}
@@ -925,19 +930,9 @@ const SimDashboard = () => {
                 {/* Load Balancer Sidebar Content */}
                 <div className="space-y-2">
                   <label className="text-sm font-medium text-gray-700">
-                    Scheduling
+                    Load Balancing Policy
                   </label>
                   <div className="space-y-1">
-                    <label className="flex items-center space-x-2">
-                      <input
-                        type="radio"
-                        name="scheduling"
-                        checked={scheduling === "immediate"}
-                        onChange={() => handleSchedulingChange("immediate")}
-                      />
-                      <span className="text-sm">Immediate Scheduling</span>
-                    </label>
-
                     <select
                       value={policyAlias}
                       onChange={(e) => {

@@ -4,31 +4,37 @@ import SimDashboard from "./SimDashboard";
 import "./assets/index.css";
 import Reports from "./Reports";
 import FlowSaveLoadPanel from "./components/SaveLoadPanel";
+import Help from "./help";
 
 const App = () => {
   return (
     <Router>
       <div className="max-w-screen max-h-screen bg-gray-50 ">
         <header className="bg-blue-500 text-white p-3 shadow-md ">
-          <nav className="flex justify-between items-center mx-7">
+          <nav className="flex justify-left gap-6 items-center mx-7">
             <h1 className="text-3xl font-bold">
               <Link to="/e2c" className="hover:underline">
                 E2C
               </Link>
             </h1>
             <ul className="flex space-x-7 text-lg">
-              <li>
-                <Link to="/e2c/simulate" className="hover:underline">
-                  Simulation
-                </Link>
+              <li className="hover:underline">
+                <FlowSaveLoadPanel />
               </li>
               <li>
                 <Link to="/e2c/reports/*" className="hover:underline">
                   Reports
                 </Link>
               </li>
-              <li className="mr-3">
-                <FlowSaveLoadPanel />
+              <li>
+                <Link to="/e2c/simulate" className="hover:underline">
+                  Simulation
+                </Link>
+              </li>
+              <li>
+                <Link to="/e2c/help" className="hover:underline">
+                  Help
+                </Link>
               </li>
             </ul>
           </nav>
@@ -39,6 +45,7 @@ const App = () => {
             <Route path="/e2c/*" element={<Home />} />
             <Route path="/e2c/simulate/*" element={<SimDashboard />} />
             <Route path="/e2c/reports/*" element={<Reports />} />
+            <Route path="/e2c/help/*" element={<Help />} />
           </Routes>
         </main>
       </div>
