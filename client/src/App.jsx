@@ -1,5 +1,5 @@
 import React from "react";
-import { BrowserRouter as Router, Routes, Route, Link } from "react-router-dom";
+import { HashRouter as Router, Routes, Route, Link } from "react-router-dom";
 import SimDashboard from "./SimDashboard";
 import "./assets/index.css";
 import Reports from "./Reports";
@@ -42,7 +42,7 @@ const App = () => {
 
         <main className="p-0 overflow-hidden">
           <Routes>
-            <Route path="/e2c/*" element={<Home />} />
+            <Route path="/e2c/" element={<Home />} />
             <Route path="/e2c/simulate/*" element={<SimDashboard />} />
             <Route path="/e2c/reports/*" element={<Reports />} />
             <Route path="/e2c/help/*" element={<Help />} />
