@@ -7,7 +7,8 @@ import EditUserProperties from "./components/EditUserProperties";
 import EditEdgeProperties from "./components/EditEdgeProperties";
 
 // Drag and drop imports and requirements
-import { Background, Controls, ReactFlow, addEdge } from "@xyflow/react";
+import { Background, ControlButton, Controls, ReactFlow, addEdge } from "@xyflow/react";
+import { MdDeleteOutline } from "react-icons/md";
 
 import Sidebar from "./components/Sidebar";
 import ContextMenu from "./context/ContextMenu";
@@ -30,6 +31,7 @@ import { MECT } from "./schedulers/MECT";
 import { SCHEDULER_REGISTRY } from "./schedulers/registry";
 import AutoScalerNode from "./components/AutoScalerNode";
 import AnimatedEdge from "./components/AnimatedEdge";
+import { colorMemory } from "./components/Task";
 const edgeTypes = {
   packet: AnimatedEdge,
 };
@@ -104,6 +106,8 @@ const SimDashboard = () => {
     setScenarioRows,
     workspaces,
     setWorkspaces,
+    setLoadBalancers,
+    setMachineConfig,
     ld_workspace,
     generateWorkload,
     generateMachineConfig,
@@ -811,6 +815,56 @@ const SimDashboard = () => {
     }
   };
 
+  const handleClearWorkspace = () => {
+    if (
+      !window.confirm(
+        "Clear the current workspace and unsaved simulation data? Saved projects will not be deleted.",
+      )
+    ) {
+      return;
+    }
+
+    clearInterval(simulationIntervalRef.current);
+    simulationIntervalRef.current = null;
+    simCurrentRef.current = 0;
+    totalSimTimeRef.current = Infinity;
+    machinesRef.current = [];
+    batchSlotsRef.current = [];
+    machineSlotsRef.current = {};
+    pendingMissedRef.current = [];
+    animatedMachinesRef.current = [];
+
+    setIsRunning(false);
+    setIsPaused(false);
+    setSimulationTime(0);
+    setSimTotal(Infinity);
+    setShowReport(false);
+    setTotalTasks(0);
+    setCompletedTasks([]);
+    setUnassignedTasks([]);
+    setMissedTasks([]);
+    setDataResults([]);
+    setNodes([]);
+    setEdges([]);
+    setMachines([]);
+    setIot([]);
+    setLoadBalancers([]);
+    setWorkspaces([]);
+    setTaskTypes([]);
+    setScenarioRows([]);
+    setMachineConfig([]);
+    setBatchQ({ id: -2, name: "Batch Queue", queue: [] });
+    setAnimatedMachines([]);
+    setAnimatedIOTs([]);
+    setFlyers([]);
+    setAnimatedTaskIds([]);
+    setMenu(null);
+    setShowSidebar(false);
+    setPolicyUpdated(true);
+    Object.keys(colorMemory).forEach((key) => delete colorMemory[key]);
+    window.dispatchEvent(new Event("taskColorChanged"));
+  };
+
   return (
     <div className=" bg-[#d9d9d9] m-5 h-720 max-h-screen max-w-1500 flex flex-col relative ">
       {/* DND */}
@@ -836,7 +890,15 @@ const SimDashboard = () => {
                 interpolate: "smooth",
               }}
             >
-              <Controls position="center-left" />
+              <Controls position="center-left">
+                <ControlButton
+                  onClick={handleClearWorkspace}
+                  title="Clear workspace"
+                  aria-label="Clear workspace"
+                >
+                  <MdDeleteOutline size={16} aria-hidden="true" />
+                </ControlButton>
+              </Controls>
               <Background />
               {menu && <ContextMenu onClick={onPaneClick} {...menu} />}
             </ReactFlow>

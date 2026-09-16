@@ -4,6 +4,7 @@ import { useReactFlow } from "@xyflow/react";
 import * as localStore from "../utils/localStore";
 import { VscFiles } from "react-icons/vsc";
 import {
+  MdAdd,
   MdDeleteOutline,
   MdSave,
   MdSaveAs,
@@ -358,10 +359,11 @@ export default function FlowSaveLoadPanel() {
     setTaskTypes([]);
     setScenarioRows([]);
     setMachineConfig([]);
-    Object.keys(colorMemory).forEach((k) => delete colorMemory[k]);
+    Object.keys(colorMemory).forEach((key) => delete colorMemory[key]);
     window.dispatchEvent(new Event("taskColorChanged"));
+    setSelectedFile("");
+    setNewFileName("");
     setConfirmClear(false);
-    notify("Workspace cleared!");
     closePanel();
   };
 
@@ -619,27 +621,27 @@ export default function FlowSaveLoadPanel() {
                   <MdClose size={16} /> Close
                 </button>
                 <div className="bs-nav-divider" />
+                <button
+                  className={`bs-nav-item${confirmClear ? " bs-nav-danger confirming" : ""}`}
+                  onClick={handleClearWorkspace}
+                  title="Start a new workspace by clearing the current one"
+                >
+                  <MdAdd size={16} />
+                  {confirmClear ? "Click again to confirm" : "New"}
+                </button>
                 {navItems.map((item) => (
                   <button
                     key={item.id}
                     className={`bs-nav-item${activeSection === item.id ? " active" : ""}`}
-                    onClick={() => setActiveSection(item.id)}
+                    onClick={() => {
+                      setConfirmClear(false);
+                      setActiveSection(item.id);
+                    }}
                   >
                     {item.icon}
                     {item.label}
                   </button>
                 ))}
-              </div>
-
-              <div className="bs-nav-bottom">
-                <div className="bs-nav-divider" />
-                <button
-                  className={`bs-nav-item bs-nav-danger${confirmClear ? " confirming" : ""}`}
-                  onClick={handleClearWorkspace}
-                >
-                  <MdDeleteOutline size={16} />
-                  {confirmClear ? "Click again to confirm" : "Clear Workspace"}
-                </button>
               </div>
             </div>
 
