@@ -206,7 +206,10 @@ export default function FlowSaveLoadPanel() {
       const loadedMachines = data.machines || [];
       const loadedIots = data.iot || [];
       const otherNodes = (data.nodes || []).filter(
-        (n) => n.type !== "machineNode" && n.type !== "iotNode",
+        (n) =>
+          n.type !== "machineNode" &&
+          n.type !== "iotNode" &&
+          n.type !== "userNode",
       );
       const machinesArr = loadedMachines.map((m) => ({
         id: `${m.id}`,
@@ -216,7 +219,7 @@ export default function FlowSaveLoadPanel() {
       }));
       const iotArr = loadedIots.map((i) => ({
         id: `${i.id}`,
-        type: "iotNode",
+        type: i.properties?.user ? "userNode" : "iotNode",
         position: i.position || { x: 0, y: 0 },
         data: i,
       }));
@@ -296,7 +299,10 @@ export default function FlowSaveLoadPanel() {
         if (data.machines && data.iot && data.edges) {
           const otherNodes =
             data.nodes?.filter(
-              (n) => n.type !== "machineNode" && n.type !== "iotNode",
+              (n) =>
+                n.type !== "machineNode" &&
+                n.type !== "iotNode" &&
+                n.type !== "userNode",
             ) || [];
           const machineNodes = data.machines.map((m) => ({
             id: `machine-${m.id}`,
@@ -306,7 +312,7 @@ export default function FlowSaveLoadPanel() {
           }));
           const iotNodes = data.iot.map((i) => ({
             id: `iot-${i.id}`,
-            type: "iotNode",
+            type: i.properties?.user ? "userNode" : "iotNode",
             position: i.position || { x: 0, y: 0 },
             data: i,
           }));

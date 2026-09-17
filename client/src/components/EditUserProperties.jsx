@@ -245,6 +245,7 @@ const EditIoTProperties = ({
       id: selectedIOT.id,
       name: selectedIOT.name || "",
       properties: {
+        user: true,
         task_type: selectedIOT.properties.task_type || "",
         dataInput: selectedIOT.properties.dataInput || "image",
         meanSize: selectedIOT.properties.meanSize || 0,
@@ -341,6 +342,7 @@ const EditIoTProperties = ({
         ...editedIOT,
         properties: {
           ...editedIOT.properties,
+          user: true,
           taskColor: PALETTE[colorIdx].name,
         },
       };
@@ -363,6 +365,7 @@ const EditIoTProperties = ({
       id: selectedIOT.id,
       name: selectedIOT.name || "",
       properties: {
+        user: true,
         task_type: selectedIOT.properties.task_type || "",
         dataInput: selectedIOT.properties.dataInput || "image",
         meanSize: selectedIOT.properties.meanSize || 0,

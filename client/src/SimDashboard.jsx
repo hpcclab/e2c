@@ -96,7 +96,6 @@ const SimDashboard = () => {
     setConfigFileName,
     configFileUploaded,
     setConfigFileUploaded,
-    completedTasks,
     setCompletedTasks,
     eetLoaded,
     setEetLoaded,
@@ -120,11 +119,8 @@ const SimDashboard = () => {
     getEdge,
     showReport,
     setShowReport,
-    unassignedTasks,
     setUnassignedTasks,
-    missedTasks,
     setMissedTasks,
-    dataResults,
     setDataResults,
     isRunning,
     setIsRunning,
@@ -732,17 +728,20 @@ const SimDashboard = () => {
     // Process running tasks (completion)
     scheduler.processMachines();
 
-    setCompletedTasks([...scheduler.getStats().completed]);
-    setUnassignedTasks(scheduler.getBatchQ().filter((t) => t.status === "NEW"));
-    setMissedTasks([...scheduler.getStats().missed]);
-    setDataResults([...unassignedTasks, ...completedTasks, ...missedTasks]);
+    const completed = [...scheduler.getStats().completed];
+    const unassigned = scheduler
+      .getBatchQ()
+      .filter((task) => task.status === "NEW");
+    const missed = [...scheduler.getStats().missed];
+
+    setCompletedTasks(completed);
+    setUnassignedTasks(unassigned);
+    setMissedTasks(missed);
+    setDataResults([...unassigned, ...completed, ...missed]);
 
     // Stop sim when all tasks are processed
-    const results = Array.isArray(dataResults) ? dataResults : [];
-
     const finished =
-      scheduler.getStats().completed.length +
-      scheduler.getStats().missed.length;
+      completed.length + missed.length;
     if (totalTasks > 0 && finished >= totalTasks) {
       clearInterval(simulationIntervalRef.current);
       simulationIntervalRef.current = null;
@@ -788,7 +787,7 @@ const SimDashboard = () => {
 
         return {
           id: `nd_${i.id}`,
-          type: "iotNode",
+          type: i.properties?.user ? "userNode" : "iotNode",
           data: { iot: i },
           position: i.position ?? { x: 0, y: 80 + index * 150 },
           parentId: parentExists ? i.parentId : undefined,
@@ -798,7 +797,9 @@ const SimDashboard = () => {
         };
       });
 
-      const otherNodes = prev.filter((n) => n.type !== "iotNode");
+      const otherNodes = prev.filter(
+        (n) => n.type !== "iotNode" && n.type !== "userNode",
+      );
 
       return [...otherNodes, ...iotNodes];
     });

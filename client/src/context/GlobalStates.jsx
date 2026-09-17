@@ -138,8 +138,13 @@ export const GlobalProvider = ({ children }) => {
     // Adjust viewport nicely after drag
     fitView({ padding: 0.5, duration: 600, interpolate: "smooth" });
 
-    // Only handle machine/iot nodes
-    if (node.type !== "machineNode" && node.type !== "iotNode") return;
+    // Only handle machine, IoT, and human-user source nodes
+    if (
+      node.type !== "machineNode" &&
+      node.type !== "iotNode" &&
+      node.type !== "userNode"
+    )
+      return;
 
     const updater = node.type === "machineNode" ? setMachines : setIot;
     updater((prev) =>
