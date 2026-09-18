@@ -1,5 +1,5 @@
-import { BaseScheduler } from "./BaseScheduler";
-import { registerScheduler } from "./registry";
+import { BaseScheduler } from "./BaseScheduler.js";
+import { registerScheduler } from "./registry.js";
 export class URI extends BaseScheduler {
   constructor(opts) {
     super(opts);
@@ -24,8 +24,7 @@ export class URI extends BaseScheduler {
         sum += char.charCodeAt(0);
       }
 
-      const index = (sum * hashkey) % this.machines.length;
-      this.hashMap[taskType] = index;
+      this.hashMap[taskType] = sum * hashkey;
     }
 
     this.hasHashed = true;
@@ -51,17 +50,17 @@ export class URI extends BaseScheduler {
       }
 
       const currTask = this.choose();
-      const machineIdx = this.hashMap[currTask.task_type];
+      const machineHash = this.hashMap[currTask.task_type];
 
       // attach metadata to task (like Python setattr)
-      this.unmappedTask[this.unmappedTask.length - 1]._uri_machine_idx =
-        machineIdx;
+      this.unmappedTask[this.unmappedTask.length - 1]._uri_machine_hash =
+        machineHash;
     }
 
     const task = this.unmappedTask[this.unmappedTask.length - 1];
-    const machineIdx = task?._uri_machine_idx ?? 0;
-
-    const machine = this.machines[machineIdx];
+    const machines = this.getEligibleMachines(task);
+    const machineHash = task?._uri_machine_hash ?? 0;
+    const machine = machines[machineHash % machines.length];
     if (!machine) return null;
 
     this.map(machine);

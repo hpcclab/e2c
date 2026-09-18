@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from "react";
 import { IOT_ICON_MAP } from "../utils/iotIcons";
 import { colorMemory } from "./Task";
 import { useGlobalState } from "../context/GlobalStates";
+import { nonNegativeSlack } from "../utils/deadlines";
 
 const IOT_PRESETS = [
   { name: "Camera", icon: "MdVideocam" },
@@ -249,7 +250,7 @@ const EditIoTProperties = ({
         dataInput: selectedIOT.properties.dataInput || "image",
         meanSize: selectedIOT.properties.meanSize || 0,
         urgency: selectedIOT.properties.urgency || "BestEffort",
-        slack: selectedIOT.properties.slack || 0,
+        slack: nonNegativeSlack(selectedIOT.properties.slack),
         numTasks: selectedIOT.properties.numTasks || 0,
         startTime: selectedIOT.properties.startTime || 0,
         endTime: selectedIOT.properties.endTime || 0,
@@ -341,6 +342,7 @@ const EditIoTProperties = ({
         ...editedIOT,
         properties: {
           ...editedIOT.properties,
+          slack: nonNegativeSlack(editedIOT.properties.slack),
           taskColor: PALETTE[colorIdx].name,
         },
       };
@@ -367,7 +369,7 @@ const EditIoTProperties = ({
         dataInput: selectedIOT.properties.dataInput || "image",
         meanSize: selectedIOT.properties.meanSize || 0,
         urgency: selectedIOT.properties.urgency || "BestEffort",
-        slack: selectedIOT.properties.slack || 0,
+        slack: nonNegativeSlack(selectedIOT.properties.slack),
         numTasks: selectedIOT.properties.numTasks || 0,
         startTime: selectedIOT.properties.startTime || 0,
         endTime: selectedIOT.properties.endTime || 0,
@@ -704,8 +706,11 @@ const EditIoTProperties = ({
           <input
             type="number"
             min="0"
+            step="any"
             value={editedIOT.properties?.slack}
-            onChange={(e) => handleChange("slack", Number(e.target.value))}
+            onChange={(e) =>
+              handleChange("slack", nonNegativeSlack(e.target.value))
+            }
             className="w-full border px-3 py-2 text-sm rounded"
           />
         </div>

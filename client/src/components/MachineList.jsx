@@ -79,6 +79,7 @@ export default function MachineList({
       total_cost: machine.total_cost || 0,
       total_tasks: machine.total_tasks || 0,
       eet: machine.eet || {},
+      eetStdDev: machine.eetStdDev || {},
     });
     onClicked();
   };

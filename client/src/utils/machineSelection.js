@@ -1,0 +1,18 @@
+export const getMachineSelection = (machine) => ({
+  id: machine.id,
+  originalId: machine.id,
+  name: machine.name,
+  icon: machine.icon,
+  replicaNumber: 0,
+  queue: machine.queue,
+  power: machine.power,
+  idle_power: machine.idle_power,
+  replicas: machine.replicas,
+  price: machine.price,
+  cost: machine.cost,
+  utilization_time: machine.utilization_time || 0,
+  total_cost: machine.total_cost || 0,
+  total_tasks: machine.total_tasks || 0,
+  eet: machine.eet || {},
+  eetStdDev: machine.eetStdDev || {},
+});

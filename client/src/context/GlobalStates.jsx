@@ -31,6 +31,7 @@ export const GlobalProvider = ({ children }) => {
     total_cost: 0,
     total_tasks: 0,
     eet: {},
+    eetStdDev: {},
     parentId: undefined,
     extent: undefined,
   });

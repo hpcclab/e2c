@@ -2,6 +2,14 @@ import React, { useState, useEffect } from "react";
 import { useGlobalState } from "../context/GlobalStates";
 import { MACHINE_ICON_MAP } from "../utils/machineIcons";
 import { formatUtilizationTime, formatEnergy } from "../utils/formatTime";
+import {
+  DEFAULT_EET_MEAN,
+  DEFAULT_EET_STD_DEV,
+  getMachineEetMean,
+  getMachineEetStdDev,
+  sourceEetKey,
+} from "../utils/executionTime";
+import { connectedSources } from "../utils/connections";
 
 const MACHINE_PRESETS = [
   { name: "CPU", icon: "MdComputer" },
@@ -16,7 +24,8 @@ const EditMachineProperties = ({
   onSave,
   setAnimatedMachines,
 }) => {
-  const { iot } = useGlobalState();
+  const { iot, edges, nodes } = useGlobalState();
+  const connectedIot = connectedSources(iot, selectedMachine.id, edges, nodes);
   const [editMode, setEditMode] = useState(false);
   const [editedMachine, setEditedMachine] = useState({});
 
@@ -34,6 +43,7 @@ const EditMachineProperties = ({
       total_cost: selectedMachine.total_cost || 0,
       total_tasks: selectedMachine.total_tasks || 0,
       eet: selectedMachine.eet || {},
+      eetStdDev: selectedMachine.eetStdDev || {},
     });
   }, [selectedMachine]);
 
@@ -92,29 +102,46 @@ const EditMachineProperties = ({
     </div>
   );
 
-  const handleEETChange = (iotName, value) => {
+  const handleEETChange = (iotName, field, value) => {
     setEditedMachine((prev) => ({
       ...prev,
-      eet: { ...prev.eet, [iotName]: value },
+      [field]: { ...prev[field], [iotName]: value },
     }));
   };
 
   const handleSave = async () => {
     try {
+      const updatedMachine = {
+        ...editedMachine,
+        eet: {
+          ...editedMachine.eet,
+          ...Object.fromEntries(connectedIot.map((node) => [
+            sourceEetKey(node.id),
+            getMachineEetMean(editedMachine, node.id, node.properties.task_type),
+          ])),
+        },
+        eetStdDev: {
+          ...editedMachine.eetStdDev,
+          ...Object.fromEntries(connectedIot.map((node) => [
+            sourceEetKey(node.id),
+            getMachineEetStdDev(editedMachine, node.id, node.properties.task_type),
+          ])),
+        },
+      };
       // Update local state
-      setSelectedMachine(editedMachine);
+      setSelectedMachine(updatedMachine);
 
       // Update animated machines
       setAnimatedMachines((prev) =>
         prev.map((machine) =>
-          machine.id === editedMachine.id
-            ? { ...machine, ...editedMachine }
+          machine.id === updatedMachine.id
+            ? { ...machine, ...updatedMachine }
             : machine,
         ),
       );
 
       // Call the save handler from parent
-      await onSave(editedMachine);
+      await onSave(updatedMachine);
 
       setEditMode(false);
     } catch (error) {
@@ -137,6 +164,7 @@ const EditMachineProperties = ({
       total_cost: selectedMachine.total_cost || 0,
       total_tasks: selectedMachine.total_tasks || 0,
       eet: selectedMachine.eet || {},
+      eetStdDev: selectedMachine.eetStdDev || {},
     });
     setEditMode(false);
   };
@@ -228,10 +256,10 @@ const EditMachineProperties = ({
           </div>
         </div>
 
-        {iot.length > 0 && (
+        {connectedIot.length > 0 ? (
           <div className="border-t pt-2 mt-4">
             <label className="block text-sm font-semibold text-gray-700 mb-2">
-              Estimated Execution Times
+              Estimated Execution Times (normal distribution)
             </label>
             <table className="table-auto border-collapse border border-gray-300 w-full text-sm">
               <thead>
@@ -239,11 +267,12 @@ const EditMachineProperties = ({
                   <th className="border px-2 py-1 bg-gray-100 text-left">
                     Task Type
                   </th>
-                  <th className="border px-2 py-1 bg-gray-100">EET (s)</th>
+                  <th className="border px-2 py-1 bg-gray-100">Mean (s)</th>
+                  <th className="border px-2 py-1 bg-gray-100">Std. dev. (s)</th>
                 </tr>
               </thead>
               <tbody>
-                {iot.map((iotNode) => (
+                {connectedIot.map((iotNode) => (
                   <tr key={iotNode.id}>
                     <td className="border px-2 py-1 text-gray-600">
                       {iotNode.properties.task_type}
@@ -251,15 +280,31 @@ const EditMachineProperties = ({
                     <td className="border px-2 py-1">
                       <input
                         type="number"
-                        min="0"
-                        step="0.1"
-                        value={
-                          editedMachine.eet?.[iotNode.properties.task_type] ||
-                          ""
-                        }
+                        min="0.001"
+                        step="any"
+                        aria-label={`Mean execution time for ${iotNode.properties.task_type}`}
+                        value={editedMachine.eet?.[sourceEetKey(iotNode.id)] ?? editedMachine.eet?.[iotNode.properties.task_type] ?? DEFAULT_EET_MEAN}
                         onChange={(e) =>
                           handleEETChange(
-                            iotNode.properties.task_type,
+                            sourceEetKey(iotNode.id),
+                            "eet",
+                            e.target.value,
+                          )
+                        }
+                        className="w-full border rounded px-1 py-0.5 text-center"
+                      />
+                    </td>
+                    <td className="border px-2 py-1">
+                      <input
+                        type="number"
+                        min="0"
+                        step="any"
+                        aria-label={`Execution time standard deviation for ${iotNode.properties.task_type}`}
+                        value={editedMachine.eetStdDev?.[sourceEetKey(iotNode.id)] ?? editedMachine.eetStdDev?.[iotNode.properties.task_type] ?? DEFAULT_EET_STD_DEV}
+                        onChange={(e) =>
+                          handleEETChange(
+                            sourceEetKey(iotNode.id),
+                            "eetStdDev",
                             e.target.value,
                           )
                         }
@@ -270,7 +315,14 @@ const EditMachineProperties = ({
                 ))}
               </tbody>
             </table>
+            <p className="mt-2 text-xs text-gray-500">
+              Each task samples its actual run time from this normal distribution.
+            </p>
           </div>
+        ) : (
+          <p className="border-t pt-3 text-sm text-gray-500">
+            Connect an IoT device or user to this machine to configure its EET.
+          </p>
         )}
 
         <div className="flex gap-2 mt-4">
@@ -361,10 +413,10 @@ const EditMachineProperties = ({
         </div>
 
         {/* EET per Task Type */}
-        {iot.length > 0 && (
+        {connectedIot.length > 0 ? (
           <div className="border-t pt-2 mt-4">
             <label className="block text-sm font-semibold text-gray-700 mb-2">
-              Est. Execution Time
+              Est. Execution Time (normal distribution)
             </label>
             <table className="table-auto border-collapse border border-gray-300 w-full text-sm">
               <thead>
@@ -372,27 +424,31 @@ const EditMachineProperties = ({
                   <th className="border px-2 py-1 bg-gray-100 text-left">
                     Task Type
                   </th>
-                  <th className="border px-2 py-1 bg-gray-100">EET (s)</th>
+                  <th className="border px-2 py-1 bg-gray-100">Mean (s)</th>
+                  <th className="border px-2 py-1 bg-gray-100">Std. dev. (s)</th>
                 </tr>
               </thead>
               <tbody>
-                {iot.map((iotNode) => (
+                {connectedIot.map((iotNode) => (
                   <tr key={iotNode.id}>
                     <td className="border px-2 py-1 text-gray-600">
                       {iotNode.properties.task_type}
                     </td>
                     <td className="border px-2 py-1 text-center">
-                      {selectedMachine.eet?.[iotNode.properties.task_type] !==
-                        undefined &&
-                      selectedMachine.eet?.[iotNode.properties.task_type] !== ""
-                        ? selectedMachine.eet[iotNode.properties.task_type]
-                        : "1"}
+                      {getMachineEetMean(selectedMachine, iotNode.id, iotNode.properties.task_type)}
+                    </td>
+                    <td className="border px-2 py-1 text-center">
+                      {getMachineEetStdDev(selectedMachine, iotNode.id, iotNode.properties.task_type)}
                     </td>
                   </tr>
                 ))}
               </tbody>
             </table>
           </div>
+        ) : (
+          <p className="border-t pt-3 text-sm text-gray-500">
+            Connect an IoT device or user to this machine to view its EET.
+          </p>
         )}
 
         {/* Utilization and Cost Information */}

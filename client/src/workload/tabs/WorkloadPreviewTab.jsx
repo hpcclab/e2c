@@ -1,21 +1,6 @@
 import React, { useState } from "react";
 import JSZip from "jszip";
 
-function getDuration(distribution) {
-  switch (distribution) {
-    case "uniform":
-      return 10;
-    case "normal":
-      return 12;
-    case "exponential":
-      return 15;
-    case "spiky":
-      return 8;
-    default:
-      return 10;
-  }
-}
-
 function workloadToCSV(workload) {
   const header = ["task_type", "arrival_time", "distribution", "data_size"];
   const rows = workload.map((row) =>
@@ -195,15 +180,13 @@ const WorkloadPreviewTab = ({
               </tr>
             ) : (
               workloadTableData.map((row, idx) => {
-                const duration = getDuration(row.distribution);
-                const deadline = Number(row.arrival_time) + duration;
                 return (
                   <tr key={idx}>
                     <td className="border px-2 py-1">{idx + 1}</td>
                     <td className="border px-2 py-1">{row.task_type}</td>
                     <td className="border px-2 py-1">{row.data_size}</td>
                     <td className="border px-2 py-1">{row.arrival_time}</td>
-                    <td className="border px-2 py-1">{deadline}</td>
+                    <td className="border px-2 py-1">{row.deadline ?? "-"}</td>
                   </tr>
                 );
               })

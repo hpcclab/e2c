@@ -1,5 +1,6 @@
-import { BaseScheduler } from "./BaseScheduler";
-import { registerScheduler } from "./registry";
+import { BaseScheduler } from "./BaseScheduler.js";
+import { registerScheduler } from "./registry.js";
+import { getMachineEetMean } from "../utils/executionTime.js";
 
 export class MECT extends BaseScheduler {
   constructor(opts) {
@@ -29,10 +30,14 @@ export class MECT extends BaseScheduler {
     if (!task) return null;
 
     // Calculate provisional completion times
-    const pcts = this.machines.map((machine) => ({
+    const pcts = this.getEligibleMachines(task).map((machine) => ({
       machine,
       pct: machine.queue.reduce((sum, t) => {
-        sum += parseInt(machine.eet?.[t.task_type] ?? 1);
+        sum += getMachineEetMean(
+          machine,
+          this.getTaskSource(t)?.id,
+          t.task_type,
+        );
         return sum;
       }, 0),
     }));

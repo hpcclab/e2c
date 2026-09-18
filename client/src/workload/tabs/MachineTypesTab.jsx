@@ -6,6 +6,7 @@ import {
   PencilIcon,
   TrashIcon,
 } from "@heroicons/react/24/outline";
+import { nonNegativeSlack } from "../../utils/deadlines";
 
 export function generateMachineConfig(mechs, taskTypes) {
   const configData = {
@@ -29,7 +30,7 @@ export function generateMachineConfig(mechs, taskTypes) {
       id: idx + 1,
       name: t.name,
       urgency: t.urgency || "BestEffort",
-      deadline: Number(t.slack) || 10.0,
+      deadline: nonNegativeSlack(t.slack),
     })),
     battery: [
       {
@@ -141,7 +142,7 @@ const MachineTypesTab = ({
         id: idx + 1,
         name: t.name,
         urgency: t.urgency || "BestEffort",
-        deadline: Number(t.slack) || 10.0,
+        deadline: nonNegativeSlack(t.slack),
       })),
       battery: [
         {

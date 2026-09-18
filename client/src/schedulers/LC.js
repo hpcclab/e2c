@@ -1,5 +1,5 @@
-import { BaseScheduler } from "./BaseScheduler";
-import { registerScheduler } from "./registry";
+import { BaseScheduler } from "./BaseScheduler.js";
+import { registerScheduler } from "./registry.js";
 export class LC extends BaseScheduler {
   constructor(opts) {
     super(opts);
@@ -7,13 +7,13 @@ export class LC extends BaseScheduler {
     this.prev_assignment_idx = -1;
   }
 
-  selectMin() {
-    if (!this.machines.length) return null;
+  selectMin(machines) {
+    if (!machines.length) return null;
 
-    let chosen = this.machines[0];
-    let min = this.machines[0].queue?.length || 0;
+    let chosen = machines[0];
+    let min = machines[0].queue?.length || 0;
 
-    for (const m of this.machines) {
+    for (const m of machines) {
       const len = m.queue?.length || 0;
       if (len < min) {
         min = len;
@@ -42,7 +42,8 @@ export class LC extends BaseScheduler {
       this.choose();
     }
 
-    const machine = this.selectMin();
+    const task = this.unmappedTask[this.unmappedTask.length - 1];
+    const machine = this.selectMin(this.getEligibleMachines(task));
     if (!machine) return null;
 
     this.map(machine);

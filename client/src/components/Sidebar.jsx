@@ -400,8 +400,6 @@ export default function Sidebar() {
         : position;
 
       if (nodeType === "machineNode") {
-        const eet = Object.fromEntries(iot.map((i) => [i.name, "1"]));
-
         const newMachine = {
           id: Date.now(),
           name: `Machine ${Date.now().toString().slice(-4)}`,
@@ -414,7 +412,8 @@ export default function Sidebar() {
           position: relativePosition,
           parentId,
           extent: parentId ? "parent" : undefined,
-          eet,
+          eet: {},
+          eetStdDev: {},
         };
 
         setMachines((prev) => [...prev, newMachine]);
@@ -480,12 +479,6 @@ export default function Sidebar() {
             distribution: newIot.properties.distribution,
           },
         ]);
-        setMachines((prev) =>
-          prev.map((m) => ({
-            ...m,
-            eet: { ...(m.eet || {}), [newIot.name]: "1" },
-          })),
-        );
         if (parentId) {
           setWorkspaces((prev) =>
             prev.map((ws) => {
@@ -501,11 +494,13 @@ export default function Sidebar() {
         );
         window.dispatchEvent(new Event("taskColorChanged"));
       } else if (nodeType === "userNode") {
+        const userId = Date.now();
+        const userName = `User ${userId.toString().slice(-3)}`;
         const newIot = {
-          id: Date.now(),
-          name: `User ${Date.now().toString().slice(-3)}`,
+          id: userId,
+          name: userName,
           properties: {
-            task_type: `IOT ${Date.now().toString().slice(-4)}`,
+            task_type: userName,
             dataInput: "default",
             meanSize: 6,
             urgency: "BestEffort",
@@ -552,12 +547,6 @@ export default function Sidebar() {
             distribution: newIot.properties.distribution,
           },
         ]);
-        setMachines((prev) =>
-          prev.map((m) => ({
-            ...m,
-            eet: { ...(m.eet || {}), [newIot.name]: "1" },
-          })),
-        );
         if (parentId) {
           setWorkspaces((prev) =>
             prev.map((ws) => {

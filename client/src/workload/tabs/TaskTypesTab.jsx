@@ -5,6 +5,7 @@ import {
   CheckIcon,
   XMarkIcon,
 } from "@heroicons/react/24/outline";
+import { nonNegativeSlack } from "../../utils/deadlines";
 
 const defaultInputs = [
   "image",
@@ -46,7 +47,7 @@ const TaskTypesTab = ({ taskTypes, setTaskTypes, setActiveTab }) => {
         dataInput: newDataInput,
         meanSize: newMeanSize,
         urgency: newUrgency,
-        slack: newSlack,
+        slack: nonNegativeSlack(newSlack),
       },
     ]);
     setNewName("");
@@ -80,7 +81,13 @@ const TaskTypesTab = ({ taskTypes, setTaskTypes, setActiveTab }) => {
   };
 
   const saveEdit = () => {
-    setTaskTypes(taskTypes.map((t, idx) => (idx === editIdx ? editRow : t)));
+    setTaskTypes(
+      taskTypes.map((t, idx) =>
+        idx === editIdx
+          ? { ...editRow, slack: nonNegativeSlack(editRow.slack) }
+          : t,
+      ),
+    );
     setEditIdx(null);
     setEditRow({});
   };
@@ -171,9 +178,14 @@ const TaskTypesTab = ({ taskTypes, setTaskTypes, setActiveTab }) => {
                       <td className="border px-2 py-1">
                         <input
                           type="number"
+                          min="0"
+                          step="any"
                           value={editRow.slack}
                           onChange={(e) =>
-                            handleEditChange("slack", e.target.value)
+                            handleEditChange(
+                              "slack",
+                              nonNegativeSlack(e.target.value),
+                            )
                           }
                           className="border rounded px-2 py-1 w-full"
                         />
@@ -305,9 +317,11 @@ const TaskTypesTab = ({ taskTypes, setTaskTypes, setActiveTab }) => {
           </select>
           <input
             type="number"
+            min="0"
+            step="any"
             placeholder="Slack"
             value={newSlack}
-            onChange={(e) => setNewSlack(e.target.value)}
+            onChange={(e) => setNewSlack(nonNegativeSlack(e.target.value))}
             className="border rounded px-3 py-2"
           />
           <button

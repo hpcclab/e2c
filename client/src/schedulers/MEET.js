@@ -1,5 +1,6 @@
-import { BaseScheduler } from "./BaseScheduler";
-import { registerScheduler } from "./registry";
+import { BaseScheduler } from "./BaseScheduler.js";
+import { registerScheduler } from "./registry.js";
+import { getMachineEetMean } from "../utils/executionTime.js";
 
 export class MEET extends BaseScheduler {
   constructor(opts) {
@@ -27,11 +28,12 @@ export class MEET extends BaseScheduler {
 
     const task = this.unmappedTask[this.unmappedTask.length - 1];
     if (!task) return null;
+    const sourceId = this.getTaskSource(task)?.id;
 
     // Collect machine execution times
-    const eets = this.machines.map((m) => ({
+    const eets = this.getEligibleMachines(task).map((m) => ({
       machine: m,
-      eet: Number(m.eet?.[task.task_type] ?? 1),
+      eet: getMachineEetMean(m, sourceId, task.task_type),
     }));
 
     if (!eets.length) return null;

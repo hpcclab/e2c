@@ -6,6 +6,7 @@ import {
   XMarkIcon,
 } from "@heroicons/react/24/outline";
 import seedrandom from "seedrandom";
+import { deadlineFromArrival } from "../../utils/deadlines";
 
 const distributionOptions = ["uniform", "normal", "exponential", "spiky"];
 
@@ -80,7 +81,11 @@ export function generateWorkload(scenarioRows, taskTypes, seedOffset = 0) {
       row.distribution,
       100 + 10 * idx + seedOffset, // unique seed for each file
     );
-    const typeObj = (taskTypes || []).find((t) => t.name === row.taskType);
+    const typeObj =
+      (row.srcID !== undefined && row.srcID !== null && row.srcID !== ""
+        ? (taskTypes || []).find((t) => String(t.srcID) === String(row.srcID))
+        : undefined) ??
+      (taskTypes || []).find((t) => t.name === row.taskType);
     const meanSize = Number(typeObj?.meanSize || 100);
     const stdv = Number(typeObj?.stdv || 20);
     const dataSizes = getDataSizes(meanSize, stdv, sample.length);
@@ -88,11 +93,12 @@ export function generateWorkload(scenarioRows, taskTypes, seedOffset = 0) {
     sample.forEach((arrival_time, i) => {
       workload.push({
         task_type: row.taskType,
+        source_id: row.srcID,
         arrival_time,
         distribution: row.distribution,
         data_size: dataSizes[i],
         status: "NEW",
-        deadline: arrival_time + 5 + (typeObj?.slack ?? 0),
+        deadline: deadlineFromArrival(arrival_time, typeObj?.slack),
         start_time: arrival_time,
         end_time: 0,
       });

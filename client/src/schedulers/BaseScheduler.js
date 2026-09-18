@@ -1,3 +1,9 @@
+import {
+  getMachineEetMean,
+  getMachineEetStdDev,
+  sampleExecutionTime,
+} from "../utils/executionTime.js";
+
 export class BaseScheduler {
   constructor({ machines, iot, enqueue, dequeue, isNeighbors, config }) {
     this.machines = [];
@@ -8,6 +14,7 @@ export class BaseScheduler {
 
     this.config = config;
     this.maxQueueSize = config?.maxQueueSize ?? 2; // cap max Q at  per machine
+    this.random = config?.random ?? Math.random;
     this.task_counter = 0;
     this.totalTasks = 0;
 
@@ -80,6 +87,24 @@ export class BaseScheduler {
     return task;
   }
 
+  getTaskSource(task) {
+    if (!task) return null;
+    if (task.source_id !== undefined && task.source_id !== null) {
+      return this.iot.find((source) => String(source.id) === String(task.source_id));
+    }
+    return this.iot.find(
+      (source) => source.properties?.task_type === task.task_type,
+    );
+  }
+
+  getEligibleMachines(task) {
+    const source = this.getTaskSource(task);
+    if (!source) return [];
+    return this.machines.filter((machine) =>
+      this.isNeighbors(`nd_${source.id}`, machine.id),
+    );
+  }
+
   map(machine) {
     const task = this.unmappedTask.pop();
     if (!task || !machine) return;
@@ -91,12 +116,11 @@ export class BaseScheduler {
       this.unmappedTask.push(task);
       return null;
     }
-    const iotIndex = this.iot.findIndex(
-      (m) => m.properties?.task_type === task.task_type,
-    );
-
-    const iotSrc = this.iot[iotIndex];
-    if (!iotSrc) return;
+    const iotSrc = this.getTaskSource(task);
+    if (!iotSrc) {
+      this.unmappedTask.push(task);
+      return;
+    }
 
     if (!this.isNeighbors(`nd_${iotSrc.id}`, machine.id)) {
       this.unmappedTask.push(task);
@@ -104,40 +128,55 @@ export class BaseScheduler {
     }
 
     // Assign execution metadata
-    task.start_time = Number(this.getTime().toFixed(3));
+    task.start_time = currentQueueSize === 0 ? Number(this.getTime().toFixed(3)) : null;
     task.assigned_machine = machine.name;
 
-    // If no execution time defined, assume default of 1 ms
-    const eet = machine.eet?.[task.task_type] || 1;
-
-    if (eet != null) {
-      task.execution_time = Number(eet);
-      // console.log(task.execution_time);
-      task.end_time = Number(
-        (task.start_time + task.execution_time).toFixed(3),
-      );
-    }
+    task.execution_time = sampleExecutionTime(
+      getMachineEetMean(machine, iotSrc.id, task.task_type),
+      getMachineEetStdDev(machine, iotSrc.id, task.task_type),
+      this.random,
+    );
+    task.end_time = task.start_time === null
+      ? null
+      : Number((task.start_time + task.execution_time).toFixed(3));
 
     this.enqueue(machine.id, task);
     this.stats.mapped.push(task);
   }
 
   processMachines() {
+    const now = this.getTime();
+    this.unmappedTask = this.unmappedTask.filter((task) => {
+      const deadline = Number(task.deadline);
+      if (!Number.isFinite(deadline) || now < deadline) return true;
+      task.status = "MISSED";
+      this.stats.missed.push(task);
+      return false;
+    });
+
     for (let m of this.machines) {
       if (!m.queue?.length) continue;
 
       let task = m.queue[0];
-      // If no execution time defined, assume default of 1 ms
-      const eet = m.eet?.[task.task_type] || 1;
-      if (eet == null) continue;
-
-      const life = this.getTime() - task.start_time;
-      if (life >= task.deadline || task.start_time >= task.deadline) {
-        task.status = "MISSED";
-        this.stats.missed.push(task);
-        this.dequeue(m.id);
+      if (task.start_time === null || task.start_time === undefined) {
+        if (now >= task.deadline) {
+          task.status = "MISSED";
+          this.stats.missed.push(task);
+          this.dequeue(m.id);
+          continue;
+        }
+        task.start_time = Number(now.toFixed(3));
       }
-      if (life >= eet && life < task.deadline) {
+
+      const executionTime = task.execution_time ?? getMachineEetMean(
+        m,
+        this.getTaskSource(task)?.id,
+        task.task_type,
+      );
+      task.execution_time = executionTime;
+      const expectedEnd = task.start_time + executionTime;
+      task.end_time = Number(expectedEnd.toFixed(3));
+      if (now >= expectedEnd && expectedEnd <= task.deadline) {
         task.status = "COMPLETED";
         this.stats.completed.push(task);
         const prev = this.machineStats.get(m.id) ?? {
@@ -149,6 +188,10 @@ export class BaseScheduler {
             prev.utilization_time + (task.execution_time || 0) / 3600,
           total_tasks: prev.total_tasks + 1,
         });
+        this.dequeue(m.id);
+      } else if (now >= task.deadline) {
+        task.status = "MISSED";
+        this.stats.missed.push(task);
         this.dequeue(m.id);
       }
     }

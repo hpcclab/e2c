@@ -1,15 +1,15 @@
-import { BaseScheduler } from "./BaseScheduler";
-import { registerScheduler } from "./registry";
+import { BaseScheduler } from "./BaseScheduler.js";
+import { registerScheduler } from "./registry.js";
 export class FCFS extends BaseScheduler {
   constructor(opts) {
     super(opts);
     this.name = "FCFS";
   }
 
-  firstAvailableMachine() {
+  firstAvailableMachine(machines) {
     // fcfs helper
     // Prefer idle machines first
-    for (const m of this.machines) {
+    for (const m of machines) {
       if (!m.queue?.length) return m;
     }
 
@@ -17,7 +17,7 @@ export class FCFS extends BaseScheduler {
     let min = Infinity;
     let chosen = null;
 
-    for (const m of this.machines) {
+    for (const m of machines) {
       const len = m.queue?.length || 0;
       if (len < min) {
         min = len;
@@ -47,7 +47,8 @@ export class FCFS extends BaseScheduler {
     }
 
     // Find machine
-    const machine = this.firstAvailableMachine();
+    const task = this.unmappedTask[this.unmappedTask.length - 1];
+    const machine = this.firstAvailableMachine(this.getEligibleMachines(task));
     if (!machine) {
       console.log("Machines Unavailable");
       return null;

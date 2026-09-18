@@ -13,6 +13,7 @@ import { MdDeleteOutline } from "react-icons/md";
 import Sidebar from "./components/Sidebar";
 import ContextMenu from "./context/ContextMenu";
 import machineNode from "./components/machineNode";
+import { getMachineSelection } from "./utils/machineSelection";
 import iotNode from "./components/iotNode";
 import edgeLockedNode from "./components/edgeLockedNode";
 import workloadNode from "./components/workloadNode";
@@ -147,6 +148,16 @@ const SimDashboard = () => {
     setShowSidebar(true);
     setSubmissionStatus("");
   };
+
+  const handleNodeClick = useCallback((event, node) => {
+    if (node.type !== "machineNode" || !node.data?.machine) return;
+    if (event.target.closest("button, .react-flow__handle")) return;
+
+    setSelectedMachine(getMachineSelection(node.data.machine));
+    setSidebarMode("machine");
+    setShowSidebar(true);
+    setSubmissionStatus("");
+  }, [setSelectedMachine, setSidebarMode, setShowSidebar, setSubmissionStatus]);
 
   const onConnect = useCallback(
     (params) => {
@@ -878,6 +889,7 @@ const SimDashboard = () => {
               nodeTypes={nodeTypes}
               edgeTypes={edgeTypes}
               onNodesChange={onNodesChange}
+              onNodeClick={handleNodeClick}
               onNodeDragStop={onDragStop}
               onEdgesChange={onEdgesChange}
               onConnect={onConnect}
