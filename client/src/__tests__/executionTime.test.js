@@ -126,3 +126,29 @@ test("a sampled duration beyond the deadline is reported as missed", () => {
   assert.equal(task.status, "MISSED");
   assert.equal(scheduler.getStats().missed.length, 1);
 });
+
+test("a queued task that never starts reports its arrival as its start time", () => {
+  const waitingTask = {
+    task_type: "Sensor",
+    arrival_time: 2,
+    start_time: null,
+    deadline: 3,
+    execution_time: 1,
+  };
+  const machine = { id: 10, queue: [waitingTask] };
+  const scheduler = new BaseScheduler({
+    machines: [],
+    iot: [],
+    enqueue: () => {},
+    dequeue: () => machine.queue.shift(),
+    isNeighbors: () => true,
+  });
+
+  scheduler.setMachines([machine]);
+  scheduler.setTime(3);
+  scheduler.processMachines();
+
+  assert.equal(waitingTask.status, "MISSED");
+  assert.equal(waitingTask.start_time, waitingTask.arrival_time);
+  assert.equal(machine.queue.length, 0);
+});

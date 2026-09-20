@@ -160,6 +160,7 @@ export class BaseScheduler {
       let task = m.queue[0];
       if (task.start_time === null || task.start_time === undefined) {
         if (now >= task.deadline) {
+          task.start_time = Number(task.arrival_time);
           task.status = "MISSED";
           this.stats.missed.push(task);
           this.dequeue(m.id);
