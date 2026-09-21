@@ -1018,6 +1018,7 @@ const SimulationReport = ({
                     .map((task, index) => {
                       // Check if deadline was missed
                       const deadlineMissed = task.status === "DEADLINE_MISSED";
+                      const didNotRun = task.status === "DNR";
                       const isUnassigned = task.machineId === null;
 
                       return (
@@ -1049,10 +1050,14 @@ const SimulationReport = ({
                             {task.arrival_time?.toFixed(3) ?? "-"}
                           </td>
                           <td className="border border-gray-300 px-3 py-2">
-                            {task.start_time?.toFixed(3) ?? "-"}
+                            {didNotRun
+                              ? "DNR"
+                              : task.start_time?.toFixed(3) ?? "-"}
                           </td>
                           <td className="border border-gray-300 px-3 py-2">
-                            {task.end_time?.toFixed(3) ?? "-"}
+                            {didNotRun
+                              ? "DNR"
+                              : task.end_time?.toFixed(3) ?? "-"}
                           </td>
                           <td className="border border-gray-300 px-3 py-2 text-purple-700 font-medium">
                             {task.execution_time?.toFixed(3) ?? "-"}
@@ -1069,6 +1074,8 @@ const SimulationReport = ({
                               className={`px-2 py-1 rounded text-xs font-semibold ${
                                 task.status === "COMPLETED"
                                   ? "bg-green-100 text-green-800"
+                                  : didNotRun
+                                    ? "bg-gray-200 text-gray-800"
                                   : isUnassigned
                                     ? "bg-amber-100 text-amber-800"
                                     : task.status === "CANCELLED"
@@ -1078,7 +1085,11 @@ const SimulationReport = ({
                                         : "bg-yellow-100 text-yellow-800"
                               }`}
                             >
-                              {isUnassigned ? "UNASSIGNED" : task.status}
+                              {didNotRun
+                                ? "DNR (Did Not Run)"
+                                : isUnassigned
+                                  ? "UNASSIGNED"
+                                  : task.status}
                             </span>
                           </td>
                         </tr>

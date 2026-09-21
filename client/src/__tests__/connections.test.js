@@ -155,4 +155,5 @@ test("an unreachable task expires without reading a machine EET", () => {
   scheduler.processMachines();
   assert.equal(scheduler.unmappedTask.length, 0);
   assert.equal(scheduler.getStats().missed.length, 1);
+  assert.equal(scheduler.getStats().missed[0].status, "DNR");
 });

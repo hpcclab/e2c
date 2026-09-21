@@ -126,3 +126,31 @@ test("a sampled duration beyond the deadline is reported as missed", () => {
   assert.equal(task.status, "MISSED");
   assert.equal(scheduler.getStats().missed.length, 1);
 });
+
+test("a queued task that expires before starting is marked DNR", () => {
+  const task = {
+    task_type: "Sensor",
+    arrival_time: 1,
+    start_time: null,
+    end_time: null,
+    execution_time: 1,
+    deadline: 2,
+  };
+  const machine = { id: 10, queue: [task] };
+  const scheduler = new BaseScheduler({
+    machines: [],
+    iot: [],
+    enqueue: () => {},
+    dequeue: () => machine.queue.shift(),
+    isNeighbors: () => true,
+  });
+  scheduler.setMachines([machine]);
+  scheduler.setTime(2);
+
+  scheduler.processMachines();
+
+  assert.equal(task.status, "DNR");
+  assert.equal(task.start_time, null);
+  assert.equal(task.end_time, null);
+  assert.equal(scheduler.getStats().missed.length, 1);
+});

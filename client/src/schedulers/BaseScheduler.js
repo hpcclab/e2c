@@ -149,7 +149,7 @@ export class BaseScheduler {
     this.unmappedTask = this.unmappedTask.filter((task) => {
       const deadline = Number(task.deadline);
       if (!Number.isFinite(deadline) || now < deadline) return true;
-      task.status = "MISSED";
+      task.status = "DNR";
       this.stats.missed.push(task);
       return false;
     });
@@ -160,7 +160,7 @@ export class BaseScheduler {
       let task = m.queue[0];
       if (task.start_time === null || task.start_time === undefined) {
         if (now >= task.deadline) {
-          task.status = "MISSED";
+          task.status = "DNR";
           this.stats.missed.push(task);
           this.dequeue(m.id);
           continue;
