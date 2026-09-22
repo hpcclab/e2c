@@ -263,7 +263,7 @@ const SimDashboard = () => {
     return new SchedulerClass(opts);
   }
   useEffect(() => {
-    if (isPaused && !policyUpdated) return;
+    if (schedulerRef.current && isPaused && !policyUpdated) return;
     schedulerRef.current = new createScheduler(policyAlias, {
       machines,
       iot,
@@ -635,8 +635,18 @@ const SimDashboard = () => {
       // reset current states then load new workspace
       setIsRunning(true);
       setIsPaused(false);
-      const scheduler = schedulerRef.current;
-      if (schedulerRef.current) scheduler.clearBatchQ();
+      const scheduler =
+        schedulerRef.current ??
+        new createScheduler(policyAlias, {
+          machines,
+          iot,
+          enqueue,
+          dequeue,
+          isNeighbors,
+          config: { LB_ID },
+        });
+      schedulerRef.current = scheduler;
+      scheduler.clearBatchQ();
       const clearedMachines = machines.map((m) => ({
         ...m,
         utilization_time: 0,

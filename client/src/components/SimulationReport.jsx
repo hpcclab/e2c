@@ -1,8 +1,5 @@
 import React, { useState, useCallback, useEffect, useMemo } from "react";
-import {
-  exportSimulationReport,
-  exportCombinedReport,
-} from "../utils/exportCSV";
+import { createSimulationReportZipFile } from "../utils/exportCSV";
 import { formatUtilizationTime, formatEnergy } from "../utils/formatTime";
 import TaskLifecycle from "./TaskLifecycle";
 import Collapsible from "./Collapsible";
@@ -32,25 +29,61 @@ const SimulationReport = ({
   const [isResizing, setIsResizing] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
   const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
-  const [exportType, setExportType] = useState("combined");
+  const [exportType, setExportType] = useState("zip");
+  const [preparedExport, setPreparedExport] = useState(null);
+  const [exportError, setExportError] = useState("");
   const [lifecycleTask, setLifecycleTask] = useState(null);
   const [taskSearch, setTaskSearch] = useState("");
 
-  // Handle CSV Export
-  const handleExport = () => {
-    const reportData = {
+  const reportData = useMemo(
+    () => ({
       dataResults,
       missedTasks,
       machines,
       simulationTime,
+    }),
+    [dataResults, missedTasks, machines, simulationTime],
+  );
+
+  useEffect(() => {
+    let cancelled = false;
+    let objectUrl = "";
+
+    const prepareExport = async () => {
+      setPreparedExport(null);
+      setExportError("");
+
+      try {
+        const file =
+          exportType === "excel"
+            ? await import("../utils/exportExcel.js").then(
+                ({ createExcelReportFile }) => createExcelReportFile(reportData),
+              )
+            : await createSimulationReportZipFile(reportData);
+        objectUrl = URL.createObjectURL(file.blob);
+
+        if (cancelled) {
+          URL.revokeObjectURL(objectUrl);
+          return;
+        }
+        setPreparedExport({ url: objectUrl, filename: file.filename });
+      } catch (error) {
+        if (!cancelled) {
+          console.error("Failed to prepare report export", error);
+          setExportError("Export could not be prepared.");
+        }
+      }
     };
 
-    if (exportType === "combined") {
-      exportCombinedReport(reportData);
-    } else {
-      exportSimulationReport(reportData);
-    }
-  };
+    prepareExport();
+
+    return () => {
+      cancelled = true;
+      if (objectUrl) {
+        window.setTimeout(() => URL.revokeObjectURL(objectUrl), 1000);
+      }
+    };
+  }, [exportType, reportData]);
 
   // Calculate summary statistics
   const summaryStats = useMemo(() => {
@@ -214,18 +247,25 @@ const SimulationReport = ({
           <select
             value={exportType}
             onChange={(e) => setExportType(e.target.value)}
-            className="text-white text-sm rounded px-2 py-1 cursor-pointer"
+            className="bg-white text-gray-900 text-sm rounded border border-blue-200 px-2 py-1 cursor-pointer"
             onClick={(e) => e.stopPropagation()}
           >
-            <option value="combined">Combined CSV</option>
-            <option value="separate">Separate Files</option>
+            <option value="zip">CSV Archive (.zip)</option>
+            <option value="excel">Excel Workbook (.xlsx)</option>
           </select>
-          <button
+          <a
+            href={preparedExport?.url}
+            download={preparedExport?.filename}
+            aria-disabled={!preparedExport}
             onClick={(e) => {
               e.stopPropagation();
-              handleExport();
+              if (!preparedExport) e.preventDefault();
             }}
-            className="bg-green-500 hover:bg-green-600 text-white rounded px-3 py-1 transition flex items-center space-x-1"
+            className={`rounded px-3 py-1 transition flex items-center space-x-1 ${
+              preparedExport
+                ? "bg-green-500 hover:bg-green-600 text-white"
+                : "bg-gray-400 text-gray-100 cursor-wait"
+            }`}
           >
             <svg
               className="w-4 h-4"
@@ -240,10 +280,15 @@ const SimulationReport = ({
                 d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"
               />
             </svg>
-            <span>Export</span>
-          </button>
+            <span>{preparedExport ? "Export" : "Preparing…"}</span>
+          </a>
         </div>
       </div>
+      {exportError && (
+        <p className="px-4 py-2 text-sm text-red-700 bg-red-50">
+          {exportError}
+        </p>
+      )}
       {/* Content - Scrollable */}
       <div className="flex-1 overflow-auto p-6">
         <div className="mb-6 text-center bg-gradient-to-r from-blue-50 to-indigo-50 p-4 rounded-lg shadow-sm">

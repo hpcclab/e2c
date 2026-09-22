@@ -1,245 +1,168 @@
-export const exportToCSV = (data, filename = 'report.csv') => {
-    if (!data || data.length === 0) {
-      console.warn('No data to export');
-      return;
-    }
-  
-    const headers = Object.keys(data[0]);
-    
-    // Create CSV content
-    const csvContent = [
-      // Header row
-      headers.join(','),
-      // Data rows
-      ...data.map(row => 
-        headers.map(header => {
-          const value = row[header];
-          // Handle values that contain commas, quotes, or newlines
-          if (value === null || value === undefined) {
-            return '';
-          }
-          const stringValue = String(value);
-          if (stringValue.includes(',') || stringValue.includes('"') || stringValue.includes('\n')) {
-            return `"${stringValue.replace(/"/g, '""')}"`;
-          }
-          return stringValue;
-        }).join(',')
-      )
-    ].join('\n');
-  
-    // Create blob and download
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-    const link = document.createElement('a');
-    const url = URL.createObjectURL(blob);
-    
-    link.setAttribute('href', url);
-    link.setAttribute('download', filename);
-    link.style.visibility = 'hidden';
-    
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    
-    URL.revokeObjectURL(url);
+import JSZip from "jszip";
+import { downloadBlob } from "./downloadBlob.js";
+
+const ZIP_MIME_TYPE = "application/zip";
+
+const normalizeStatus = (status) => String(status || "").toUpperCase();
+const getTaskId = (task) => task.taskId ?? task.id ?? "N/A";
+
+const getTaskTime = (task, key) => {
+  if (normalizeStatus(task.status) === "DNR") return "DNR";
+  const value = task[key];
+  return value === null || value === undefined ? "N/A" : value;
+};
+
+const getMachineTaskCount = (machine, tasks) =>
+  tasks.filter((task) => {
+    const assignedMachine = task.assigned_machine || "";
+    return (
+      assignedMachine === machine.name ||
+      assignedMachine.startsWith(`${machine.name} #`)
+    );
+  }).length;
+
+const escapeCsvValue = (value) => {
+  if (value === null || value === undefined) return "";
+  const text = String(value);
+  return /[,"\r\n]/.test(text) ? `"${text.replace(/"/g, '""')}"` : text;
+};
+
+const rowsToCsv = (rows) =>
+  rows
+    .map((row) => row.map((value) => escapeCsvValue(value)).join(","))
+    .join("\n");
+
+export const buildCsvReportFiles = ({
+  dataResults = [],
+  missedTasks = [],
+  machines = [],
+  simulationTime = 0,
+} = {}) => {
+  const machineList = machines.filter((machine) => machine.id !== -1);
+  const completedTasks = dataResults.filter(
+    (task) => normalizeStatus(task.status) === "COMPLETED",
+  ).length;
+  const totalCost = machineList.reduce(
+    (sum, machine) =>
+      sum +
+      (Number(machine.price) || 0) *
+        (Number(machine.utilization_time) || 0) *
+        3600,
+    0,
+  );
+
+  const rowsByFile = {
+    "simulation_summary.csv": [
+      ["Metric", "Value"],
+      ["Simulation Time (s)", Number(simulationTime) || 0],
+      ["Total Tasks", dataResults.length],
+      ["Completed Tasks", completedTasks],
+      ["Missed Tasks", missedTasks.length],
+      ["Total Machines", machineList.length],
+      ["Total Cost ($)", totalCost],
+    ],
+    "simulation_tasks.csv": [
+      [
+        "Task ID",
+        "Type",
+        "Assigned Machine",
+        "Arrival Time",
+        "Start Time",
+        "Completion Time",
+        "Exec Time",
+        "Status",
+        "Deadline",
+      ],
+      ...dataResults.map((task) => [
+        getTaskId(task),
+        task.task_type || "N/A",
+        task.assigned_machine || "N/A",
+        task.arrival_time ?? "N/A",
+        getTaskTime(task, "start_time"),
+        getTaskTime(task, "end_time"),
+        task.execution_time ?? "N/A",
+        task.status || "N/A",
+        task.deadline ?? "N/A",
+      ]),
+    ],
+    "missed_tasks.csv": [
+      [
+        "Task ID",
+        "Type",
+        "Assigned Machine",
+        "Arrival Time",
+        "Deadline",
+        "Status",
+      ],
+      ...missedTasks.map((task) => [
+        getTaskId(task),
+        task.task_type || "N/A",
+        task.assigned_machine || "N/A",
+        task.arrival_time ?? "N/A",
+        task.deadline ?? "N/A",
+        task.status || "MISSED",
+      ]),
+    ],
+    "machine_stats.csv": [
+      [
+        "Machine Name",
+        "Power (W)",
+        "Idle Power (W)",
+        "Replicas",
+        "Price ($/s)",
+        "Utilization Time (hr)",
+        "Total Cost ($)",
+        "Tasks Processed",
+      ],
+      ...machineList.map((machine) => [
+        machine.name || "N/A",
+        Number(machine.power) || 0,
+        Number(machine.idle_power) || 0,
+        Number(machine.replicas) || 1,
+        Number(machine.price) || 0,
+        Number(machine.utilization_time) || 0,
+        (Number(machine.price) || 0) *
+          (Number(machine.utilization_time) || 0) *
+          3600,
+        getMachineTaskCount(machine, dataResults),
+      ]),
+    ],
   };
-  
-  // Export everything as a single combined CSV
-  export const exportCombinedReport = (reportData) => {
-    const {
-      dataResults = [],
-      missedTasks = [],
-      machines = [],
-      simulationTime = 0,
-    } = reportData;
-    
-    // Calculate summary stats
-    const totalTasks = dataResults.length;
-    const tasksMapped = dataResults.filter(t => t.status === 'COMPLETED' || t.status === 'MAPPED').length;
-    const tasksCompleted = dataResults.filter(t => t.status === 'COMPLETED').length;
-    const tasksCancelled = dataResults.filter(t => t.status === 'CANCELLED').length;
-    const completionPercentage = totalTasks > 0 ? ((tasksCompleted / totalTasks) * 100).toFixed(2) : 0;
-    
-    const totalEnergyConsumed = machines
-        .filter(m => m.id !== -1)
-        .reduce((sum, machine) => {
-        const power = machine.power || 0;
-        const utilizationTime = machine.utilization_time || 0;
-        return sum + (power * utilizationTime) / 1000;
-        }, 0);
 
-    const totalCost = machines
-        .filter(m => m.id !== -1)
-        .reduce((sum, m) => sum + ((m.price || 0) * (m.utilization_time || 0) * 3600), 0);
+  return Object.fromEntries(
+    Object.entries(rowsByFile).map(([filename, rows]) => [
+      filename,
+      rowsToCsv(rows),
+    ]),
+  );
+};
 
-    // Group missed tasks by type
-    const missedByType = missedTasks.reduce((acc, task) => {
-        const type = task.task_type || 'Unknown';
-        acc[type] = (acc[type] || 0) + 1;
-        return acc;
-    }, {});
+export const createSimulationReportZipFile = async (reportData) => {
+  const zip = new JSZip();
+  const files = buildCsvReportFiles(reportData);
 
-    const timestamp = new Date().toISOString().slice(0, 19).replace(/[:-]/g, '');
-    
-    let csvContent = '';
-    // Summary Statistics Section
-    csvContent += 'SUMMARY STATISTICS\n';
-    csvContent += `Simulation Time (s),${simulationTime}\n`;
-    csvContent += `Total Tasks,${totalTasks}\n`;
-    csvContent += `Tasks Mapped,${tasksMapped}\n`;
-    csvContent += `Tasks Completed,${tasksCompleted}\n`;
-    csvContent += `Tasks Cancelled,${tasksCancelled}\n`;
-    csvContent += `Tasks Missed,${missedTasks.length}\n`;
-    csvContent += `Completion Rate (%),${completionPercentage}\n`;
-    csvContent += `Total Energy Consumed (kWh),${totalEnergyConsumed.toFixed(4)}\n`;
-    csvContent += `Total Cost ($),${totalCost.toFixed(2)}\n`;
-    csvContent += '\n';
+  Object.entries(files).forEach(([filename, contents]) => {
+    zip.file(filename, contents);
+  });
 
-    // Missed Tasks by Type
-    if (Object.keys(missedByType).length > 0) {
-        csvContent += 'MISSED TASKS BY TYPE\n';
-        csvContent += 'Task Type,Count,Percentage\n';
-        Object.entries(missedByType).forEach(([type, count]) => {
-        const percentage = ((count / missedTasks.length) * 100).toFixed(1);
-        csvContent += `${type},${count},${percentage}%\n`;
-        });
-        csvContent += '\n';
-    }
+  const blob = await zip.generateAsync({
+    type: "blob",
+    mimeType: ZIP_MIME_TYPE,
+    compression: "DEFLATE",
+    compressionOptions: { level: 6 },
+  });
+  const timestamp = new Date().toISOString().slice(0, 19).replace(/[:-]/g, "");
 
-  // Energy Consumption by Machine
-  csvContent += 'ENERGY CONSUMPTION BY MACHINE\n';
-  csvContent += 'Machine Name,Power (W),Utilization (hr),Energy (kWh),Cost ($)\n';
-  machines
-    .filter(m => m.id !== -1)
-    .forEach(machine => {
-      const energyKWh = ((machine.power || 0) * (machine.utilization_time || 0)) / 1000;
-      const cost = (machine.price || 0) * (machine.utilization_time || 0) * 3600;
-      csvContent += `${machine.name},${machine.power || 0},${(machine.utilization_time || 0).toFixed(4)},${energyKWh.toFixed(4)},${cost.toFixed(2)}\n`;
-    });
-  csvContent += `Total,,,${totalEnergyConsumed.toFixed(4)},${totalCost.toFixed(2)}\n`;
-  csvContent += '\n';
-
-    // Summary Section
-    csvContent += 'FULL SIMULATION SUMMARY\n';
-    csvContent += `Simulation Time,${simulationTime}\n`;
-    csvContent += `Total Tasks,${dataResults.length}\n`;
-    csvContent += `Completed Tasks,${dataResults.filter(t => t.status === 'completed').length}\n`;
-    csvContent += `Missed Tasks,${missedTasks.length}\n`;
-    csvContent += `Total Machines,${machines.filter(m => m.id !== -1).length}\n`;
-    csvContent += '\n';
-  
-    // Machine Statistics Section
-    csvContent += 'TASK BASED SIMULATION REPORT\n';
-    csvContent += 'Task ID,Type,Assigned Machine,Arrival Time,Start Time,End Time,Exec Time,Deadline,Status\n';  // ADD Exec Time
-    dataResults.forEach(task => {
-      csvContent += `${task.taskId || task.id},${task.task_type || 'N/A'},${task.assigned_machine || 'N/A'},${task.arrival_time ?? 'N/A'},${task.start ?? 'N/A'},${task.end ?? 'N/A'},${task.execution_time ?? 'N/A'},${task.deadline ?? 'N/A'},${task.status || 'N/A'}\n`;
-    });
-    csvContent += '\n';
-  
-    // Task Results Section
-    csvContent += 'TASK BASED SIMULASTION REPORT\n';
-    csvContent += 'Task ID,Type,Assigned Machine,Arrival Time,Start Time,End Time,Status,Deadline\n';
-    dataResults.forEach(task => {
-      csvContent += `${task.taskId || task.id},${task.task_type || 'N/A'},${task.assigned_machine || 'N/A'},${task.arrival_time || 'N/A'},${task.start || 'N/A'},${task.end || 'N/A'},${task.status || 'N/A'},${task.deadline || 'N/A'}\n`;
-    });
-    csvContent += '\n';
-  
-    // Missed Tasks Section
-    if (missedTasks.length > 0) {
-      csvContent += 'MISSED TASKS\n';
-      csvContent += 'Task ID,Type,Assigned Machine,Arrival Time,Deadline,Status\n';
-      missedTasks.forEach(task => {
-        csvContent += `${task.taskId || task.id},${task.task_type || 'N/A'},${task.assigned_machine || 'N/A'},${task.arrival_time || 'N/A'},${task.deadline || 'N/A'},${task.status || 'Missed'}\n`;
-      });
-    }
-  
-    // Create blob and download
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-    const link = document.createElement('a');
-    const url = URL.createObjectURL(blob);
-    
-    link.setAttribute('href', url);
-    link.setAttribute('download', `simulation_report_${timestamp}.csv`);
-    link.style.visibility = 'hidden';
-    
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    
-    URL.revokeObjectURL(url);
+  return {
+    blob,
+    filename: `simulation_report_${timestamp}.zip`,
   };
-  
-  // Export separate CSV files for each section
-  export const exportSimulationReport = (reportData) => {
-    const {
-      dataResults = [],
-      missedTasks = [],
-      machines = [],
-      simulationTime = 0,
-    } = reportData;
-  
-    const timestamp = new Date().toISOString().slice(0, 19).replace(/[:-]/g, '');
-  
-    // Export task results
-    if (dataResults.length > 0) {
-      const taskData = dataResults.map(task => ({
-        'Task ID': task.taskId || task.id,
-        'Type': task.task_type || 'N/A',
-        'Assigned Machine': task.assigned_machine || 'N/A',
-        'Arrival Time': task.arrival_time || 'N/A',
-        'Start Time': task.start || 'N/A',
-        'Completion Time': task.end || 'N/A',
-        'Exec Time': task.execution_time || 'N/A',
-        'Status': task.status || 'N/A',
-        'Deadline': task.deadline || 'N/A',
-      }));
-      exportToCSV(taskData, `simulation_tasks_${timestamp}.csv`);
-    }
-  
-    // Export missed tasks
-    if (missedTasks.length > 0) {
-      const missedData = missedTasks.map(task => ({
-        'Task ID': task.taskId || task.id,
-        'Type': task.task_type || 'N/A',
-        'Assigned Machine': task.assigned_machine || 'N/A',
-        'Arrival Time': task.arrival_time || 'N/A',
-        'Deadline': task.deadline || 'N/A',
-        'Status': task.status || 'Missed',
-      }));
-      exportToCSV(missedData, `missed_tasks_${timestamp}.csv`);
-    }
-  
-    // Export machine statistics
-    if (machines.length > 0) {
-      const machineData = machines
-        .filter(m => m.id !== -1)
-        .map(machine => ({
-          'Machine ID': machine.id,
-          'Machine Name': machine.name,
-          'Power': machine.power || 0,
-          'Idle Power': machine.idle_power || 0,
-          'Replicas': machine.replicas || 1,
-          'Price ($/s)': machine.price || 0,
-          'Utilization Time (hr)': machine.utilization_time || 0,
-          'Total Cost ($)': ((machine.price || 0) * (machine.utilization_time || 0) * 3600).toFixed(2),
-          'Tasks Processed': machine.queue?.length || 0,
-        }));
-      exportToCSV(machineData, `machine_stats_${timestamp}.csv`);
-    }
-  
-    // Export summary
-    const summaryData = [{
-      'Simulation Time': simulationTime,
-      'Total Tasks': dataResults.length,
-      'Completed Tasks': dataResults.filter(t => t.status === 'completed').length,
-      'Missed Tasks': missedTasks.length,
-      'Total Machines': machines.filter(m => m.id !== -1).length,
-      'Total Cost': machines
-        .filter(m => m.id !== -1)
-        .reduce((sum, m) => sum + ((m.price || 0) * (m.utilization_time || 0) * 3600), 0)
-        .toFixed(2),
-    }];
-    exportToCSV(summaryData, `simulation_summary_${timestamp}.csv`);
-  };
+};
+
+export const exportSimulationReport = async (reportData) => {
+  const { blob, filename } = await createSimulationReportZipFile(reportData);
+  downloadBlob(blob, filename);
+};
 
    /**
     EET Table Processing     
