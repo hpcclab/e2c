@@ -85,6 +85,7 @@ test("a task that cannot finish by the absolute deadline is missed", () => {
     now: 13,
   });
   assert.equal(task.status, "MISSED");
+  assert.equal(task.end_time, 13);
   assert.equal(stats.completed.length, 0);
   assert.equal(stats.missed.length, 1);
   assert.equal(machine.queue.length, 0);
@@ -98,5 +99,6 @@ test("a late simulation tick does not turn a missed task into a completion", () 
     now: 15,
   });
   assert.equal(task.status, "MISSED");
+  assert.equal(task.end_time, 13);
   assert.equal(stats.completed.length, 0);
 });

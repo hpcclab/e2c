@@ -16,6 +16,33 @@ import {
 } from "recharts";
 import { useGlobalState } from "../context/GlobalStates";
 
+const taskIdNumber = (task) => Number(task.taskId ?? task.id);
+
+const taskStatusRank = (task, sortMode) => {
+  const status = String(task.status || "").toUpperCase();
+  const missed = ["DEADLINE_MISSED", "MISSED", "DNR"].includes(status);
+  const completed = status === "COMPLETED";
+
+  if (sortMode === "missed-first") {
+    if (missed) return 0;
+    if (completed) return 1;
+  } else if (sortMode === "completed-first") {
+    if (completed) return 0;
+    if (missed) return 1;
+  }
+  return 2;
+};
+
+const compareTaskResults = (firstTask, secondTask, sortMode) => {
+  const idDifference = taskIdNumber(firstTask) - taskIdNumber(secondTask);
+  if (sortMode === "task-number") return idDifference;
+
+  return (
+    taskStatusRank(firstTask, sortMode) -
+      taskStatusRank(secondTask, sortMode) || idDifference
+  );
+};
+
 const SimulationReport = ({
   dataResults,
   completedTasks = [],
@@ -34,6 +61,7 @@ const SimulationReport = ({
   const [exportError, setExportError] = useState("");
   const [lifecycleTask, setLifecycleTask] = useState(null);
   const [taskSearch, setTaskSearch] = useState("");
+  const [taskSort, setTaskSort] = useState("task-number");
 
   const reportData = useMemo(
     () => ({
@@ -1003,13 +1031,25 @@ const SimulationReport = ({
                 </svg>
                 Task Results
               </h4>
-              <input
-                type="text"
-                placeholder="Search by ID, type, machine, status..."
-                value={taskSearch}
-                onChange={(e) => setTaskSearch(e.target.value)}
-                className="border border-gray-300 rounded px-3 py-1 text-sm w-64 focus:outline-none focus:ring-2 focus:ring-blue-400"
-              />
+              <div className="flex items-center gap-2">
+                <select
+                  value={taskSort}
+                  onChange={(e) => setTaskSort(e.target.value)}
+                  aria-label="Sort task results"
+                  className="border border-gray-300 rounded px-3 py-1 text-sm bg-white text-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-400"
+                >
+                  <option value="task-number">Task Number</option>
+                  <option value="missed-first">Missed First</option>
+                  <option value="completed-first">Completed First</option>
+                </select>
+                <input
+                  type="text"
+                  placeholder="Search by ID, type, machine, status..."
+                  value={taskSearch}
+                  onChange={(e) => setTaskSearch(e.target.value)}
+                  className="border border-gray-300 rounded px-3 py-1 text-sm w-64 focus:outline-none focus:ring-2 focus:ring-blue-400"
+                />
+              </div>
             </div>
             <div className="overflow-x-auto">
               <table className="table-auto border-collapse border border-gray-300 w-full text-sm shadow-sm">
@@ -1060,6 +1100,9 @@ const SimulationReport = ({
                         (task.status || "").toLowerCase().includes(q)
                       );
                     })
+                    .sort((firstTask, secondTask) =>
+                      compareTaskResults(firstTask, secondTask, taskSort),
+                    )
                     .map((task, index) => {
                       // Check if deadline was missed
                       const deadlineMissed = task.status === "DEADLINE_MISSED";

@@ -124,6 +124,8 @@ test("a sampled duration beyond the deadline is reported as missed", () => {
   scheduler.setTime(2.25);
   scheduler.processMachines();
   assert.equal(task.status, "MISSED");
+  assert.equal(task.end_time, 2.25);
+  assert.equal(machine.queue.length, 0);
   assert.equal(scheduler.getStats().missed.length, 1);
 });
 

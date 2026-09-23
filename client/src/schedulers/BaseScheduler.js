@@ -190,6 +190,9 @@ export class BaseScheduler {
         });
         this.dequeue(m.id);
       } else if (now >= task.deadline) {
+        // The deadline is a hard stop. Preserve the sampled execution time,
+        // but record when processing was actually interrupted.
+        task.end_time = Number(task.deadline);
         task.status = "MISSED";
         this.stats.missed.push(task);
         this.dequeue(m.id);
