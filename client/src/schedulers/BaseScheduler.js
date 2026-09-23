@@ -15,6 +15,8 @@ export class BaseScheduler {
     this.config = config;
     this.maxQueueSize = config?.maxQueueSize ?? 2; // cap max Q at  per machine
     this.random = config?.random ?? Math.random;
+    this.deadlinePolicy =
+      config?.deadlinePolicy === "continue" ? "continue" : "drop";
     this.task_counter = 0;
     this.totalTasks = 0;
 
@@ -75,6 +77,18 @@ export class BaseScheduler {
   }
   getStats() {
     return this.stats;
+  }
+
+  recordMachineRuntime(machineId, runtimeSeconds) {
+    const prev = this.machineStats.get(machineId) ?? {
+      utilization_time: 0,
+      total_tasks: 0,
+    };
+    this.machineStats.set(machineId, {
+      utilization_time:
+        prev.utilization_time + Math.max(0, Number(runtimeSeconds) || 0) / 3600,
+      total_tasks: prev.total_tasks + 1,
+    });
   }
 
   choose() {
@@ -179,22 +193,30 @@ export class BaseScheduler {
       if (now >= expectedEnd && expectedEnd <= task.deadline) {
         task.status = "COMPLETED";
         this.stats.completed.push(task);
-        const prev = this.machineStats.get(m.id) ?? {
-          utilization_time: 0,
-          total_tasks: 0,
-        };
-        this.machineStats.set(m.id, {
-          utilization_time:
-            prev.utilization_time + (task.execution_time || 0) / 3600,
-          total_tasks: prev.total_tasks + 1,
-        });
+        this.recordMachineRuntime(m.id, executionTime);
         this.dequeue(m.id);
-      } else if (now >= task.deadline) {
+      } else if (
+        expectedEnd > task.deadline &&
+        this.deadlinePolicy === "drop" &&
+        now >= task.deadline
+      ) {
         // The deadline is a hard stop. Preserve the sampled execution time,
         // but record when processing was actually interrupted.
         task.end_time = Number(task.deadline);
         task.status = "MISSED";
         this.stats.missed.push(task);
+        this.recordMachineRuntime(m.id, task.end_time - task.start_time);
+        this.dequeue(m.id);
+      } else if (
+        expectedEnd > task.deadline &&
+        this.deadlinePolicy === "continue" &&
+        now >= expectedEnd
+      ) {
+        // Soft deadline: a task that has already started may finish, but it
+        // remains a missed-deadline result.
+        task.status = "MISSED";
+        this.stats.missed.push(task);
+        this.recordMachineRuntime(m.id, executionTime);
         this.dequeue(m.id);
       }
     }

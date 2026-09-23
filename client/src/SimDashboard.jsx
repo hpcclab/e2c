@@ -134,6 +134,8 @@ const SimDashboard = () => {
     schedulerRef,
     policyAlias,
     setPolicyAlias,
+    deadlinePolicy,
+    setDeadlinePolicy,
     simulationIntervalRef,
     simCurrentRef,
     totalSimTimeRef,
@@ -270,10 +272,10 @@ const SimDashboard = () => {
       enqueue,
       dequeue,
       isNeighbors,
-      config: { LB_ID },
+      config: { LB_ID, deadlinePolicy },
     });
     setPolicyUpdated(false);
-  }, [policyAlias, policyUpdated]);
+  }, [policyAlias, deadlinePolicy, policyUpdated]);
   useEffect(() => {
     if (!schedulerRef.current) return;
 
@@ -477,7 +479,7 @@ const SimDashboard = () => {
       enqueue,
       dequeue,
       isNeighbors,
-      config: { LB_ID },
+      config: { LB_ID, deadlinePolicy },
     });
 
     // Clear machine queues from the previous run
@@ -643,7 +645,7 @@ const SimDashboard = () => {
           enqueue,
           dequeue,
           isNeighbors,
-          config: { LB_ID },
+          config: { LB_ID, deadlinePolicy },
         });
       schedulerRef.current = scheduler;
       scheduler.clearBatchQ();
@@ -883,6 +885,7 @@ const SimDashboard = () => {
     setMenu(null);
     setShowSidebar(false);
     setPolicyUpdated(true);
+    setDeadlinePolicy("drop");
     Object.keys(colorMemory).forEach((key) => delete colorMemory[key]);
     window.dispatchEvent(new Event("taskColorChanged"));
   };
@@ -1035,6 +1038,24 @@ const SimDashboard = () => {
                       })}
                     </select>
                   </div>
+                </div>
+
+                <div className="space-y-2">
+                  <label className="text-sm font-medium text-gray-700">
+                    Running Task Deadline
+                  </label>
+                  <select
+                    value={deadlinePolicy}
+                    onChange={(e) => setDeadlinePolicy(e.target.value)}
+                    className="w-full border px-3 py-2 text-sm rounded bg-white"
+                  >
+                    <option value="drop">Drop task at deadline</option>
+                    <option value="continue">Finish running task</option>
+                  </select>
+                  <p className="text-xs text-gray-500">
+                    This applies only after a task starts. A queued task that
+                    reaches its deadline is still marked DNR.
+                  </p>
                 </div>
 
                 <button

@@ -109,6 +109,7 @@ export const GlobalProvider = ({ children }) => {
   const [simTotal, setSimTotal] = useState(Infinity);
   const schedulerRef = useRef(null);
   const [policyAlias, setPolicyAlias] = useState("FCFS");
+  const [deadlinePolicy, setDeadlinePolicy] = useState("drop");
 
   const getNeighbors = (sourceID) => {
     let outies =
@@ -556,6 +557,8 @@ export const GlobalProvider = ({ children }) => {
     schedulerRef,
     policyAlias,
     setPolicyAlias,
+    deadlinePolicy,
+    setDeadlinePolicy,
     simulationIntervalRef,
     simCurrentRef,
     totalSimTimeRef,

@@ -48,7 +48,7 @@ test("workload deadlines use arrival plus the source's slack", () => {
   assert.equal(generateWorkload(scenario, [{ ...source[0], slack: "3" }])[0].deadline, 5);
 });
 
-function processTask({ start, deadline, eet, now }) {
+function processTask({ start, deadline, eet, now, deadlinePolicy = "drop" }) {
   const task = { task_type: "Task A", start_time: start, deadline, status: "RUNNING" };
   const machine = { id: 1, eet: { "Task A": eet }, queue: [task] };
   const scheduler = new BaseScheduler({
@@ -57,11 +57,12 @@ function processTask({ start, deadline, eet, now }) {
     enqueue: () => {},
     dequeue: () => machine.queue.shift(),
     isNeighbors: () => true,
+    config: { deadlinePolicy },
   });
   scheduler.setMachines([machine]);
   scheduler.setTime(now);
   scheduler.processMachines();
-  return { task, machine, stats: scheduler.getStats() };
+  return { task, machine, scheduler, stats: scheduler.getStats() };
 }
 
 test("a task completing exactly at its absolute deadline is completed", () => {
@@ -101,4 +102,32 @@ test("a late simulation tick does not turn a missed task into a completion", () 
   assert.equal(task.status, "MISSED");
   assert.equal(task.end_time, 13);
   assert.equal(stats.completed.length, 0);
+});
+
+test("continue policy lets a running task finish after its deadline", () => {
+  const { task, machine, scheduler, stats } = processTask({
+    start: 11,
+    deadline: 13,
+    eet: 4,
+    now: 13,
+    deadlinePolicy: "continue",
+  });
+
+  assert.equal(task.status, "RUNNING");
+  assert.equal(task.end_time, 15);
+  assert.equal(machine.queue.length, 1);
+  assert.equal(stats.missed.length, 0);
+
+  scheduler.setTime(15);
+  scheduler.processMachines();
+
+  assert.equal(task.status, "MISSED");
+  assert.equal(task.end_time, 15);
+  assert.equal(machine.queue.length, 0);
+  assert.equal(stats.missed.length, 1);
+  assert.equal(scheduler.getMachineStats().get(1).total_tasks, 1);
+  assert.equal(
+    scheduler.getMachineStats().get(1).utilization_time,
+    4 / 3600,
+  );
 });

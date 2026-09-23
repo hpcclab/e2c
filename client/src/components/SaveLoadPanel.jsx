@@ -48,6 +48,10 @@ export default function FlowSaveLoadPanel() {
     setScenarioRows,
     generateMachineConfig,
     setIsRunning,
+    policyAlias,
+    setPolicyAlias,
+    deadlinePolicy,
+    setDeadlinePolicy,
   } = useGlobalState();
 
   const { fitView } = useReactFlow();
@@ -159,6 +163,8 @@ export default function FlowSaveLoadPanel() {
         machineConfig,
         taskTypes,
         scenarioRows,
+        policyAlias,
+        deadlinePolicy,
         colorMemory: persistedColorMemory,
         filename: fileWithExtension,
       });
@@ -188,6 +194,8 @@ export default function FlowSaveLoadPanel() {
         machineConfig,
         taskTypes,
         scenarioRows,
+        policyAlias,
+        deadlinePolicy,
         colorMemory: persistedColorMemory,
         filename: selectedFile,
       });
@@ -227,6 +235,10 @@ export default function FlowSaveLoadPanel() {
       setMachineConfig(data.machineConfig || []);
       setTaskTypes(data.taskTypes || []);
       setScenarioRows(data.scenarioRows || []);
+      if (data.policyAlias) setPolicyAlias(data.policyAlias);
+      setDeadlinePolicy(
+        data.deadlinePolicy === "continue" ? "continue" : "drop",
+      );
       setNodes([...otherNodes, ...machinesArr, ...iotArr]);
       setEdges(data.edges || []);
       setMachines(loadedMachines);
@@ -281,6 +293,8 @@ export default function FlowSaveLoadPanel() {
       taskTypes,
       scenarioRows,
       machineConfig,
+      policyAlias,
+      deadlinePolicy,
       colorMemory: getPersistedTaskColorMemory(iot),
     });
     notify("Exported " + filename);
@@ -323,6 +337,10 @@ export default function FlowSaveLoadPanel() {
           if (data.taskTypes) setTaskTypes(data.taskTypes);
           if (data.scenarioRows) setScenarioRows(data.scenarioRows);
           if (data.machineConfig) setMachineConfig(data.machineConfig);
+          if (data.policyAlias) setPolicyAlias(data.policyAlias);
+          setDeadlinePolicy(
+            data.deadlinePolicy === "continue" ? "continue" : "drop",
+          );
           const importedColorMemory = {
             ...getDerivedTaskColorMemory(data.iot),
             ...normalizeTaskColorMemory(data.colorMemory || {}),

@@ -145,6 +145,7 @@ test("a queued task that expires before starting is marked DNR", () => {
     enqueue: () => {},
     dequeue: () => machine.queue.shift(),
     isNeighbors: () => true,
+    config: { deadlinePolicy: "continue" },
   });
   scheduler.setMachines([machine]);
   scheduler.setTime(2);
