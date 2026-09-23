@@ -131,3 +131,46 @@ test("continue policy lets a running task finish after its deadline", () => {
     4 / 3600,
   );
 });
+
+test("continue policy keeps an expired unmapped task until it can run", () => {
+  const task = {
+    task_type: "Task A",
+    source_id: 20,
+    arrival_time: 1,
+    deadline: 2,
+  };
+  const machine = {
+    id: 1,
+    name: "Machine",
+    queue: [],
+    eet: { "Task A": 1 },
+    eetStdDev: { "Task A": 0 },
+  };
+  const scheduler = new BaseScheduler({
+    machines: [],
+    iot: [],
+    enqueue: (_id, queuedTask) => machine.queue.push(queuedTask),
+    dequeue: () => machine.queue.shift(),
+    isNeighbors: () => true,
+    config: { deadlinePolicy: "continue" },
+  });
+  scheduler.setMachines([machine]);
+  scheduler.setIot([{ id: 20, properties: { task_type: "Task A" } }]);
+  scheduler.unmappedTask.push(task);
+  scheduler.setTime(2.5);
+
+  scheduler.processMachines();
+
+  assert.equal(scheduler.unmappedTask.length, 1);
+  assert.equal(scheduler.getStats().missed.length, 0);
+
+  scheduler.map(machine);
+  scheduler.setTime(3.5);
+  scheduler.processMachines();
+
+  assert.equal(task.status, "MISSED");
+  assert.equal(task.start_time, 2.5);
+  assert.equal(task.end_time, 3.5);
+  assert.equal(machine.queue.length, 0);
+  assert.equal(scheduler.getStats().missed.length, 1);
+});

@@ -129,7 +129,7 @@ test("a sampled duration beyond the deadline is reported as missed", () => {
   assert.equal(scheduler.getStats().missed.length, 1);
 });
 
-test("a queued task that expires before starting is marked DNR", () => {
+test("continue policy starts and finishes a queued task after its deadline", () => {
   const task = {
     task_type: "Sensor",
     arrival_time: 1,
@@ -152,8 +152,18 @@ test("a queued task that expires before starting is marked DNR", () => {
 
   scheduler.processMachines();
 
-  assert.equal(task.status, "DNR");
-  assert.equal(task.start_time, null);
-  assert.equal(task.end_time, null);
+  assert.equal(task.status, undefined);
+  assert.equal(task.start_time, 2);
+  assert.equal(task.end_time, 3);
+  assert.equal(machine.queue.length, 1);
+  assert.equal(scheduler.getStats().missed.length, 0);
+
+  scheduler.setTime(3);
+  scheduler.processMachines();
+
+  assert.equal(task.status, "MISSED");
+  assert.equal(task.start_time, 2);
+  assert.equal(task.end_time, 3);
+  assert.equal(machine.queue.length, 0);
   assert.equal(scheduler.getStats().missed.length, 1);
 });

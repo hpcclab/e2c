@@ -1042,7 +1042,7 @@ const SimDashboard = () => {
 
                 <div className="space-y-2">
                   <label className="text-sm font-medium text-gray-700">
-                    Running Task Deadline
+                    Upon missing deadline
                   </label>
                   <select
                     value={deadlinePolicy}
@@ -1050,11 +1050,12 @@ const SimDashboard = () => {
                     className="w-full border px-3 py-2 text-sm rounded bg-white"
                   >
                     <option value="drop">Drop task at deadline</option>
-                    <option value="continue">Finish running task</option>
+                    <option value="continue">Finish all tasks</option>
                   </select>
                   <p className="text-xs text-gray-500">
-                    This applies only after a task starts. A queued task that
-                    reaches its deadline is still marked DNR.
+                    Drop stops work at its deadline and marks tasks that never
+                    started as DNR. Finish all tasks lets every task run to
+                    completion; late tasks are still reported as missed.
                   </p>
                 </div>
 

@@ -161,6 +161,7 @@ export class BaseScheduler {
   processMachines() {
     const now = this.getTime();
     this.unmappedTask = this.unmappedTask.filter((task) => {
+      if (this.deadlinePolicy === "continue") return true;
       const deadline = Number(task.deadline);
       if (!Number.isFinite(deadline) || now < deadline) return true;
       task.status = "DNR";
@@ -173,7 +174,7 @@ export class BaseScheduler {
 
       let task = m.queue[0];
       if (task.start_time === null || task.start_time === undefined) {
-        if (now >= task.deadline) {
+        if (this.deadlinePolicy === "drop" && now >= task.deadline) {
           task.status = "DNR";
           this.stats.missed.push(task);
           this.dequeue(m.id);
@@ -212,8 +213,8 @@ export class BaseScheduler {
         this.deadlinePolicy === "continue" &&
         now >= expectedEnd
       ) {
-        // Soft deadline: a task that has already started may finish, but it
-        // remains a missed-deadline result.
+        // Soft deadline: every task may finish, including one that began
+        // after its deadline, but it remains a missed-deadline result.
         task.status = "MISSED";
         this.stats.missed.push(task);
         this.recordMachineRuntime(m.id, executionTime);
