@@ -303,7 +303,10 @@ const SimDashboard = () => {
     task_type: "",
     assigned_machine: "",
     data_size: "",
+    generation_time: "",
+    travel_time: "",
     arrival_time: "",
+    connectivity: "",
     deadline: "",
     start_time: "",
     end_time: "",
@@ -368,7 +371,10 @@ const SimDashboard = () => {
     id: -1,
     task_type: "empty",
     data_size: "",
+    generation_time: "",
+    travel_time: "",
     arrival_time: 999999999999,
+    connectivity: "",
     deadline: "",
   });
   let machine_count;
@@ -428,7 +434,10 @@ const SimDashboard = () => {
       task_type: selectedTask.task_type,
       assigned_machine: selectedTask.assigned_machine,
       data_size: selectedTask.data_size,
+      generation_time: selectedTask.generation_time,
+      travel_time: selectedTask.travel_time,
       arrival_time: selectedTask.arrival_time,
+      connectivity: selectedTask.connectivity,
       deadline: selectedTask.deadline,
       start_time: selectedTask.start_time,
       end_time: selectedTask.end_time,
@@ -582,6 +591,11 @@ const SimDashboard = () => {
       name: updatedIOT.name,
       dataInput: updatedIOT.properties.dataInput,
       meanSize: updatedIOT.properties.meanSize,
+      dataSizeStdDev:
+        updatedIOT.properties.dataSizeStdDev ?? updatedIOT.properties.stdv ?? 20,
+      connectivity: updatedIOT.properties.connectivity,
+      customThroughputKbps:
+        updatedIOT.properties.customThroughputKbps ?? 125,
       urgency: updatedIOT.properties.urgency,
       slack: updatedIOT.properties.slack,
     };
@@ -1117,7 +1131,9 @@ const SimDashboard = () => {
                               <th className="px-2 py-1 border">ID</th>
                               <th className="px-2 py-1 border">Type</th>
                               <th className="px-2 py-1 border">Status</th>
-                              <th className="px-2 py-1 border">Arrival</th>
+                              <th className="px-2 py-1 border">
+                                Machine Arrival
+                              </th>
                             </tr>
                           </thead>
                           <tbody>
@@ -1168,6 +1184,12 @@ const SimDashboard = () => {
                           Assigned Machine
                         </th>
                         <th className="px-4 py-2 text-sm font-semibold text-gray-700">
+                          Generation Time
+                        </th>
+                        <th className="px-4 py-2 text-sm font-semibold text-gray-700">
+                          Travel Time
+                        </th>
+                        <th className="px-4 py-2 text-sm font-semibold text-gray-700">
                           Arrival Time
                         </th>
                         <th className="px-4 py-2 text-sm font-semibold text-gray-700">
@@ -1187,6 +1209,8 @@ const SimDashboard = () => {
                         "task_type",
                         "status",
                         "assigned_machine",
+                        "generation_time",
+                        "travel_time",
                         "arrival_time",
                         "start_time",
                         "end_time",
@@ -1249,7 +1273,9 @@ const SimDashboard = () => {
                               <th className="px-2 py-1 border">ID</th>
                               <th className="px-2 py-1 border">Type</th>
                               <th className="px-2 py-1 border">Status</th>
-                              <th className="px-2 py-1 border">Arrival</th>
+                              <th className="px-2 py-1 border">
+                                Machine Arrival
+                              </th>
                             </tr>
                           </thead>
                           <tbody>

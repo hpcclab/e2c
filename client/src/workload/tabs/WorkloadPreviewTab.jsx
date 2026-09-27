@@ -2,11 +2,27 @@ import React, { useState } from "react";
 import JSZip from "jszip";
 
 function workloadToCSV(workload) {
-  const header = ["task_type", "arrival_time", "distribution", "data_size"];
+  const header = [
+    "task_type",
+    "generation_time",
+    "travel_time",
+    "arrival_time",
+    "connectivity",
+    "distribution",
+    "data_size",
+    "deadline",
+  ];
   const rows = workload.map((row) =>
-    [row.task_type, row.arrival_time, row.distribution, row.data_size].join(
-      ",",
-    ),
+    [
+      row.task_type,
+      row.generation_time,
+      row.travel_time,
+      row.arrival_time,
+      row.connectivity,
+      row.distribution,
+      row.data_size,
+      row.deadline,
+    ].join(","),
   );
   return [header.join(","), ...rows].join("\n");
 }
@@ -164,7 +180,10 @@ const WorkloadPreviewTab = ({
               <th className="border px-2 py-1">#</th>
               <th className="border px-2 py-1">Task Type</th>
               <th className="border px-2 py-1">Data Size (KB)</th>
-              <th className="border px-2 py-1">Arrival Time</th>
+              <th className="border px-2 py-1">Connectivity</th>
+              <th className="border px-2 py-1">Generation Time</th>
+              <th className="border px-2 py-1">Travel Time</th>
+              <th className="border px-2 py-1">Machine Arrival</th>
               <th className="border px-2 py-1">Deadline</th>
             </tr>
           </thead>
@@ -173,7 +192,7 @@ const WorkloadPreviewTab = ({
               <tr>
                 <td
                   className="border px-2 py-1 text-center text-gray-400"
-                  colSpan={5}
+                  colSpan={8}
                 >
                   No workload generated
                 </td>
@@ -185,6 +204,11 @@ const WorkloadPreviewTab = ({
                     <td className="border px-2 py-1">{idx + 1}</td>
                     <td className="border px-2 py-1">{row.task_type}</td>
                     <td className="border px-2 py-1">{row.data_size}</td>
+                    <td className="border px-2 py-1">{row.connectivity}</td>
+                    <td className="border px-2 py-1">
+                      {row.generation_time}
+                    </td>
+                    <td className="border px-2 py-1">{row.travel_time}</td>
                     <td className="border px-2 py-1">{row.arrival_time}</td>
                     <td className="border px-2 py-1">{row.deadline ?? "-"}</td>
                   </tr>

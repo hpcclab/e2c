@@ -6,11 +6,16 @@ import {
   XMarkIcon,
 } from "@heroicons/react/24/outline";
 import seedrandom from "seedrandom";
-import { deadlineFromArrival } from "../../utils/deadlines";
+import { deadlineFromGeneration } from "../../utils/deadlines";
+import {
+  calculateArrivalTime,
+  calculateTravelTime,
+  normalizeConnectivity,
+} from "../../utils/networkDelay";
 
 const distributionOptions = ["uniform", "normal", "exponential", "spiky"];
 
-function sampleArrivalTimes(start, end, n, dist, seed = 100) {
+function sampleGenerationTimes(start, end, n, dist, seed = 100) {
   let arr = [];
   let rng = seedrandom(seed);
   if (dist === "uniform") {
@@ -74,7 +79,7 @@ function getDataSizes(mean, stdv, num_of_tasks) {
 export function generateWorkload(scenarioRows, taskTypes, seedOffset = 0) {
   let workload = [];
   scenarioRows.forEach((row, idx) => {
-    const sample = sampleArrivalTimes(
+    const sample = sampleGenerationTimes(
       Number(row.startTime),
       Number(row.endTime),
       Number(row.numTasks),
@@ -86,19 +91,39 @@ export function generateWorkload(scenarioRows, taskTypes, seedOffset = 0) {
         ? (taskTypes || []).find((t) => String(t.srcID) === String(row.srcID))
         : undefined) ??
       (taskTypes || []).find((t) => t.name === row.taskType);
-    const meanSize = Number(typeObj?.meanSize || 100);
-    const stdv = Number(typeObj?.stdv || 20);
+    const parsedMeanSize = Number(typeObj?.meanSize ?? 100);
+    const parsedStdv = Number(typeObj?.dataSizeStdDev ?? typeObj?.stdv ?? 20);
+    const meanSize = Number.isFinite(parsedMeanSize) ? parsedMeanSize : 100;
+    const stdv = Number.isFinite(parsedStdv) ? Math.max(0, parsedStdv) : 20;
+    const connectivity = normalizeConnectivity(typeObj?.connectivity);
+    const customThroughputKbps = typeObj?.customThroughputKbps;
     const dataSizes = getDataSizes(meanSize, stdv, sample.length);
 
-    sample.forEach((arrival_time, i) => {
+    sample.forEach((generation_time, i) => {
+      const travel_time = calculateTravelTime(
+        dataSizes[i],
+        connectivity,
+        customThroughputKbps,
+      );
+      const arrival_time = calculateArrivalTime(
+        generation_time,
+        dataSizes[i],
+        connectivity,
+        customThroughputKbps,
+      );
       workload.push({
         task_type: row.taskType,
         source_id: row.srcID,
+        generation_time,
         arrival_time,
+        travel_time,
+        connectivity,
+        custom_throughput_kbps:
+          connectivity === "Custom" ? Number(customThroughputKbps) : undefined,
         distribution: row.distribution,
         data_size: dataSizes[i],
         status: "NEW",
-        deadline: deadlineFromArrival(arrival_time, typeObj?.slack),
+        deadline: deadlineFromGeneration(generation_time, typeObj?.slack),
         start_time: arrival_time,
         end_time: 0,
       });
@@ -200,8 +225,8 @@ const ScenarioTab = ({
             <tr>
               <th className="border px-2 py-1">Task Type</th>
               <th className="border px-2 py-1"># Tasks</th>
-              <th className="border px-2 py-1">Start Time</th>
-              <th className="border px-2 py-1">End Time</th>
+              <th className="border px-2 py-1">Generation Start</th>
+              <th className="border px-2 py-1">Generation End</th>
               <th className="border px-2 py-1">Distribution</th>
               <th className="border px-2 py-1">Actions</th>
             </tr>
@@ -352,7 +377,7 @@ const ScenarioTab = ({
           />
           <input
             type="number"
-            placeholder="Start Time"
+            placeholder="Generation Start Time"
             value={newStartTime}
             onChange={(e) => setNewStartTime(e.target.value)}
             className="border rounded px-3 py-2"
@@ -360,7 +385,7 @@ const ScenarioTab = ({
           />
           <input
             type="number"
-            placeholder="End Time"
+            placeholder="Generation End Time"
             value={newEndTime}
             onChange={(e) => setNewEndTime(e.target.value)}
             className="border rounded px-3 py-2"

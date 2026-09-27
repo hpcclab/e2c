@@ -48,6 +48,20 @@ export const WorkloadSidebar = ({
                 <td className="border px-2 py-1">{selectedTask.task_type}</td>
               </tr>
               <tr>
+                <td className="border px-2 py-1 font-semibold">
+                  Generation Time
+                </td>
+                <td className="border px-2 py-1">
+                  {selectedTask.generation_time}
+                </td>
+              </tr>
+              <tr>
+                <td className="border px-2 py-1 font-semibold">Travel Time</td>
+                <td className="border px-2 py-1">
+                  {selectedTask.travel_time}
+                </td>
+              </tr>
+              <tr>
                 <td className="border px-2 py-1 font-semibold">Arrival Time</td>
                 <td className="border px-2 py-1">
                   {selectedTask.arrival_time}

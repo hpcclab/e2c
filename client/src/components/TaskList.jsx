@@ -12,7 +12,10 @@ export default function TaskList({
     id: -1,
     task_type: "empty",
     data_size: "",
+    generation_time: "",
+    travel_time: "",
     arrival_time: "",
+    connectivity: "",
     deadline: "",
   };
   const queue = machine?.queue || [];

@@ -13,6 +13,10 @@ const reportData = {
       id: 1,
       task_type: "Sensor",
       assigned_machine: "Machine 1",
+      generation_time: 0,
+      data_size: 10,
+      connectivity: "Bluetooth",
+      travel_time: 0.1,
       arrival_time: 0.1,
       start_time: 0.2,
       end_time: 1.2,
@@ -24,6 +28,10 @@ const reportData = {
       id: 2,
       task_type: "Sensor",
       assigned_machine: "Machine 1",
+      generation_time: 0.2,
+      data_size: 10,
+      connectivity: "Bluetooth",
+      travel_time: 0.1,
       arrival_time: 0.3,
       start_time: null,
       end_time: null,
@@ -37,6 +45,10 @@ const reportData = {
       id: 2,
       task_type: "Sensor",
       assigned_machine: "Machine 1",
+      generation_time: 0.2,
+      data_size: 10,
+      connectivity: "Bluetooth",
+      travel_time: 0.1,
       arrival_time: 0.3,
       deadline: 1.3,
       status: "DNR",
@@ -77,10 +89,10 @@ test("builds one worksheet dataset for each existing report CSV", () => {
     "Total Cost ($)",
     "Tasks Processed",
   ]);
-  assert.equal(sheets.Tasks[1][4], 0.2);
-  assert.equal(sheets.Tasks[1][5], 1.2);
-  assert.equal(sheets.Tasks[2][4], "DNR");
-  assert.equal(sheets.Tasks[2][5], "DNR");
+  assert.equal(sheets.Tasks[1][8], 0.2);
+  assert.equal(sheets.Tasks[1][9], 1.2);
+  assert.equal(sheets.Tasks[2][8], "DNR");
+  assert.equal(sheets.Tasks[2][9], "DNR");
 });
 
 test("creates a valid multi-sheet xlsx workbook", async () => {
@@ -98,10 +110,10 @@ test("creates a valid multi-sheet xlsx workbook", async () => {
   ["Summary", "Tasks", "Missed Tasks", "Machines"].forEach((sheetName) => {
     assert.match(workbookXml, new RegExp(`name="${sheetName}"`));
   });
-  assert.match(taskSheetXml, /<c r="E2" s="2"><v>0\.2<\/v><\/c>/);
+  assert.match(taskSheetXml, /<c r="I2" s="2"><v>0\.2<\/v><\/c>/);
   assert.match(
     taskSheetXml,
-    /<c r="F3" t="inlineStr" s="2"><is><t xml:space="preserve">DNR<\/t><\/is><\/c>/,
+    /<c r="J3" t="inlineStr"><is><t xml:space="preserve">DNR<\/t><\/is><\/c>/,
   );
   assert.doesNotMatch(machineSheetXml, /Machine ID/);
   assert.match(machineSheetXml, /<c r="H2"><v>2<\/v><\/c>/);

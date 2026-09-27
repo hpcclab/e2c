@@ -13,6 +13,10 @@ const reportData = {
       id: 1,
       task_type: "Sensor, indoor",
       assigned_machine: "Machine 1",
+      generation_time: 0,
+      data_size: 10,
+      connectivity: "Bluetooth",
+      travel_time: 0.1,
       arrival_time: 0.1,
       start_time: 0.2,
       end_time: 1.2,
@@ -24,6 +28,10 @@ const reportData = {
       id: 2,
       task_type: "Sensor",
       assigned_machine: "Machine 1",
+      generation_time: 0.2,
+      data_size: 10,
+      connectivity: "Bluetooth",
+      travel_time: 0.1,
       arrival_time: 0.3,
       start_time: null,
       end_time: null,
@@ -37,6 +45,10 @@ const reportData = {
       id: 2,
       task_type: "Sensor",
       assigned_machine: "Machine 1",
+      generation_time: 0.2,
+      data_size: 10,
+      connectivity: "Bluetooth",
+      travel_time: 0.1,
       arrival_time: 0.3,
       deadline: 1.3,
       status: "DNR",
@@ -66,7 +78,10 @@ test("builds four separate CSV reports with consistent columns", () => {
   ]);
   assert.match(files["simulation_summary.csv"], /Completed Tasks,1/);
   assert.match(files["simulation_tasks.csv"], /"Sensor, indoor"/);
-  assert.match(files["simulation_tasks.csv"], /2,Sensor,Machine 1,0\.3,DNR,DNR/);
+  assert.match(
+    files["simulation_tasks.csv"],
+    /2,Sensor,Machine 1,0\.2,10,Bluetooth,0\.1,0\.3,DNR,DNR/,
+  );
   assert.doesNotMatch(files["machine_stats.csv"], /Machine ID/);
 });
 

@@ -100,6 +100,11 @@ export default function ContextMenu({
             name: newIot.name,
             dataInput: newIot.properties.dataInput,
             meanSize: newIot.properties.meanSize,
+            dataSizeStdDev:
+              newIot.properties.dataSizeStdDev ?? newIot.properties.stdv ?? 20,
+            connectivity: newIot.properties.connectivity,
+            customThroughputKbps:
+              newIot.properties.customThroughputKbps ?? 125,
             urgency: newIot.properties.urgency,
             slack: newIot.properties.slack,
             numTasks: newIot.properties.numTasks,

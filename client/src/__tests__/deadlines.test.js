@@ -3,7 +3,7 @@ import { after, before, test } from "node:test";
 import { createServer } from "vite";
 import { BaseScheduler } from "../schedulers/BaseScheduler.js";
 import {
-  deadlineFromArrival,
+  deadlineFromGeneration,
   nonNegativeSlack,
 } from "../utils/deadlines.js";
 
@@ -28,10 +28,10 @@ test("slack is numeric and never negative", () => {
   assert.equal(nonNegativeSlack(-3), 0);
   assert.equal(nonNegativeSlack("2.5"), 2.5);
   assert.equal(nonNegativeSlack(undefined), 0);
-  assert.equal(deadlineFromArrival(2.25, "3.5"), 5.75);
+  assert.equal(deadlineFromGeneration(2.25, "3.5"), 5.75);
 });
 
-test("workload deadlines use arrival plus the source's slack", () => {
+test("workload deadlines use generation time plus the source's slack", () => {
   const scenario = [{
     srcID: 42,
     taskType: "Task A",
@@ -40,12 +40,61 @@ test("workload deadlines use arrival plus the source's slack", () => {
     endTime: 2,
     distribution: "uniform",
   }];
-  const source = [{ srcID: 42, name: "Different display name", slack: 3 }];
+  const source = [{
+    srcID: 42,
+    name: "Different display name",
+    meanSize: 100,
+    dataSizeStdDev: 0,
+    connectivity: "Bluetooth",
+    slack: 3,
+  }];
 
-  assert.equal(generateWorkload(scenario, source)[0].deadline, 5);
+  const task = generateWorkload(scenario, source)[0];
+  assert.equal(task.generation_time, 2);
+  assert.equal(task.travel_time, 1);
+  assert.equal(task.arrival_time, 3);
+  assert.equal(task.deadline, 5);
   assert.equal(generateWorkload(scenario, [{ ...source[0], slack: 0 }])[0].deadline, 2);
   assert.equal(generateWorkload(scenario, [{ ...source[0], slack: -4 }])[0].deadline, 2);
   assert.equal(generateWorkload(scenario, [{ ...source[0], slack: "3" }])[0].deadline, 5);
+});
+
+test("data size standard deviation controls generated task-size variation", () => {
+  const scenario = [{
+    srcID: 7,
+    taskType: "Task B",
+    numTasks: 2,
+    startTime: 0,
+    endTime: 0,
+    distribution: "uniform",
+  }];
+  const source = [{
+    srcID: 7,
+    name: "Task B",
+    meanSize: 100,
+    dataSizeStdDev: 10,
+    connectivity: "WiFi",
+    slack: 5,
+  }];
+  const originalRandom = Math.random;
+  const draws = [
+    Math.exp(-0.5), 0,
+    Math.exp(-0.5), 0.5,
+    0.5, 0.25,
+    0.5, 0.75,
+  ];
+  Math.random = () => draws.shift();
+  try {
+    const tasks = generateWorkload(scenario, source);
+    assert.deepEqual(tasks.map((task) => task.data_size), [90, 110]);
+    const constantTasks = generateWorkload(scenario, [{
+      ...source[0],
+      dataSizeStdDev: 0,
+    }]);
+    assert.deepEqual(constantTasks.map((task) => task.data_size), [100, 100]);
+  } finally {
+    Math.random = originalRandom;
+  }
 });
 
 function processTask({ start, deadline, eet, now, deadlinePolicy = "drop" }) {

@@ -21,6 +21,7 @@ const TaskTypesTab = ({ taskTypes, setTaskTypes, setActiveTab }) => {
   const [newName, setNewName] = useState("");
   const [newDataInput, setNewDataInput] = useState(defaultInputs[0]);
   const [newMeanSize, setNewMeanSize] = useState("");
+  const [newDataSizeStdDev, setNewDataSizeStdDev] = useState("20");
   const [customInputs, setCustomInputs] = useState([]);
   const [showCustomInput, setShowCustomInput] = useState(false);
   const [customInputValue, setCustomInputValue] = useState("");
@@ -46,6 +47,9 @@ const TaskTypesTab = ({ taskTypes, setTaskTypes, setActiveTab }) => {
         name: newName,
         dataInput: newDataInput,
         meanSize: newMeanSize,
+        dataSizeStdDev: Math.max(0, Number(newDataSizeStdDev) || 0),
+        connectivity: "WiFi",
+        customThroughputKbps: 125,
         urgency: newUrgency,
         slack: nonNegativeSlack(newSlack),
       },
@@ -53,6 +57,7 @@ const TaskTypesTab = ({ taskTypes, setTaskTypes, setActiveTab }) => {
     setNewName("");
     setNewDataInput(defaultInputs[0]);
     setNewMeanSize("");
+    setNewDataSizeStdDev("20");
     setNewUrgency("BestEffort");
     setNewSlack("");
   };
@@ -84,7 +89,14 @@ const TaskTypesTab = ({ taskTypes, setTaskTypes, setActiveTab }) => {
     setTaskTypes(
       taskTypes.map((t, idx) =>
         idx === editIdx
-          ? { ...editRow, slack: nonNegativeSlack(editRow.slack) }
+          ? {
+              ...editRow,
+              dataSizeStdDev: Math.max(
+                0,
+                Number(editRow.dataSizeStdDev ?? editRow.stdv ?? 20) || 0,
+              ),
+              slack: nonNegativeSlack(editRow.slack),
+            }
           : t,
       ),
     );
@@ -107,6 +119,7 @@ const TaskTypesTab = ({ taskTypes, setTaskTypes, setActiveTab }) => {
               <th className="border px-2 py-1">Name</th>
               <th className="border px-2 py-1">Data Input</th>
               <th className="border px-2 py-1">Mean Data Size (KB)</th>
+              <th className="border px-2 py-1">Data Size Std Dev (KB)</th>
               <th className="border px-2 py-1">Urgency</th>
               <th className="border px-2 py-1">Slack</th>
               <th className="border px-2 py-1">Actions</th>
@@ -117,7 +130,7 @@ const TaskTypesTab = ({ taskTypes, setTaskTypes, setActiveTab }) => {
               <tr>
                 <td
                   className="border px-2 py-1 text-center text-gray-400"
-                  colSpan={7}
+                  colSpan={8}
                 >
                   -
                 </td>
@@ -159,6 +172,21 @@ const TaskTypesTab = ({ taskTypes, setTaskTypes, setActiveTab }) => {
                           value={editRow.meanSize}
                           onChange={(e) =>
                             handleEditChange("meanSize", e.target.value)
+                          }
+                          className="border rounded px-2 py-1 w-full"
+                        />
+                      </td>
+                      <td className="border px-2 py-1">
+                        <input
+                          type="number"
+                          min="0"
+                          step="any"
+                          value={editRow.dataSizeStdDev ?? editRow.stdv ?? 20}
+                          onChange={(e) =>
+                            handleEditChange(
+                              "dataSizeStdDev",
+                              Math.max(0, Number(e.target.value) || 0),
+                            )
                           }
                           className="border rounded px-2 py-1 w-full"
                         />
@@ -209,6 +237,11 @@ const TaskTypesTab = ({ taskTypes, setTaskTypes, setActiveTab }) => {
                       </td>
                       <td className="border px-2 py-1">
                         {typeof type === "object" ? type.meanSize : "-"}
+                      </td>
+                      <td className="border px-2 py-1">
+                        {typeof type === "object"
+                          ? (type.dataSizeStdDev ?? type.stdv ?? 20)
+                          : "-"}
                       </td>
                       <td className="border px-2 py-1">
                         {typeof type === "object" ? type.urgency : "-"}
@@ -302,9 +335,24 @@ const TaskTypesTab = ({ taskTypes, setTaskTypes, setActiveTab }) => {
           )}
           <input
             type="number"
+            min="0"
+            step="any"
             placeholder="Mean Data Size (KB)"
             value={newMeanSize}
             onChange={(e) => setNewMeanSize(e.target.value)}
+            className="border rounded px-3 py-2"
+          />
+          <input
+            type="number"
+            min="0"
+            step="any"
+            placeholder="Data Size Standard Deviation (KB)"
+            value={newDataSizeStdDev}
+            onChange={(e) =>
+              setNewDataSizeStdDev(
+                String(Math.max(0, Number(e.target.value) || 0)),
+              )
+            }
             className="border rounded px-3 py-2"
           />
           <select

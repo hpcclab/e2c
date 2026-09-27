@@ -3,6 +3,7 @@ import { IOT_ICON_MAP } from "../utils/iotIcons";
 import { colorMemory } from "./Task";
 import { useGlobalState } from "../context/GlobalStates";
 import { nonNegativeSlack } from "../utils/deadlines";
+import { getConnectivityThroughput } from "../utils/networkDelay";
 
 const IOT_PRESETS = [
   { name: "Camera", icon: "MdVideocam" },
@@ -250,6 +251,10 @@ const EditIoTProperties = ({
         task_type: selectedIOT.properties.task_type || "",
         dataInput: selectedIOT.properties.dataInput || "image",
         meanSize: selectedIOT.properties.meanSize || 0,
+        dataSizeStdDev:
+          selectedIOT.properties.dataSizeStdDev ??
+          selectedIOT.properties.stdv ??
+          20,
         urgency: selectedIOT.properties.urgency || "BestEffort",
         slack: nonNegativeSlack(selectedIOT.properties.slack),
         numTasks: selectedIOT.properties.numTasks || 0,
@@ -259,6 +264,8 @@ const EditIoTProperties = ({
         deviceRole: selectedIOT.properties.deviceRole || "sensor",
         frequency: selectedIOT.properties.frequency || 0,
         connectivity: selectedIOT.properties.connectivity || "WiFi",
+        customThroughputKbps:
+          selectedIOT.properties.customThroughputKbps ?? 125,
         energySource: selectedIOT.properties.energySource || "Wired",
         taskColor: selectedIOT.properties.taskColor || "Slate",
       },
@@ -344,6 +351,14 @@ const EditIoTProperties = ({
         properties: {
           ...editedIOT.properties,
           user: true,
+          dataSizeStdDev: Math.max(
+            0,
+            Number(editedIOT.properties.dataSizeStdDev) || 0,
+          ),
+          customThroughputKbps: Math.max(
+            0.001,
+            Number(editedIOT.properties.customThroughputKbps) || 125,
+          ),
           slack: nonNegativeSlack(editedIOT.properties.slack),
           taskColor: PALETTE[colorIdx].name,
         },
@@ -371,6 +386,10 @@ const EditIoTProperties = ({
         task_type: selectedIOT.properties.task_type || "",
         dataInput: selectedIOT.properties.dataInput || "image",
         meanSize: selectedIOT.properties.meanSize || 0,
+        dataSizeStdDev:
+          selectedIOT.properties.dataSizeStdDev ??
+          selectedIOT.properties.stdv ??
+          20,
         urgency: selectedIOT.properties.urgency || "BestEffort",
         slack: nonNegativeSlack(selectedIOT.properties.slack),
         numTasks: selectedIOT.properties.numTasks || 0,
@@ -380,6 +399,8 @@ const EditIoTProperties = ({
         deviceRole: selectedIOT.properties.deviceRole || "sensor",
         frequency: selectedIOT.properties.frequency || 0,
         connectivity: selectedIOT.properties.connectivity || "WiFi",
+        customThroughputKbps:
+          selectedIOT.properties.customThroughputKbps ?? 125,
         energySource: selectedIOT.properties.energySource || "Wired",
       },
       queue: selectedIOT.queue || [],
@@ -450,6 +471,34 @@ const EditIoTProperties = ({
             </div>
             <div className="mt-2">
               <label className="block text-sm font-semibold text-gray-700 mb-1">
+                Data Size Standard Deviation (KB)
+              </label>
+              <div className="w-full border px-3 py-2 text-sm rounded bg-gray-100">
+                {selectedIOT.properties.dataSizeStdDev ??
+                  selectedIOT.properties.stdv ??
+                  20}
+              </div>
+            </div>
+            <div className="mt-2">
+              <label className="block text-sm font-semibold text-gray-700 mb-1">
+                Connectivity
+              </label>
+              <div className="w-full border px-3 py-2 text-sm rounded bg-gray-100">
+                {selectedIOT.properties.connectivity || "WiFi"}
+              </div>
+            </div>
+            {selectedIOT.properties.connectivity === "Custom" && (
+              <div className="mt-2">
+                <label className="block text-sm font-semibold text-gray-700 mb-1">
+                  Custom Transfer Rate (KB/s)
+                </label>
+                <div className="w-full border px-3 py-2 text-sm rounded bg-gray-100">
+                  {selectedIOT.properties.customThroughputKbps ?? 125}
+                </div>
+              </div>
+            )}
+            <div className="mt-2">
+              <label className="block text-sm font-semibold text-gray-700 mb-1">
                 Urgency
               </label>
               <div className="w-full border px-3 py-2 text-sm rounded bg-gray-100">
@@ -468,7 +517,7 @@ const EditIoTProperties = ({
 
           <div className="border-t pt-3 mt-2">
             <p className="text-xs font-bold text-gray-500 uppercase mb-2">
-              Arrival / Scenario
+              Generation / Scenario
             </p>
             <div>
               <label className="block text-sm font-semibold text-gray-700 mb-1">
@@ -480,7 +529,7 @@ const EditIoTProperties = ({
             </div>
             <div className="mt-2">
               <label className="block text-sm font-semibold text-gray-700 mb-1">
-                Start Time
+                Generation Start Time
               </label>
               <div className="w-full border px-3 py-2 text-sm rounded bg-gray-100">
                 {selectedIOT.properties.startTime ?? "-"}
@@ -488,7 +537,7 @@ const EditIoTProperties = ({
             </div>
             <div className="mt-2">
               <label className="block text-sm font-semibold text-gray-700 mb-1">
-                End Time
+                Generation End Time
               </label>
               <div className="w-full border px-3 py-2 text-sm rounded bg-gray-100">
                 {selectedIOT.properties.endTime ?? "-"}
@@ -575,6 +624,68 @@ const EditIoTProperties = ({
         </div>
         <div className="mt-2">
           <label className="block text-sm font-semibold text-gray-700 mb-1">
+            Data Size Standard Deviation (KB)
+          </label>
+          <input
+            type="number"
+            min="0"
+            step="any"
+            value={editedIOT.properties?.dataSizeStdDev}
+            onChange={(e) =>
+              handleChange(
+                "dataSizeStdDev",
+                Math.max(0, Number(e.target.value) || 0),
+              )
+            }
+            className="w-full border px-3 py-2 text-sm rounded"
+          />
+        </div>
+        <div className="mt-2">
+          <label className="block text-sm font-semibold text-gray-700 mb-1">
+            Connectivity
+          </label>
+          <select
+            value={editedIOT.properties?.connectivity}
+            onChange={(e) => handleChange("connectivity", e.target.value)}
+            className="w-full border px-3 py-2 text-sm rounded"
+          >
+            <option value="WiFi">WiFi</option>
+            <option value="Bluetooth">Bluetooth</option>
+            <option value="Ethernet">Ethernet</option>
+            <option value="5G">5G</option>
+            <option value="LTE">LTE</option>
+            <option value="Other">Other</option>
+            <option value="Custom">Custom</option>
+          </select>
+          {editedIOT.properties?.connectivity === "Custom" && (
+            <div className="mt-2">
+              <label className="block text-sm font-semibold text-gray-700 mb-1">
+                Custom Transfer Rate (KB/s)
+              </label>
+              <input
+                type="number"
+                min="0.001"
+                step="any"
+                value={editedIOT.properties?.customThroughputKbps}
+                onChange={(e) =>
+                  handleChange(
+                    "customThroughputKbps",
+                    Math.max(0.001, Number(e.target.value) || 0.001),
+                  )
+                }
+                className="w-full border px-3 py-2 text-sm rounded"
+              />
+            </div>
+          )}
+          <p className="mt-1 text-xs text-gray-500">
+            Estimated transfer rate: {getConnectivityThroughput(
+              editedIOT.properties?.connectivity,
+              editedIOT.properties?.customThroughputKbps,
+            ).toLocaleString()} KB/s
+          </p>
+        </div>
+        <div className="mt-2">
+          <label className="block text-sm font-semibold text-gray-700 mb-1">
             Urgency
           </label>
           <input
@@ -604,7 +715,7 @@ const EditIoTProperties = ({
 
       <div className="border-t pt-3 mt-2">
         <p className="text-xs font-bold text-gray-500 uppercase mb-2">
-          Arrival / Scenario
+          Generation / Scenario
         </p>
         <div>
           <label className="block text-sm font-semibold text-gray-700 mb-1">
@@ -620,7 +731,7 @@ const EditIoTProperties = ({
         </div>
         <div className="mt-2">
           <label className="block text-sm font-semibold text-gray-700 mb-1">
-            Start Time
+            Generation Start Time
           </label>
           <input
             type="number"
@@ -632,7 +743,7 @@ const EditIoTProperties = ({
         </div>
         <div className="mt-2">
           <label className="block text-sm font-semibold text-gray-700 mb-1">
-            End Time
+            Generation End Time
           </label>
           <input
             type="number"

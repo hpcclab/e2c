@@ -17,6 +17,10 @@ import {
 import { useGlobalState } from "../context/GlobalStates";
 
 const taskIdNumber = (task) => Number(task.taskId ?? task.id);
+const formatNumber = (value, digits = 3) => {
+  const number = Number(value);
+  return Number.isFinite(number) ? number.toFixed(digits) : "-";
+};
 
 const taskStatusRank = (task, sortMode) => {
   const status = String(task.status || "").toUpperCase();
@@ -1065,7 +1069,19 @@ const SimulationReport = ({
                       Assigned Machine
                     </th>
                     <th className="border border-gray-300 px-3 py-2 font-semibold">
-                      Arrival
+                      Generated
+                    </th>
+                    <th className="border border-gray-300 px-3 py-2 font-semibold">
+                      Data (KB)
+                    </th>
+                    <th className="border border-gray-300 px-3 py-2 font-semibold">
+                      Connection
+                    </th>
+                    <th className="border border-gray-300 px-3 py-2 font-semibold">
+                      Travel
+                    </th>
+                    <th className="border border-gray-300 px-3 py-2 font-semibold">
+                      Machine Arrival
                     </th>
                     <th className="border border-gray-300 px-3 py-2 font-semibold">
                       Start
@@ -1135,27 +1151,41 @@ const SimulationReport = ({
                             {task.assigned_machine ?? "N/A"}
                           </td>
                           <td className="border border-gray-300 px-3 py-2">
-                            {task.arrival_time?.toFixed(3) ?? "-"}
+                            {formatNumber(
+                              task.generation_time ?? task.arrival_time,
+                            )}
+                          </td>
+                          <td className="border border-gray-300 px-3 py-2">
+                            {formatNumber(task.data_size, 2)}
+                          </td>
+                          <td className="border border-gray-300 px-3 py-2">
+                            {task.connectivity ?? "-"}
+                          </td>
+                          <td className="border border-gray-300 px-3 py-2">
+                            {formatNumber(task.travel_time)}
+                          </td>
+                          <td className="border border-gray-300 px-3 py-2">
+                            {formatNumber(task.arrival_time)}
                           </td>
                           <td className="border border-gray-300 px-3 py-2">
                             {didNotRun
                               ? "DNR"
-                              : task.start_time?.toFixed(3) ?? "-"}
+                              : formatNumber(task.start_time)}
                           </td>
                           <td className="border border-gray-300 px-3 py-2">
                             {didNotRun
                               ? "DNR"
-                              : task.end_time?.toFixed(3) ?? "-"}
+                              : formatNumber(task.end_time)}
                           </td>
                           <td className="border border-gray-300 px-3 py-2 text-purple-700 font-medium">
-                            {task.execution_time?.toFixed(3) ?? "-"}
+                            {formatNumber(task.execution_time)}
                           </td>
                           <td
                             className={`border border-gray-300 px-3 py-2 ${
                               deadlineMissed ? "text-red-600 font-semibold" : ""
                             }`}
                           >
-                            {task.deadline?.toFixed(3) ?? "-"}
+                            {formatNumber(task.deadline)}
                           </td>
                           <td className="border border-gray-300 px-3 py-2">
                             <span
