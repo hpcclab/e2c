@@ -3,15 +3,16 @@ import test from "node:test";
 import {
   calculateArrivalTime,
   calculateTravelTime,
-  getConnectivityThroughput,
+  getConnectivityDataRateKbps,
+  resolveDataRateKbps,
 } from "../utils/networkDelay.js";
 
-test("connection types use documented representative throughput values", () => {
-  assert.equal(getConnectivityThroughput("Bluetooth"), 100);
-  assert.equal(getConnectivityThroughput("LTE"), 1100);
-  assert.equal(getConnectivityThroughput("5G"), 2825);
-  assert.equal(getConnectivityThroughput("WiFi"), 6750);
-  assert.equal(getConnectivityThroughput("Ethernet"), 12500);
+test("connection types use representative data rates in Kbps", () => {
+  assert.equal(getConnectivityDataRateKbps("Bluetooth"), 800);
+  assert.equal(getConnectivityDataRateKbps("LTE"), 8800);
+  assert.equal(getConnectivityDataRateKbps("5G"), 22600);
+  assert.equal(getConnectivityDataRateKbps("WiFi"), 54000);
+  assert.equal(getConnectivityDataRateKbps("Ethernet"), 100000);
 });
 
 test("travel time grows with data size and slower connections", () => {
@@ -28,9 +29,17 @@ test("machine arrival is generation time plus travel time", () => {
   assert.equal(calculateArrivalTime(2, 0, "Bluetooth"), 2);
 });
 
-test("custom connectivity uses the supplied positive transfer rate", () => {
-  assert.equal(getConnectivityThroughput("Custom", 50), 50);
-  assert.equal(calculateTravelTime(100, "Custom", 50), 2);
-  assert.equal(calculateArrivalTime(2, 100, "Custom", 50), 4);
-  assert.equal(getConnectivityThroughput("Custom", 0), 125);
+test("the configured data rate overrides any connectivity default", () => {
+  assert.equal(getConnectivityDataRateKbps("Custom", 400), 400);
+  assert.equal(getConnectivityDataRateKbps("WiFi", 400), 400);
+  assert.equal(calculateTravelTime(100, "Custom", 400), 2);
+  assert.equal(calculateArrivalTime(2, 100, "Custom", 400), 4);
+  assert.equal(getConnectivityDataRateKbps("Custom", 0), 1000);
+});
+
+test("legacy custom KB/s values migrate to Kbps", () => {
+  assert.equal(
+    resolveDataRateKbps({ connectivity: "Custom", customThroughputKbps: 125 }),
+    1000,
+  );
 });

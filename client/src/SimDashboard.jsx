@@ -519,8 +519,7 @@ const SimDashboard = () => {
       dataSizeStdDev:
         updatedIOT.properties.dataSizeStdDev ?? updatedIOT.properties.stdv ?? 20,
       connectivity: updatedIOT.properties.connectivity,
-      customThroughputKbps:
-        updatedIOT.properties.customThroughputKbps ?? 125,
+      dataRateKbps: updatedIOT.properties.dataRateKbps ?? 54000,
       urgency: updatedIOT.properties.urgency,
       slack: updatedIOT.properties.slack,
     };

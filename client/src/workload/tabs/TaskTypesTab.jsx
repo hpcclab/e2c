@@ -49,7 +49,7 @@ const TaskTypesTab = ({ taskTypes, setTaskTypes, setActiveTab }) => {
         meanSize: newMeanSize,
         dataSizeStdDev: Math.max(0, Number(newDataSizeStdDev) || 0),
         connectivity: "WiFi",
-        customThroughputKbps: 125,
+        dataRateKbps: 54000,
         urgency: newUrgency,
         slack: nonNegativeSlack(newSlack),
       },

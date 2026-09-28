@@ -11,6 +11,7 @@ import {
   calculateArrivalTime,
   calculateTravelTime,
   normalizeConnectivity,
+  resolveDataRateKbps,
 } from "../../utils/networkDelay";
 
 const distributionOptions = ["uniform", "normal", "exponential", "spiky"];
@@ -96,20 +97,20 @@ export function generateWorkload(scenarioRows, taskTypes, seedOffset = 0) {
     const meanSize = Number.isFinite(parsedMeanSize) ? parsedMeanSize : 100;
     const stdv = Number.isFinite(parsedStdv) ? Math.max(0, parsedStdv) : 20;
     const connectivity = normalizeConnectivity(typeObj?.connectivity);
-    const customThroughputKbps = typeObj?.customThroughputKbps;
+    const dataRateKbps = resolveDataRateKbps(typeObj);
     const dataSizes = getDataSizes(meanSize, stdv, sample.length);
 
     sample.forEach((generation_time, i) => {
       const travel_time = calculateTravelTime(
         dataSizes[i],
         connectivity,
-        customThroughputKbps,
+        dataRateKbps,
       );
       const arrival_time = calculateArrivalTime(
         generation_time,
         dataSizes[i],
         connectivity,
-        customThroughputKbps,
+        dataRateKbps,
       );
       workload.push({
         task_type: row.taskType,
@@ -118,8 +119,7 @@ export function generateWorkload(scenarioRows, taskTypes, seedOffset = 0) {
         arrival_time,
         travel_time,
         connectivity,
-        custom_throughput_kbps:
-          connectivity === "Custom" ? Number(customThroughputKbps) : undefined,
+        data_rate_kbps: dataRateKbps,
         distribution: row.distribution,
         data_size: dataSizes[i],
         status: "NEW",
