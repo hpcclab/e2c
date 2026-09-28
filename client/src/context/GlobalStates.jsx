@@ -1,5 +1,12 @@
 // GlobalState.js
-import React, { createContext, useContext, useState, useRef } from "react";
+import React, {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useState,
+  useRef,
+} from "react";
 import {
   useEdgesState,
   useNodesState,
@@ -460,6 +467,98 @@ export const GlobalProvider = ({ children }) => {
   const simulationIntervalRef = useRef(null);
   const simCurrentRef = useRef(0);
   const totalSimTimeRef = useRef(Infinity);
+  const simulationWorkerRef = useRef(null);
+  const [simulationWorkerError, setSimulationWorkerError] = useState("");
+
+  const handleSimulationWorkerMessage = useCallback(({ data }) => {
+    if (data?.type === "STOPPED") {
+      setIsRunning(false);
+      setIsPaused(false);
+      return;
+    }
+
+    const snapshot = data?.snapshot;
+    if (!snapshot) return;
+
+    simCurrentRef.current = snapshot.time;
+    setSimulationTime(snapshot.time);
+    setMachines(snapshot.machines);
+    machinesRef.current = snapshot.machines;
+    setCompletedTasks(snapshot.completed);
+    setUnassignedTasks(snapshot.unassigned);
+    setMissedTasks(snapshot.missed);
+    setDataResults(snapshot.results);
+    setTotalTasks(snapshot.totalTasks);
+
+    if (data.type === "COMPLETE" || snapshot.complete) {
+      setIsRunning(false);
+      setIsPaused(false);
+    } else if (data.type === "PAUSED") {
+      setIsRunning(true);
+      setIsPaused(true);
+    } else {
+      setIsRunning(true);
+      setIsPaused(false);
+    }
+  }, []);
+
+  const ensureSimulationWorker = useCallback(() => {
+    if (simulationWorkerRef.current) return simulationWorkerRef.current;
+    if (typeof Worker === "undefined") {
+      setSimulationWorkerError("This browser does not support Web Workers.");
+      return null;
+    }
+
+    const worker = new Worker(
+      new URL("../workers/simulationWorker.js", import.meta.url),
+      { type: "module" },
+    );
+    worker.onmessage = handleSimulationWorkerMessage;
+    worker.onerror = (event) => {
+      console.error("Simulation worker failed:", event);
+      setSimulationWorkerError(
+        event.message || "The background simulation worker failed.",
+      );
+      setIsRunning(false);
+      setIsPaused(false);
+    };
+    simulationWorkerRef.current = worker;
+    setSimulationWorkerError("");
+    return worker;
+  }, [handleSimulationWorkerMessage]);
+
+  useEffect(() => {
+    ensureSimulationWorker();
+    return () => {
+      simulationWorkerRef.current?.terminate();
+      simulationWorkerRef.current = null;
+    };
+  }, [ensureSimulationWorker]);
+
+  const startSimulationWorker = useCallback(
+    (payload) => {
+      const worker = ensureSimulationWorker();
+      if (!worker) return false;
+      setSimulationWorkerError("");
+      setIsRunning(true);
+      setIsPaused(false);
+      worker.postMessage({ type: "START", payload });
+      return true;
+    },
+    [ensureSimulationWorker],
+  );
+
+  const pauseSimulationWorker = useCallback(() => {
+    simulationWorkerRef.current?.postMessage({ type: "PAUSE" });
+  }, []);
+
+  const resumeSimulationWorker = useCallback(() => {
+    simulationWorkerRef.current?.postMessage({ type: "RESUME" });
+  }, []);
+
+  const stopSimulationWorker = useCallback(() => {
+    simulationWorkerRef.current?.postMessage({ type: "STOP" });
+  }, []);
 
   // End Define States
 
@@ -573,6 +672,11 @@ export const GlobalProvider = ({ children }) => {
     simulationIntervalRef,
     simCurrentRef,
     totalSimTimeRef,
+    simulationWorkerError,
+    startSimulationWorker,
+    pauseSimulationWorker,
+    resumeSimulationWorker,
+    stopSimulationWorker,
   };
 
   return (

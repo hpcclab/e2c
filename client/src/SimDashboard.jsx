@@ -22,14 +22,6 @@ import "./assets/index.css";
 import { useGlobalState } from "./context/GlobalStates";
 import LBNode from "./components/LBNode";
 
-// To future authors - Ensure schedulers are imported here for use in sim
-import { FCFS } from "./schedulers/FCFS";
-import { LC } from "./schedulers/LC";
-import { RAND } from "./schedulers/RAND";
-import { URI } from "./schedulers/URI";
-import { MEET } from "./schedulers/MEET";
-import { MECT } from "./schedulers/MECT";
-import { SCHEDULER_REGISTRY } from "./schedulers/registry";
 import AutoScalerNode from "./components/AutoScalerNode";
 import AnimatedEdge from "./components/AnimatedEdge";
 import { colorMemory } from "./components/Task";
@@ -64,7 +56,6 @@ const SimDashboard = () => {
     onDragStop,
     iot,
     setIot,
-    batchQ,
     setBatchQ,
     showSidebar,
     setShowSidebar,
@@ -108,11 +99,8 @@ const SimDashboard = () => {
     setWorkspaces,
     setLoadBalancers,
     setMachineConfig,
-    ld_workspace,
     generateWorkload,
     generateMachineConfig,
-    isNeighbors,
-    getNeighbors,
     getNode,
     EDGE_PROPERTIES,
     selectedEdge,
@@ -122,23 +110,26 @@ const SimDashboard = () => {
     setShowReport,
     setUnassignedTasks,
     setMissedTasks,
+    dataResults,
     setDataResults,
     isRunning,
     setIsRunning,
     isPaused,
     setIsPaused,
-    simTotal,
     setSimTotal,
     setTotalTasks,
     totalTasks,
-    schedulerRef,
     policyAlias,
     setPolicyAlias,
     deadlinePolicy,
     setDeadlinePolicy,
-    simulationIntervalRef,
     simCurrentRef,
     totalSimTimeRef,
+    simulationWorkerError,
+    startSimulationWorker,
+    pauseSimulationWorker,
+    resumeSimulationWorker,
+    stopSimulationWorker,
   } = useGlobalState();
   // End Global States
 
@@ -255,40 +246,6 @@ const SimDashboard = () => {
       .join("")
       .toUpperCase();
   }
-  function createScheduler(alias, opts) {
-    const SchedulerClass = SCHEDULER_REGISTRY[alias];
-
-    if (!SchedulerClass) {
-      throw new Error(`Unknown scheduler: ${alias}`);
-    }
-
-    return new SchedulerClass(opts);
-  }
-  useEffect(() => {
-    if (schedulerRef.current && isPaused && !policyUpdated) return;
-    schedulerRef.current = new createScheduler(policyAlias, {
-      machines,
-      iot,
-      enqueue,
-      dequeue,
-      isNeighbors,
-      config: { LB_ID, deadlinePolicy },
-    });
-    setPolicyUpdated(false);
-  }, [policyAlias, deadlinePolicy, policyUpdated]);
-  useEffect(() => {
-    if (!schedulerRef.current) return;
-
-    const scheduler = schedulerRef.current;
-
-    batchQ.queue.forEach((task) => {
-      scheduler.addTask(task);
-    });
-    setTotalTasks(scheduler.getTotalTasks());
-    // Clear original queue so tasks aren't duplicated
-    batchQ.queue = [];
-  }, [batchQ.queue]);
-
   // End EET Parse
 
   // - Data parameter handlers
@@ -325,7 +282,6 @@ const SimDashboard = () => {
   // - Sidebar tab handlers
   const [machineTab, setMachineTab] = useState("details");
   const [IOTTab, setIOTTab] = useState("details");
-  const pendingMissedRef = useRef([]);
   const animatedMachinesRef = useRef([]);
 
   const [profilingFileContents, setProfilingFileContents] = useState("");
@@ -341,21 +297,7 @@ const SimDashboard = () => {
 
   // - Sim results handlers
 
-  const totalTasksRef = useRef(0);
-  const displayTickRef = useRef(0);
-
-  // Resume simulation if it was running when user navigated away
-  useEffect(() => {
-    if (isRunning && !isPaused && simulationTime < simTotal) {
-      simCurrentRef.current = simulationTime;
-      totalSimTimeRef.current = simTotal;
-      startSimInterval();
-    }
-    return () => {
-      clearInterval(simulationIntervalRef.current);
-      simulationIntervalRef.current = null;
-    };
-  }, []);
+  const wasRunningRef = useRef(false);
 
   const [animatedMachines, setAnimatedMachines] = useState(machines); // ANIMATION
   const [animatedIOTs, setAnimatedIOTs] = useState(iot);
@@ -364,7 +306,6 @@ const SimDashboard = () => {
   const [machine_index, setMachine_index] = useState(0);
   const [prev_machine_index, setPrev_machine_index] = useState(-1);
   const [iot_index, setIot_index] = useState(0);
-  const [task_counter, setTask_counter] = useState(0);
   const [taskLoaded, setTaskLoaded] = useState(false);
 
   const [task, setTask] = useState({
@@ -378,7 +319,6 @@ const SimDashboard = () => {
     deadline: "",
   });
   let machine_count;
-  let LB_ID = "LBNode_2";
   // End State assignments
 
   // Animation references and creation
@@ -466,30 +406,16 @@ const SimDashboard = () => {
   };
 
   const handlePauseSim = () => {
-    clearInterval(simulationIntervalRef.current);
-    simulationIntervalRef.current = null;
-    setIsPaused(true);
+    pauseSimulationWorker();
   };
 
   const handleResumeSim = () => {
-    setIsPaused(false);
-    startSimInterval();
+    resumeSimulationWorker();
   };
 
   const handleRestartSim = () => {
-    clearInterval(simulationIntervalRef.current);
-    simulationIntervalRef.current = null;
+    stopSimulationWorker();
     simCurrentRef.current = 0;
-
-    // Fresh scheduler clears all stats, queues, and unmapped tasks
-    schedulerRef.current = new createScheduler(policyAlias, {
-      machines,
-      iot,
-      enqueue,
-      dequeue,
-      isNeighbors,
-      config: { LB_ID, deadlinePolicy },
-    });
 
     // Clear machine queues from the previous run
     const clearedMachines = machines.map((m) => ({ ...m, queue: [] }));
@@ -497,12 +423,11 @@ const SimDashboard = () => {
     machinesRef.current = clearedMachines;
 
     runDataSimulation();
-    setIsRunning(false);
-    setIsPaused(false);
-    handlePauseSim();
+    pauseSimulationWorker();
   };
 
   const handleResetWorkload = () => {
+    stopSimulationWorker();
     // Clear all uploaded file information
     setWorkloadFileName("");
     setWorkloadFileUploaded(false);
@@ -620,74 +545,56 @@ const SimDashboard = () => {
     // generate new workload and save to workload Q
   };
   // End Data Update handlers
-  const startSimInterval = () => {
-    clearInterval(simulationIntervalRef.current);
-    simulationIntervalRef.current = setInterval(() => {
-      simCurrentRef.current = parseFloat(
-        (simCurrentRef.current + 0.01).toFixed(3),
-      );
-      setSimulationTime(simCurrentRef.current);
-      if (simCurrentRef.current >= totalSimTimeRef.current) {
-        if (pendingMissedRef.current.length > 0) {
-          setMissedTasks((prev) => [...prev, ...pendingMissedRef.current]);
-          pendingMissedRef.current = [];
-        }
-        setSimulationTime(Number(totalSimTimeRef.current));
-        clearInterval(simulationIntervalRef.current);
-        simulationIntervalRef.current = null;
-        setIsRunning(false);
-        setIsPaused(false);
-      }
-    }, 10);
-  };
-
   const runDataSimulation = async () => {
     try {
-      // ensure possible to run
       if (!iot?.length || !machines?.length) {
         alert("Failed to run simulation. Missing IoTs or Machines");
         return;
       }
-      // reset current states then load new workspace
-      setIsRunning(true);
-      setIsPaused(false);
-      const scheduler =
-        schedulerRef.current ??
-        new createScheduler(policyAlias, {
-          machines,
-          iot,
-          enqueue,
-          dequeue,
-          isNeighbors,
-          config: { LB_ID, deadlinePolicy },
-        });
-      schedulerRef.current = scheduler;
-      scheduler.clearBatchQ();
+
+      const workload = generateWorkload(scenarioRows, taskTypes);
+      if (!workload.length) {
+        alert("Failed to run simulation. No tasks were generated.");
+        return;
+      }
+
       const clearedMachines = machines.map((m) => ({
         ...m,
         utilization_time: 0,
         total_cost: 0,
+        total_tasks: 0,
         queue: [],
       }));
       setMachines(clearedMachines);
       machinesRef.current = clearedMachines;
-      ld_workspace();
-
-      setShowReport(true); // Show the report when results are ready
+      setBatchQ({ id: -2, name: "Batch Queue", queue: [...workload] });
+      setWorkloadTableData([...workload]);
+      setWorkloadFileUploaded(true);
+      setMachineConfig(generateMachineConfig(clearedMachines, taskTypes));
+      setShowReport(true);
 
       simCurrentRef.current = 0;
-      displayTickRef.current = 0;
       setSimulationTime(0);
       setCompletedTasks([]);
       setUnassignedTasks([]);
       setMissedTasks([]);
-      totalTasksRef.current = scheduler.getBatchQ().length;
+      setDataResults([...workload]);
+      setTotalTasks(workload.length);
+      setSimTotal(Infinity);
+      totalSimTimeRef.current = Infinity;
 
-      totalSimTimeRef.current =
-        scheduler.getBatchQ().at(-1)?.end_time || Infinity;
-      setSimTotal(totalSimTimeRef.current);
-
-      startSimInterval();
+      const started = startSimulationWorker({
+        policyAlias,
+        deadlinePolicy,
+        machines: clearedMachines,
+        iot,
+        tasks: workload,
+        edges: edges.map(({ source, target }) => ({ source, target })),
+        nodes: nodes.map(({ id, type }) => ({ id, type })),
+      });
+      if (!started) {
+        alert("Failed to start the background simulation worker.");
+      }
     } catch (error) {
       console.error("Error running simulation:", error);
       alert("Failed to run simulation.");
@@ -699,95 +606,24 @@ const SimDashboard = () => {
     animatedMachinesRef.current = animatedMachines;
   }, [animatedMachines]);
 
-  /*queue fns */
-  const enqueue = useCallback(
-    (targetId, sender) => {
-      const job = sender;
-      if (!job) return;
-      setMachines((prevMachines) =>
-        prevMachines.map((machine) =>
-          machine.id === targetId
-            ? { ...machine, queue: [...(machine.queue || []), job] }
-            : machine,
-        ),
-      );
-      return;
-    },
-    [setMachines],
-  );
-  const dequeue = useCallback(
-    (machineId) => {
-      // Sync machine utilization and task counts accumulated in the scheduler on dequeue
-      const scheduler = schedulerRef.current;
-      const machineStats = scheduler.getMachineStats();
-      setMachines((prev) =>
-        prev.map((m) => {
-          if (m.id !== machineId) return m;
-          const stats = machineStats.get(machineId);
-          return {
-            ...m,
-            utilization_time: stats?.utilization_time || 0,
-            total_tasks: stats?.total_tasks || 0,
-            total_cost: (m.price || 0) * (stats?.utilization_time || 0) * 3600,
-            queue: (m.queue || []).slice(1),
-          };
-        }),
-      );
-    },
-    [setMachines],
-  );
-  // Cleanup interval on unmount
   useEffect(() => {
-    return () => {
-      if (simulationIntervalRef.current) {
-        clearInterval(simulationIntervalRef.current);
-      }
-    };
-  }, []);
+    if (simulationWorkerError) alert(simulationWorkerError);
+  }, [simulationWorkerError]);
 
-  // Update schedular
   useEffect(() => {
-    if (!isRunning || !schedulerRef.current) {
-      setTask_counter(0);
+    if (isRunning) {
+      wasRunningRef.current = true;
       return;
     }
-    if (isPaused) return;
-    const scheduler = schedulerRef.current;
-
-    // Sync simulation time
-    scheduler.setTime(simulationTime);
-    scheduler.setMachines(machines);
-    scheduler.setIot(iot);
-
-    // Run ONE scheduling step
-    scheduler.schedule();
-
-    // Process running tasks (completion)
-    scheduler.processMachines();
-
-    const completed = [...scheduler.getStats().completed];
-    const unassigned = scheduler
-      .getBatchQ()
-      .filter((task) => task.status === "NEW");
-    const missed = [...scheduler.getStats().missed];
-
-    setCompletedTasks(completed);
-    setUnassignedTasks(unassigned);
-    setMissedTasks(missed);
-    setDataResults([...unassigned, ...completed, ...missed]);
-
-    // Stop sim when all tasks are processed
-    const finished =
-      completed.length + missed.length;
-    if (totalTasks > 0 && finished >= totalTasks) {
-      clearInterval(simulationIntervalRef.current);
-      simulationIntervalRef.current = null;
-      setIsRunning(false);
-      setIsPaused(false);
-      console.log("Simulation complete!");
-      alert("Simulation complete! checkout it's Report");
+    if (
+      wasRunningRef.current &&
+      totalTasks > 0 &&
+      dataResults.length >= totalTasks
+    ) {
+      wasRunningRef.current = false;
+      alert("Simulation complete! Check the Reports page for results.");
     }
-  }, [simulationTime, isRunning]);
+  }, [dataResults.length, isRunning, totalTasks]);
 
   // /* -------------------- WORKSPACE, EDGE, MACHINE, and IOT NODES -------------------- */
   useEffect(() => {
@@ -862,14 +698,12 @@ const SimDashboard = () => {
       return;
     }
 
-    clearInterval(simulationIntervalRef.current);
-    simulationIntervalRef.current = null;
+    stopSimulationWorker();
     simCurrentRef.current = 0;
     totalSimTimeRef.current = Infinity;
     machinesRef.current = [];
     batchSlotsRef.current = [];
     machineSlotsRef.current = {};
-    pendingMissedRef.current = [];
     animatedMachinesRef.current = [];
 
     setIsRunning(false);
