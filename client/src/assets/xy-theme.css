@@ -3,7 +3,7 @@
 .react-flow {
   --xy-background-color: #f7f9fb;
   /* Custom Variables */
-  --xy-theme-selected: #f57dbd;
+  --xy-theme-selected: #2563eb;
   --xy-theme-hover: rgb(47, 172, 255);
   --xy-theme-edge-hover: black;
   --xy-theme-color-focus: #e8e8e8;
@@ -64,7 +64,9 @@
 
 .react-flow__node.selectable.selected {
   border-color: var(--xy-theme-selected);
-  box-shadow: var(--xy-node-boxshadow-default);
+  box-shadow:
+    0 0 0 3px rgba(37, 99, 235, 0.25),
+    var(--xy-node-boxshadow-default);
 }
 
 .react-flow__node-group {

@@ -7,6 +7,7 @@ import {
   MdSmartphone,
   MdTv,
   MdDirectionsCar,
+  MdPerson,
 } from "react-icons/md";
 
 export const IOT_ICON_MAP = {
@@ -18,4 +19,5 @@ export const IOT_ICON_MAP = {
   MdSmartphone,
   MdTv,
   MdDirectionsCar,
+  MdPerson,
 };

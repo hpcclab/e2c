@@ -2,6 +2,9 @@ import React from "react";
 import { IOT_ICON_MAP } from "../utils/iotIcons";
 
 export default function IoT({ iot, setSelectedIOT, onClicked }) {
+  const isHumanUser = Boolean(iot.properties?.user);
+  const displayIconKey = isHumanUser ? "MdPerson" : iot.icon;
+
   function handleChildClick(event) {
     event.stopPropagation();
     setSelectedIOT({
@@ -20,10 +23,10 @@ export default function IoT({ iot, setSelectedIOT, onClicked }) {
       onClick={handleChildClick}
       className="bg-white border-4 p-3 rounded-lg shadow-md flex flex-col items-center cursor-pointer hover:scale-105 transition min-w-[72px]"
     >
-      {iot.icon && IOT_ICON_MAP[iot.icon] ? (
+      {displayIconKey && IOT_ICON_MAP[displayIconKey] ? (
         <>
           {(() => {
-            const Icon = IOT_ICON_MAP[iot.icon];
+            const Icon = IOT_ICON_MAP[displayIconKey];
             return <Icon size={28} className="text-blue-600" />;
           })()}
           <span className="text-xs text-gray-700 font-semibold mt-1 text-center max-w-[80px] truncate">

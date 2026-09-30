@@ -6,7 +6,9 @@ import {
   getDefaultDataRateKbps,
   resolveDataRateKbps,
 } from "../utils/networkDelay";
-import SuggestSlackButton from "./SuggestSlackButton";
+import AutoSuggestSlack from "./AutoSuggestSlack";
+import SlackHelp from "./SlackHelp";
+import { normalizeDataInput } from "../utils/dataInput";
 
 const IOT_PRESETS = [
   { name: "Camera", icon: "MdVideocam" },
@@ -251,12 +253,12 @@ const EditIoTProperties = ({
       name: selectedIOT.name || "",
       properties: {
         task_type: selectedIOT.properties.task_type || "",
-        dataInput: selectedIOT.properties.dataInput || "image",
+        dataInput: normalizeDataInput(selectedIOT.properties.dataInput),
         meanSize: selectedIOT.properties.meanSize || 0,
         dataSizeStdDev:
           selectedIOT.properties.dataSizeStdDev ??
           selectedIOT.properties.stdv ??
-          20,
+          1,
         urgency: selectedIOT.properties.urgency || "BestEffort",
         slack: nonNegativeSlack(selectedIOT.properties.slack),
         numTasks: selectedIOT.properties.numTasks || 0,
@@ -265,7 +267,10 @@ const EditIoTProperties = ({
         distribution: selectedIOT.properties.distribution || "uniform",
         deviceRole: selectedIOT.properties.deviceRole || "sensor",
         frequency: selectedIOT.properties.frequency || 0,
-        connectivity: selectedIOT.properties.connectivity || "WiFi",
+        connectivity:
+          selectedIOT.properties.connectivity === "Other"
+            ? "Custom"
+            : selectedIOT.properties.connectivity || "WiFi",
         dataRateKbps: resolveDataRateKbps(selectedIOT.properties),
         energySource:
           selectedIOT.properties.energySource === "Wired"
@@ -398,12 +403,12 @@ const EditIoTProperties = ({
       name: selectedIOT.name || "",
       properties: {
         task_type: selectedIOT.properties.task_type || "",
-        dataInput: selectedIOT.properties.dataInput || "image",
+        dataInput: normalizeDataInput(selectedIOT.properties.dataInput),
         meanSize: selectedIOT.properties.meanSize || 0,
         dataSizeStdDev:
           selectedIOT.properties.dataSizeStdDev ??
           selectedIOT.properties.stdv ??
-          20,
+          1,
         urgency: selectedIOT.properties.urgency || "BestEffort",
         slack: nonNegativeSlack(selectedIOT.properties.slack),
         numTasks: selectedIOT.properties.numTasks || 0,
@@ -412,7 +417,10 @@ const EditIoTProperties = ({
         distribution: selectedIOT.properties.distribution || "uniform",
         deviceRole: selectedIOT.properties.deviceRole || "sensor",
         frequency: selectedIOT.properties.frequency || 0,
-        connectivity: selectedIOT.properties.connectivity || "WiFi",
+        connectivity:
+          selectedIOT.properties.connectivity === "Other"
+            ? "Custom"
+            : selectedIOT.properties.connectivity || "WiFi",
         dataRateKbps: resolveDataRateKbps(selectedIOT.properties),
         energySource:
           selectedIOT.properties.energySource === "Wired"
@@ -527,7 +535,7 @@ const EditIoTProperties = ({
                 Data
               </label>
               <div className="w-full border px-3 py-2 text-sm rounded bg-gray-100">
-                {selectedIOT.properties.dataInput || "-"}
+                {normalizeDataInput(selectedIOT.properties.dataInput)}
               </div>
             </div>
             <div className="mt-2">
@@ -545,7 +553,7 @@ const EditIoTProperties = ({
               <div className="w-full border px-3 py-2 text-sm rounded bg-gray-100">
                 {selectedIOT.properties.dataSizeStdDev ??
                   selectedIOT.properties.stdv ??
-                  20}
+                  1}
               </div>
             </div>
             <div className="mt-2">
@@ -558,7 +566,7 @@ const EditIoTProperties = ({
             </div>
             <div className="mt-2">
               <label className="block text-sm font-semibold text-gray-700 mb-1">
-                Slack
+                Slack <SlackHelp value={selectedIOT.properties.slack} />
               </label>
               <div className="w-full border px-3 py-2 text-sm rounded bg-gray-100">
                 {selectedIOT.properties.slack ?? "-"}
@@ -672,7 +680,6 @@ const EditIoTProperties = ({
             <option value="Ethernet">Ethernet</option>
             <option value="5G">5G</option>
             <option value="LTE">LTE</option>
-            <option value="Other">Other</option>
             <option value="Custom">Custom</option>
           </select>
           <div className="mt-2">
@@ -748,6 +755,7 @@ const EditIoTProperties = ({
             onChange={(e) => handleChange("dataInput", e.target.value)}
             className="w-full border px-3 py-2 text-sm rounded"
           >
+            <option value="binary">binary</option>
             <option value="image">image</option>
             <option value="audio">audio</option>
             <option value="text">text</option>
@@ -797,12 +805,16 @@ const EditIoTProperties = ({
           />
         </div>
         <div className="mt-2">
-          <SuggestSlackButton
+          <AutoSuggestSlack
             source={editedIOT}
             onSuggest={(value) => handleChange("slack", value)}
           />
           <label className="block text-sm font-semibold text-gray-700 mb-1">
-            Slack
+            Slack{" "}
+            <SlackHelp
+              value={editedIOT.properties?.slack}
+              onApply={(value) => handleChange("slack", value)}
+            />
           </label>
           <input
             type="number"

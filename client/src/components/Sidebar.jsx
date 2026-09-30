@@ -153,9 +153,8 @@ const NODE_CONFIG = [
         strokeLinecap="round"
         strokeLinejoin="round"
       >
-        <circle cx="12" cy="12" r="3" />
-        <path d="M6.3 6.3a8 8 0 0 0 0 11.4M17.7 6.3a8 8 0 0 1 0 11.4" />
-        <path d="M3.05 3.05a14 14 0 0 0 0 17.9M20.95 3.05a14 14 0 0 1 0 17.9" />
+        <circle cx="12" cy="8" r="3.5" />
+        <path d="M5 21a7 7 0 0 1 14 0" />
       </svg>
     ),
     description: "Human",
@@ -433,9 +432,9 @@ export default function Sidebar() {
           name: `IOT ${Date.now().toString().slice(-4)}`,
           properties: {
             task_type: `IOT ${Date.now().toString().slice(-4)}`,
-            dataInput: "default",
+            dataInput: "binary",
             meanSize: 6,
-            dataSizeStdDev: 20,
+            dataSizeStdDev: 1,
             urgency: "BestEffort",
             slack: 1,
             numTasks: 10,
@@ -504,11 +503,12 @@ export default function Sidebar() {
         const newIot = {
           id: userId,
           name: userName,
+          icon: "MdPerson",
           properties: {
             task_type: userName,
-            dataInput: "default",
+            dataInput: "binary",
             meanSize: 6,
-            dataSizeStdDev: 20,
+            dataSizeStdDev: 1,
             urgency: "BestEffort",
             slack: 1,
             numTasks: 10,

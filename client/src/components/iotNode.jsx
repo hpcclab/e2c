@@ -9,8 +9,15 @@ export default memo(({ data, isConnectable }) => {
     setSidebarMode,
     setShowSidebar,
     setSubmissionStatus,
+    setNodes,
   } = useGlobalState();
   const openSidebar = (mode) => {
+    setNodes((currentNodes) =>
+      currentNodes.map((node) => ({
+        ...node,
+        selected: node.id === `nd_${data.iot.id}`,
+      })),
+    );
     setSidebarMode(mode);
     setShowSidebar(true);
     setSubmissionStatus("");

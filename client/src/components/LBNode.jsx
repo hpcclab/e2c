@@ -2,14 +2,21 @@ import React, { memo } from "react";
 import { Handle, Position } from "@xyflow/react";
 import { useGlobalState } from "../context/GlobalStates";
 
-export default memo(({ data, isConnectable }) => {
+export default memo(({ id, data, isConnectable }) => {
   const {
     setSidebarMode,
     setShowSidebar,
     setSubmissionStatus,
     loadBalancerRef,
+    setNodes,
   } = useGlobalState();
   const openSidebar = (mode) => {
+    setNodes((currentNodes) =>
+      currentNodes.map((node) => ({
+        ...node,
+        selected: node.id === id,
+      })),
+    );
     setSidebarMode(mode);
     setShowSidebar(true);
     setSubmissionStatus(""); // Reset submission status when opening the sidebar

@@ -93,9 +93,9 @@ export function generateWorkload(scenarioRows, taskTypes, seedOffset = 0) {
         : undefined) ??
       (taskTypes || []).find((t) => t.name === row.taskType);
     const parsedMeanSize = Number(typeObj?.meanSize ?? 100);
-    const parsedStdv = Number(typeObj?.dataSizeStdDev ?? typeObj?.stdv ?? 20);
+    const parsedStdv = Number(typeObj?.dataSizeStdDev ?? typeObj?.stdv ?? 1);
     const meanSize = Number.isFinite(parsedMeanSize) ? parsedMeanSize : 100;
-    const stdv = Number.isFinite(parsedStdv) ? Math.max(0, parsedStdv) : 20;
+    const stdv = Number.isFinite(parsedStdv) ? Math.max(0, parsedStdv) : 1;
     const connectivity = normalizeConnectivity(typeObj?.connectivity);
     const dataRateKbps = resolveDataRateKbps(typeObj);
     const dataSizes = getDataSizes(meanSize, stdv, sample.length);

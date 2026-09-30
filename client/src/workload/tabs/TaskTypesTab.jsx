@@ -21,7 +21,7 @@ const TaskTypesTab = ({ taskTypes, setTaskTypes, setActiveTab }) => {
   const [newName, setNewName] = useState("");
   const [newDataInput, setNewDataInput] = useState(defaultInputs[0]);
   const [newMeanSize, setNewMeanSize] = useState("");
-  const [newDataSizeStdDev, setNewDataSizeStdDev] = useState("20");
+  const [newDataSizeStdDev, setNewDataSizeStdDev] = useState("1");
   const [customInputs, setCustomInputs] = useState([]);
   const [showCustomInput, setShowCustomInput] = useState(false);
   const [customInputValue, setCustomInputValue] = useState("");
@@ -57,7 +57,7 @@ const TaskTypesTab = ({ taskTypes, setTaskTypes, setActiveTab }) => {
     setNewName("");
     setNewDataInput(defaultInputs[0]);
     setNewMeanSize("");
-    setNewDataSizeStdDev("20");
+    setNewDataSizeStdDev("1");
     setNewUrgency("BestEffort");
     setNewSlack("");
   };
@@ -93,7 +93,7 @@ const TaskTypesTab = ({ taskTypes, setTaskTypes, setActiveTab }) => {
               ...editRow,
               dataSizeStdDev: Math.max(
                 0,
-                Number(editRow.dataSizeStdDev ?? editRow.stdv ?? 20) || 0,
+                Number(editRow.dataSizeStdDev ?? editRow.stdv ?? 1) || 0,
               ),
               slack: nonNegativeSlack(editRow.slack),
             }
@@ -181,7 +181,7 @@ const TaskTypesTab = ({ taskTypes, setTaskTypes, setActiveTab }) => {
                           type="number"
                           min="0"
                           step="any"
-                          value={editRow.dataSizeStdDev ?? editRow.stdv ?? 20}
+                          value={editRow.dataSizeStdDev ?? editRow.stdv ?? 1}
                           onChange={(e) =>
                             handleEditChange(
                               "dataSizeStdDev",
@@ -240,7 +240,7 @@ const TaskTypesTab = ({ taskTypes, setTaskTypes, setActiveTab }) => {
                       </td>
                       <td className="border px-2 py-1">
                         {typeof type === "object"
-                          ? (type.dataSizeStdDev ?? type.stdv ?? 20)
+                          ? (type.dataSizeStdDev ?? type.stdv ?? 1)
                           : "-"}
                       </td>
                       <td className="border px-2 py-1">

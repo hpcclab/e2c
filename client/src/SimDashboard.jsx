@@ -5,6 +5,7 @@ import EditMachineProperties from "./components/EditMachineProperties";
 import EditIoTProperties from "./components/EditIoTProperties";
 import EditUserProperties from "./components/EditUserProperties";
 import EditEdgeProperties from "./components/EditEdgeProperties";
+import DeadlinePolicyHelp from "./components/DeadlinePolicyHelp";
 
 // Drag and drop imports and requirements
 import { Background, ControlButton, Controls, ReactFlow, addEdge } from "@xyflow/react";
@@ -517,7 +518,7 @@ const SimDashboard = () => {
       dataInput: updatedIOT.properties.dataInput,
       meanSize: updatedIOT.properties.meanSize,
       dataSizeStdDev:
-        updatedIOT.properties.dataSizeStdDev ?? updatedIOT.properties.stdv ?? 20,
+        updatedIOT.properties.dataSizeStdDev ?? updatedIOT.properties.stdv ?? 1,
       connectivity: updatedIOT.properties.connectivity,
       dataRateKbps: updatedIOT.properties.dataRateKbps ?? 54000,
       urgency: updatedIOT.properties.urgency,
@@ -853,7 +854,15 @@ const SimDashboard = () => {
                               : "Drag and Drop Templates"}
               </h2>
               <button
-                onClick={() => setShowSidebar(false)}
+                onClick={() => {
+                  setShowSidebar(false);
+                  setNodes((currentNodes) =>
+                    currentNodes.map((node) => ({
+                      ...node,
+                      selected: false,
+                    })),
+                  );
+                }}
                 className="text-xl text-gray-500 hover:text-black"
               >
                 &times;
@@ -888,8 +897,8 @@ const SimDashboard = () => {
                 </div>
 
                 <div className="space-y-2">
-                  <label className="text-sm font-medium text-gray-700">
-                    Upon missing deadline
+                  <label className="flex items-center text-sm font-medium text-gray-700">
+                    Upon missing deadline <DeadlinePolicyHelp />
                   </label>
                   <select
                     value={deadlinePolicy}
@@ -899,11 +908,6 @@ const SimDashboard = () => {
                     <option value="drop">Drop task at deadline</option>
                     <option value="continue">Finish all tasks</option>
                   </select>
-                  <p className="text-xs text-gray-500">
-                    Drop stops work at its deadline and marks tasks that never
-                    started as DNR. Finish all tasks lets every task run to
-                    completion; late tasks are still reported as missed.
-                  </p>
                 </div>
 
                 <button

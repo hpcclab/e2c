@@ -2,7 +2,7 @@ import React, { memo, useEffect } from "react";
 import { useGlobalState } from "../context/GlobalStates";
 import { NodeResizeControl, NodeResizer } from "@xyflow/react";
 
-export default memo(({ data, selected }) => {
+export default memo(({ id, data, selected }) => {
   const {
     setSidebarMode,
     setShowSidebar,
@@ -11,6 +11,7 @@ export default memo(({ data, selected }) => {
     selectedWorkspace,
     workspaces,
     machines,
+    setNodes,
   } = useGlobalState();
 
   const openSidebar = (mode) => {
@@ -21,6 +22,12 @@ export default memo(({ data, selected }) => {
 
   const handleChildClick = (event) => {
     // event.stopPropagation();
+    setNodes((currentNodes) =>
+      currentNodes.map((node) => ({
+        ...node,
+        selected: node.id === id,
+      })),
+    );
     const workspace = workspaces.find((w) => w.id === data.workspaceId);
     setSelectedWorkspace({
       id: workspace.id,
