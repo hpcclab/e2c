@@ -43,7 +43,7 @@ const SlackHelp = ({ value, onApply }) => {
               role="dialog"
               aria-modal="true"
               aria-labelledby="slack-information-title"
-              className="w-full max-w-md rounded-lg bg-white p-6 text-left shadow-2xl"
+              className="max-h-[90vh] w-full max-w-md overflow-y-auto rounded-lg bg-white p-6 text-left shadow-2xl"
             >
               <div className="mb-4 flex items-center justify-between">
                 <h2
@@ -81,6 +81,25 @@ const SlackHelp = ({ value, onApply }) => {
                   predictable from these values, so a busy system may require
                   additional slack.
                 </p>
+                <p>
+                  <strong>You can change the slack at your own discretion.</strong>{" "}
+                  The suggested value is only a starting point; choose a value
+                  that matches how strict you want the task's deadline to be.
+                </p>
+                <ul className="list-disc space-y-2 pl-5">
+                  <li>
+                    <strong>Higher slack</strong> creates a later deadline and
+                    gives the task more time to travel, wait in a machine queue,
+                    and finish running. This reduces the chance that the task is
+                    reported as missed, but makes the deadline less strict.
+                  </li>
+                  <li>
+                    <strong>Lower slack</strong> creates an earlier, stricter
+                    deadline. The task must arrive and finish sooner, so it is
+                    more likely to be reported as missed or stopped at its
+                    deadline when the drop policy is selected.
+                  </li>
+                </ul>
                 <p>
                   If E2C cannot calculate the suggestion—for example, because
                   no machine is connected—it defaults to <strong>1 second</strong>.

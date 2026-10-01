@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from "react";
 import { IOT_ICON_MAP } from "../utils/iotIcons";
 import { colorMemory } from "./Task";
+import { sourceTaskColorKey } from "../utils/taskColors";
 import { nonNegativeSlack } from "../utils/deadlines";
 import {
   getDefaultDataRateKbps,
@@ -233,6 +234,7 @@ const EditIoTProperties = ({
     const colorName = PALETTE[idx].name;
 
     colorMemory[taskType] = idx;
+    colorMemory[sourceTaskColorKey(selectedIOT.id)] = idx;
     window.dispatchEvent(new Event("taskColorChanged"));
 
     // Persist into the IoT properties

@@ -15,6 +15,7 @@ import {
 } from "react-icons/md";
 import "../assets/saveload.css";
 import { colorMemory } from "./Task";
+import { sourceTaskColorKey } from "../utils/taskColors";
 
 const TASK_COLOR_NAME_TO_INDEX = {
   Slate: 0,
@@ -102,7 +103,12 @@ export default function FlowSaveLoadPanel() {
       if (!taskType) return;
       const colorName = iotEntry?.properties?.taskColor ?? "Slate";
       const idx = TASK_COLOR_NAME_TO_INDEX[colorName];
-      if (idx !== undefined) derived[taskType] = idx;
+      if (idx !== undefined) {
+        derived[taskType] = idx;
+        if (iotEntry?.id !== undefined && iotEntry?.id !== null) {
+          derived[sourceTaskColorKey(iotEntry.id)] = idx;
+        }
+      }
     });
     return derived;
   };

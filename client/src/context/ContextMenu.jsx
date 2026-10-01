@@ -2,6 +2,12 @@ import React, { useCallback } from "react";
 import { useReactFlow } from "@xyflow/react";
 import { useGlobalState } from "./GlobalStates";
 import { FiCopy, FiTrash2 } from "react-icons/fi";
+import { colorMemory } from "../components/Task";
+import {
+  getNextTaskColor,
+  sourceTaskColorKey,
+  TASK_COLOR_NAMES,
+} from "../utils/taskColors";
 import "../assets/ContextMenu.css";
 
 export default function ContextMenu({
@@ -83,6 +89,8 @@ export default function ContextMenu({
         iot.find((source) => `nd_${source.id}` === String(id));
       if (original) {
         const newIotId = generateNewNumericId(iot);
+        const originalTaskColor = original.properties?.taskColor ?? "Slate";
+        const copiedTaskColor = getNextTaskColor(originalTaskColor, iot);
 
         const newIot = {
           ...original,
@@ -90,8 +98,18 @@ export default function ContextMenu({
           name: `${original.name}_copy`,
           position,
           queue: [...(original.queue ?? [])],
-          properties: { ...original.properties },
+          properties: {
+            ...original.properties,
+            taskColor: copiedTaskColor,
+          },
         };
+
+        const originalColorIndex = TASK_COLOR_NAMES.indexOf(originalTaskColor);
+        const copiedColorIndex = TASK_COLOR_NAMES.indexOf(copiedTaskColor);
+        colorMemory[sourceTaskColorKey(original.id)] =
+          originalColorIndex >= 0 ? originalColorIndex : 0;
+        colorMemory[sourceTaskColorKey(newIot.id)] = copiedColorIndex;
+        window.dispatchEvent(new Event("taskColorChanged"));
 
         setIot((prev) => [...prev, newIot]);
 

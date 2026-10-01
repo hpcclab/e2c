@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { useGlobalState } from "../context/GlobalStates";
 import { colorMemory } from "./Task";
+import { sourceTaskColorKey } from "../utils/taskColors";
 
 // Contains node spawners through drag and drop
 // Simple ID generator for nodes
@@ -496,6 +497,9 @@ export default function Sidebar() {
         colorMemory[newIot.properties.task_type] = colorNames.indexOf(
           newIot.properties.taskColor,
         );
+        colorMemory[sourceTaskColorKey(newIot.id)] = colorNames.indexOf(
+          newIot.properties.taskColor,
+        );
         window.dispatchEvent(new Event("taskColorChanged"));
       } else if (nodeType === "userNode") {
         const userId = Date.now();
@@ -568,6 +572,9 @@ export default function Sidebar() {
           );
         }
         colorMemory[newIot.properties.task_type] = colorNames.indexOf(
+          newIot.properties.taskColor,
+        );
+        colorMemory[sourceTaskColorKey(newIot.id)] = colorNames.indexOf(
           newIot.properties.taskColor,
         );
         window.dispatchEvent(new Event("taskColorChanged"));
