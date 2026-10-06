@@ -1,26 +1,15 @@
-import React, { memo, useEffect } from "react";
+import React, { memo } from "react";
 import { useGlobalState } from "../context/GlobalStates";
-import { NodeResizeControl, NodeResizer } from "@xyflow/react";
+import { NodeResizer } from "@xyflow/react";
 
-export default memo(({ id, data, selected }) => {
+function WorkloadNode({ id, data, selected }) {
   const {
-    setSidebarMode,
-    setShowSidebar,
-    setSubmissionStatus,
     setSelectedWorkspace,
-    selectedWorkspace,
     workspaces,
-    machines,
     setNodes,
   } = useGlobalState();
 
-  const openSidebar = (mode) => {
-    setSidebarMode(mode);
-    setShowSidebar(true);
-    setSubmissionStatus(""); // Reset submission status when opening the sidebar
-  };
-
-  const handleChildClick = (event) => {
+  const handleChildClick = () => {
     // event.stopPropagation();
     setNodes((currentNodes) =>
       currentNodes.map((node) => ({
@@ -29,6 +18,7 @@ export default memo(({ id, data, selected }) => {
       })),
     );
     const workspace = workspaces.find((w) => w.id === data.workspaceId);
+    if (!workspace) return;
     setSelectedWorkspace({
       id: workspace.id,
       job_q: workspace?.job_q,
@@ -65,4 +55,6 @@ export default memo(({ id, data, selected }) => {
       />
     </div>
   );
-});
+}
+
+export default memo(WorkloadNode);

@@ -5,6 +5,11 @@ import { createPortal } from "react-dom";
 import { useGlobalState } from "../context/GlobalStates";
 import { colorMemory } from "./Task";
 import { sourceTaskColorKey } from "../utils/taskColors";
+import {
+  getWorkspaceKind,
+  getWorkspaceName,
+  isWorkspaceNode,
+} from "../utils/workspaceNodes";
 
 // Contains node spawners through drag and drop
 // Simple ID generator for nodes
@@ -375,7 +380,9 @@ export default function Sidebar() {
         x: screenPosition.x,
         y: screenPosition.y,
       });
-      const groupNodes = getNodes().filter((n) => n.type === "group");
+      // Treat current and legacy Edge/Cloud nodes as identical containers.
+      // Older saved projects may retain edgeSpace/cloudSpace instead of group.
+      const groupNodes = getNodes().filter(isWorkspaceNode);
 
       let parentNode = undefined;
       for (const group of groupNodes) {
@@ -585,17 +592,13 @@ export default function Sidebar() {
       ) {
         const newWorkspace = {
           id: Date.now(),
+          type: getWorkspaceKind(nodeType),
           job_q: [],
           system_config: {},
           machines: [],
           iots: [],
         };
-        let nodeName;
-        nodeType === "edgeSpace"
-          ? (nodeName = "Edge")
-          : nodeType === "cloudSpace"
-            ? (nodeName = "Cloud")
-            : "Default Organizer";
+        const nodeName = getWorkspaceName(nodeType);
         setWorkspaces((prev) => [...prev, newWorkspace]);
         setNodes((nds) =>
           nds.concat({
@@ -604,6 +607,7 @@ export default function Sidebar() {
             position: relativePosition,
             data: {
               workspaceId: newWorkspace.id,
+              workspaceType: newWorkspace.type,
               nodes: [],
               name: nodeName,
             },

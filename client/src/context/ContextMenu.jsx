@@ -16,7 +16,6 @@ export default function ContextMenu({
   left,
   right,
   bottom,
-  edgeSidebar,
   ...props
 }) {
   const { getNode, setNodes, setEdges, addNodes } = useReactFlow();
@@ -234,19 +233,15 @@ export default function ContextMenu({
       className="context-men"
       {...props}
     >
-      <div className="menu-header">Node</div>
+      <div className="menu-header">
+        {id[0] === "e" ? "Connection" : "Node"}
+      </div>
       <div className="menu-sub">{id}</div>
       {id[0] === "e" ? (
-        <>
-          <button className="menu-item" onClick={edgeSidebar}>
-            <FiCopy className="icon" />
-            Edge Properties
-          </button>
-          <button className="menu-item danger" onClick={deleteEdge}>
-            <FiTrash2 className="icon" />
-            Delete
-          </button>
-        </>
+        <button className="menu-item danger" onClick={deleteEdge}>
+          <FiTrash2 className="icon" />
+          Delete
+        </button>
       ) : (
         <>
           <button className="menu-item" onClick={duplicateNode}>

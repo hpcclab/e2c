@@ -3,10 +3,6 @@ import { IOT_ICON_MAP } from "../utils/iotIcons";
 import { colorMemory } from "./Task";
 import { sourceTaskColorKey } from "../utils/taskColors";
 import { nonNegativeSlack } from "../utils/deadlines";
-import {
-  getDefaultDataRateKbps,
-  resolveDataRateKbps,
-} from "../utils/networkDelay";
 import AutoSuggestSlack from "./AutoSuggestSlack";
 import SlackHelp from "./SlackHelp";
 import { normalizeDataInput } from "../utils/dataInput";
@@ -269,11 +265,8 @@ const EditIoTProperties = ({
         distribution: selectedIOT.properties.distribution || "uniform",
         deviceRole: selectedIOT.properties.deviceRole || "sensor",
         frequency: selectedIOT.properties.frequency || 0,
-        connectivity:
-          selectedIOT.properties.connectivity === "Other"
-            ? "Custom"
-            : selectedIOT.properties.connectivity || "WiFi",
-        dataRateKbps: resolveDataRateKbps(selectedIOT.properties),
+        connectivity: selectedIOT.properties.connectivity || "WiFi",
+        dataRateKbps: selectedIOT.properties.dataRateKbps ?? 54000,
         energySource:
           selectedIOT.properties.energySource === "Wired"
             ? "Grid-Powered"
@@ -355,17 +348,6 @@ const EditIoTProperties = ({
       }));
   };
 
-  const handleConnectivityChange = (connectivity) => {
-    setEditedIOT((prev) => ({
-      ...prev,
-      properties: {
-        ...prev.properties,
-        connectivity,
-        dataRateKbps: getDefaultDataRateKbps(connectivity),
-      },
-    }));
-  };
-
   const handleSave = async () => {
     try {
       const withColor = {
@@ -375,11 +357,6 @@ const EditIoTProperties = ({
           dataSizeStdDev: Math.max(
             0,
             Number(editedIOT.properties.dataSizeStdDev) || 0,
-          ),
-          dataRateKbps: Math.max(
-            0.001,
-            Number(editedIOT.properties.dataRateKbps) ||
-              getDefaultDataRateKbps(editedIOT.properties.connectivity),
           ),
           slack: nonNegativeSlack(editedIOT.properties.slack),
           taskColor: PALETTE[colorIdx].name,
@@ -419,11 +396,8 @@ const EditIoTProperties = ({
         distribution: selectedIOT.properties.distribution || "uniform",
         deviceRole: selectedIOT.properties.deviceRole || "sensor",
         frequency: selectedIOT.properties.frequency || 0,
-        connectivity:
-          selectedIOT.properties.connectivity === "Other"
-            ? "Custom"
-            : selectedIOT.properties.connectivity || "WiFi",
-        dataRateKbps: resolveDataRateKbps(selectedIOT.properties),
+        connectivity: selectedIOT.properties.connectivity || "WiFi",
+        dataRateKbps: selectedIOT.properties.dataRateKbps ?? 54000,
         energySource:
           selectedIOT.properties.energySource === "Wired"
             ? "Grid-Powered"
@@ -490,22 +464,6 @@ const EditIoTProperties = ({
               </label>
               <div className="w-full border px-3 py-2 text-sm rounded bg-gray-100">
                 {selectedIOT.properties.frequency ?? "-"}
-              </div>
-            </div>
-            <div className="mt-2">
-              <label className="block text-sm font-semibold text-gray-700 mb-1">
-                Connectivity
-              </label>
-              <div className="w-full border px-3 py-2 text-sm rounded bg-gray-100">
-                {selectedIOT.properties.connectivity || "-"}
-              </div>
-            </div>
-            <div className="mt-2">
-              <label className="block text-sm font-semibold text-gray-700 mb-1">
-                Default Data Rate (Kbps)
-              </label>
-              <div className="w-full border px-3 py-2 text-sm rounded bg-gray-100">
-                {resolveDataRateKbps(selectedIOT.properties).toLocaleString()}
               </div>
             </div>
             <div className="mt-2">
@@ -667,41 +625,6 @@ const EditIoTProperties = ({
             onChange={(e) => handleChange("frequency", Number(e.target.value))}
             className="w-full border px-3 py-2 text-sm rounded"
           />
-        </div>
-        <div className="mt-2">
-          <label className="block text-sm font-semibold text-gray-700 mb-1">
-            Connectivity
-          </label>
-          <select
-            value={editedIOT.properties?.connectivity}
-            onChange={(e) => handleConnectivityChange(e.target.value)}
-            className="w-full border px-3 py-2 text-sm rounded"
-          >
-            <option value="WiFi">WiFi</option>
-            <option value="Bluetooth">Bluetooth</option>
-            <option value="Ethernet">Ethernet</option>
-            <option value="5G">5G</option>
-            <option value="LTE">LTE</option>
-            <option value="Custom">Custom</option>
-          </select>
-          <div className="mt-2">
-            <label className="block text-sm font-semibold text-gray-700 mb-1">
-              Default Data Rate (Kbps)
-            </label>
-            <input
-              type="number"
-              min="0.001"
-              step="any"
-              value={editedIOT.properties?.dataRateKbps}
-              onChange={(e) =>
-                handleChange(
-                  "dataRateKbps",
-                  Math.max(0.001, Number(e.target.value) || 0.001),
-                )
-              }
-              className="w-full border px-3 py-2 text-sm rounded"
-            />
-          </div>
         </div>
         <div className="mt-2">
           <label className="block text-sm font-semibold text-gray-700 mb-1">

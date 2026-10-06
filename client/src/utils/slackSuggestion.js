@@ -3,7 +3,7 @@ import {
   getMachineEetMean,
   getMachineEetStdDev,
 } from "./executionTime.js";
-import { resolveDataRateKbps } from "./networkDelay.js";
+import { getSourceEdgeNetwork } from "./edgeNetwork.js";
 
 // A one-sided 95th percentile gives the task a 95% chance of fitting within
 // the suggested slack when data size and EET follow their configured normals.
@@ -44,7 +44,7 @@ export function calculateSuggestedSlack({
   );
   const conservativeDataSize =
     dataSizeMean + SUGGESTED_SLACK_Z_SCORE * dataSizeStdDev;
-  const dataRateKbps = resolveDataRateKbps(properties);
+  const { dataRateKbps } = getSourceEdgeNetwork(source.id, edges, properties);
   const transferTime = (conservativeDataSize * 8) / dataRateKbps;
 
   const executionTimes = connectedMachines.map((machine) =>

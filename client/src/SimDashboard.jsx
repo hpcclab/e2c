@@ -26,6 +26,7 @@ import LBNode from "./components/LBNode";
 import AutoScalerNode from "./components/AutoScalerNode";
 import AnimatedEdge from "./components/AnimatedEdge";
 import { colorMemory } from "./components/Task";
+import { createEdgeNetworkProperties } from "./utils/edgeNetwork";
 const edgeTypes = {
   packet: AnimatedEdge,
 };
@@ -103,10 +104,8 @@ const SimDashboard = () => {
     generateWorkload,
     generateMachineConfig,
     getNode,
-    EDGE_PROPERTIES,
     selectedEdge,
     setSelectedEdge,
-    getEdge,
     showReport,
     setShowReport,
     setUnassignedTasks,
@@ -137,12 +136,6 @@ const SimDashboard = () => {
   // DND
   const reactFlowWrapper = useRef(null);
 
-  const openSidebar = (mode) => {
-    setSidebarMode(mode);
-    setShowSidebar(true);
-    setSubmissionStatus("");
-  };
-
   const handleNodeClick = useCallback((event, node) => {
     if (node.type !== "machineNode" || !node.data?.machine) return;
     if (event.target.closest("button, .react-flow__handle")) return;
@@ -153,9 +146,34 @@ const SimDashboard = () => {
     setSubmissionStatus("");
   }, [setSelectedMachine, setSidebarMode, setShowSidebar, setSubmissionStatus]);
 
+  const handleEdgeClick = useCallback(
+    (event, edge) => {
+      event.stopPropagation();
+      setSelectedEdge(edge);
+      setSidebarMode("edgeProps");
+      setShowSidebar(true);
+      setSubmissionStatus("");
+      setMenu(null);
+    },
+    [
+      setMenu,
+      setSelectedEdge,
+      setShowSidebar,
+      setSidebarMode,
+      setSubmissionStatus,
+    ],
+  );
+
   const onConnect = useCallback(
     (params) => {
       const edgeId = `e-${params.source}-${params.target}`;
+      const sourceId = String(params.source).replace(/^nd_/, "");
+      const source = iot.find(
+        (candidate) => String(candidate.id) === sourceId,
+      );
+      const networkProperties = source
+        ? createEdgeNetworkProperties(source.properties)
+        : createEdgeNetworkProperties({ connectivity: "Ethernet" });
       setEdges((eds) =>
         addEdge(
           {
@@ -163,14 +181,14 @@ const SimDashboard = () => {
             id: edgeId,
             type: "packet",
             data: {
-              properties: EDGE_PROPERTIES,
+              properties: networkProperties,
             },
           },
           eds,
         ),
       );
     },
-    [setEdges],
+    [iot, setEdges],
   );
   const onNodeContextMenu = useCallback(
     (event, node) => {
@@ -192,12 +210,12 @@ const SimDashboard = () => {
     [setMenu],
   );
   const onEdgeContextMenu = useCallback(
-    (event, node) => {
+    (event, edge) => {
       event.preventDefault();
       const pane = reactFlowWrapper.current.getBoundingClientRect();
 
       setMenu({
-        id: node.id,
+        id: edge.id,
         top: event.clientY < pane.height - 200 ? event.clientY : null,
         left: event.clientX < pane.width - 200 ? event.clientX : null,
         right:
@@ -206,14 +224,10 @@ const SimDashboard = () => {
           event.clientY >= pane.height - 200
             ? pane.height - event.clientY
             : null,
-        edgeSidebar: () => openSidebar("edgeProps"),
       });
-      if (node.id[0] === "e") {
-        const selectedEdge = getEdge(node.id);
-        setSelectedEdge(selectedEdge);
-      }
+      setSelectedEdge(edge);
     },
-    [setMenu],
+    [setMenu, setSelectedEdge],
   );
   const onPaneClick = useCallback(() => setMenu(null), [setMenu]); // Close the context menu if it's open whenever the window is clicked.
 
@@ -552,7 +566,7 @@ const SimDashboard = () => {
         return;
       }
 
-      const workload = generateWorkload(scenarioRows, taskTypes);
+      const workload = generateWorkload(scenarioRows, taskTypes, 0, edges);
       if (!workload.length) {
         alert("Failed to run simulation. No tasks were generated.");
         return;
@@ -751,6 +765,7 @@ const SimDashboard = () => {
               edgeTypes={edgeTypes}
               onNodesChange={onNodesChange}
               onNodeClick={handleNodeClick}
+              onEdgeClick={handleEdgeClick}
               onNodeDragStop={onDragStop}
               onEdgesChange={onEdgesChange}
               onConnect={onConnect}

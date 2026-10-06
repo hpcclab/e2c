@@ -69,3 +69,20 @@ test("load-balancer paths count as connected", () => {
 
   assert.equal(result.connectedMachineCount, 1);
 });
+
+test("suggested slack uses the network configured on the source edge", () => {
+  const result = calculateSuggestedSlack({
+    source,
+    machines: [machine(1, 1, 0.25)],
+    edges: [{
+      source: "nd_7",
+      target: "1",
+      data: {
+        properties: { networkType: "Bluetooth", dataRateKbps: 800 },
+      },
+    }],
+  });
+
+  assert.equal(result.slack, 2.75);
+  assert.ok(result.transferTime > 1);
+});

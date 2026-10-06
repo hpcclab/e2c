@@ -93,7 +93,8 @@ export const GlobalProvider = ({ children }) => {
   };
 
   const EDGE_PROPERTIES = {
-    connectionType: "LAN",
+    networkType: "WiFi",
+    dataRateKbps: 54000,
   };
 
   const [selectedWorkspace, setSelectedWorkspace] = useState(workspace);
@@ -447,7 +448,7 @@ export const GlobalProvider = ({ children }) => {
   const [machineTypes, setMachineTypes] = useState([]);
 
   const ld_workspace = () => {
-    const stuff = generateWorkload(scenarioRows, taskTypes);
+    const stuff = generateWorkload(scenarioRows, taskTypes, 0, edges);
     setBatchQ({ id: -2, name: "Batch Queue", queue: [...stuff] });
     setWorkloadTableData([...stuff]);
     // setWorkloadSubmissionStatus(true);

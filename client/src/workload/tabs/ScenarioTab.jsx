@@ -10,9 +10,8 @@ import { deadlineFromGeneration } from "../../utils/deadlines";
 import {
   calculateArrivalTime,
   calculateTravelTime,
-  normalizeConnectivity,
-  resolveDataRateKbps,
 } from "../../utils/networkDelay";
+import { getSourceEdgeNetwork } from "../../utils/edgeNetwork";
 
 const distributionOptions = ["uniform", "normal", "exponential", "spiky"];
 
@@ -77,7 +76,12 @@ function getDataSizes(mean, stdv, num_of_tasks) {
   return sizes;
 }
 
-export function generateWorkload(scenarioRows, taskTypes, seedOffset = 0) {
+export function generateWorkload(
+  scenarioRows,
+  taskTypes,
+  seedOffset = 0,
+  edges = [],
+) {
   let workload = [];
   scenarioRows.forEach((row, idx) => {
     const sample = sampleGenerationTimes(
@@ -96,8 +100,9 @@ export function generateWorkload(scenarioRows, taskTypes, seedOffset = 0) {
     const parsedStdv = Number(typeObj?.dataSizeStdDev ?? typeObj?.stdv ?? 1);
     const meanSize = Number.isFinite(parsedMeanSize) ? parsedMeanSize : 100;
     const stdv = Number.isFinite(parsedStdv) ? Math.max(0, parsedStdv) : 1;
-    const connectivity = normalizeConnectivity(typeObj?.connectivity);
-    const dataRateKbps = resolveDataRateKbps(typeObj);
+    const edgeNetwork = getSourceEdgeNetwork(row.srcID, edges, typeObj);
+    const connectivity = edgeNetwork.networkType;
+    const dataRateKbps = edgeNetwork.dataRateKbps;
     const dataSizes = getDataSizes(meanSize, stdv, sample.length);
 
     sample.forEach((generation_time, i) => {
@@ -146,7 +151,7 @@ const ScenarioTab = ({
 
   const [newTaskType, setNewTaskType] = useState(initialTaskType);
   const [newNumTasks, setNewNumTasks] = useState("");
-  const [newSrcID, setnewSrcID] = useState("");
+  const [newSrcID] = useState("");
   const [newStartTime, setNewStartTime] = useState("");
   const [newEndTime, setNewEndTime] = useState("");
   const [newDistribution, setNewDistribution] = useState(

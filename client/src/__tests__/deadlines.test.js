@@ -59,6 +59,39 @@ test("workload deadlines use generation time plus the source's slack", () => {
   assert.equal(generateWorkload(scenario, [{ ...source[0], slack: "3" }])[0].deadline, 5);
 });
 
+test("workload travel time uses the source edge instead of the IoT default", () => {
+  const scenario = [{
+    srcID: 42,
+    taskType: "Task A",
+    numTasks: 1,
+    startTime: 2,
+    endTime: 2,
+    distribution: "uniform",
+  }];
+  const source = [{
+    srcID: 42,
+    name: "Task A",
+    meanSize: 100,
+    dataSizeStdDev: 0,
+    connectivity: "WiFi",
+    dataRateKbps: 54000,
+    slack: 3,
+  }];
+  const edges = [{
+    source: "nd_42",
+    target: "1",
+    data: {
+      properties: { networkType: "Bluetooth", dataRateKbps: 800 },
+    },
+  }];
+
+  const task = generateWorkload(scenario, source, 0, edges)[0];
+  assert.equal(task.connectivity, "Bluetooth");
+  assert.equal(task.data_rate_kbps, 800);
+  assert.equal(task.travel_time, 1);
+  assert.equal(task.arrival_time, 3);
+});
+
 test("data size standard deviation controls generated task-size variation", () => {
   const scenario = [{
     srcID: 7,
