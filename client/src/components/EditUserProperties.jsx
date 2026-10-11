@@ -5,6 +5,8 @@ import { sourceTaskColorKey } from "../utils/taskColors";
 import { nonNegativeSlack } from "../utils/deadlines";
 import AutoSuggestSlack from "./AutoSuggestSlack";
 import SlackHelp from "./SlackHelp";
+import SlackLockButton from "./SlackLockButton";
+import RandomSeedHelp from "./RandomSeedHelp";
 import { normalizeDataInput } from "../utils/dataInput";
 
 const IOT_PRESETS = [
@@ -260,12 +262,15 @@ const EditIoTProperties = ({
           selectedIOT.properties.dataSizeStdDev ??
           selectedIOT.properties.stdv ??
           1,
+        dataSizeSeed: selectedIOT.properties.dataSizeSeed ?? "",
         urgency: selectedIOT.properties.urgency || "BestEffort",
         slack: nonNegativeSlack(selectedIOT.properties.slack),
+        slackLocked: selectedIOT.properties.slackLocked === true,
         numTasks: selectedIOT.properties.numTasks || 0,
         startTime: selectedIOT.properties.startTime || 0,
         endTime: selectedIOT.properties.endTime || 0,
         distribution: selectedIOT.properties.distribution || "uniform",
+        arrivalSeed: selectedIOT.properties.arrivalSeed ?? "",
         deviceRole: selectedIOT.properties.deviceRole || "sensor",
         frequency: selectedIOT.properties.frequency || 0,
         connectivity: selectedIOT.properties.connectivity || "WiFi",
@@ -380,6 +385,48 @@ const EditIoTProperties = ({
     }
   };
 
+  const applySavedSlackSuggestion = async (value) => {
+    const suggestedSlack = nonNegativeSlack(value);
+    if (
+      selectedIOT.properties.slackLocked === true ||
+      Number(selectedIOT.properties.slack) === suggestedSlack
+    ) {
+      return;
+    }
+
+    const updated = {
+      ...selectedIOT,
+      properties: {
+        ...selectedIOT.properties,
+        slack: suggestedSlack,
+      },
+    };
+    setSelectedIOT(updated);
+    setAnimatedIOTs((prev) =>
+      prev.map((iot) =>
+        iot.id === updated.id ? { ...iot, ...updated } : iot,
+      ),
+    );
+    await onSave(updated);
+  };
+
+  const applySavedRandomSeed = async (field, value) => {
+    const updated = {
+      ...selectedIOT,
+      properties: {
+        ...selectedIOT.properties,
+        [field]: value,
+      },
+    };
+    setSelectedIOT(updated);
+    setAnimatedIOTs((prev) =>
+      prev.map((iot) =>
+        iot.id === updated.id ? { ...iot, ...updated } : iot,
+      ),
+    );
+    await onSave(updated);
+  };
+
   const handleCancel = () => {
     setEditedIOT({
       id: selectedIOT.id,
@@ -394,12 +441,15 @@ const EditIoTProperties = ({
           selectedIOT.properties.dataSizeStdDev ??
           selectedIOT.properties.stdv ??
           1,
+        dataSizeSeed: selectedIOT.properties.dataSizeSeed ?? "",
         urgency: selectedIOT.properties.urgency || "BestEffort",
         slack: nonNegativeSlack(selectedIOT.properties.slack),
+        slackLocked: selectedIOT.properties.slackLocked === true,
         numTasks: selectedIOT.properties.numTasks || 0,
         startTime: selectedIOT.properties.startTime || 0,
         endTime: selectedIOT.properties.endTime || 0,
         distribution: selectedIOT.properties.distribution || "uniform",
+        arrivalSeed: selectedIOT.properties.arrivalSeed ?? "",
         deviceRole: selectedIOT.properties.deviceRole || "sensor",
         frequency: selectedIOT.properties.frequency || 0,
         connectivity: selectedIOT.properties.connectivity || "WiFi",
@@ -476,8 +526,15 @@ const EditIoTProperties = ({
               </div>
             </div>
             <div className="mt-2">
-              <label className="block text-sm font-semibold text-gray-700 mb-1">
+              <label className="flex items-center text-sm font-semibold text-gray-700 mb-1">
                 Data Size Standard Deviation (KB)
+                <RandomSeedHelp
+                  kind="dataSize"
+                  value={selectedIOT.properties.dataSizeSeed}
+                  onApply={(value) =>
+                    applySavedRandomSeed("dataSizeSeed", value)
+                  }
+                />
               </label>
               <div className="w-full border px-3 py-2 text-sm rounded bg-gray-100">
                 {selectedIOT.properties.dataSizeStdDev ??
@@ -494,6 +551,11 @@ const EditIoTProperties = ({
               </div>
             </div>
             <div className="mt-2">
+              <AutoSuggestSlack
+                source={selectedIOT}
+                locked={selectedIOT.properties.slackLocked === true}
+                onSuggest={applySavedSlackSuggestion}
+              />
               <label className="block text-sm font-semibold text-gray-700 mb-1">
                 Slack <SlackHelp value={selectedIOT.properties.slack} />
               </label>
@@ -529,6 +591,21 @@ const EditIoTProperties = ({
               </label>
               <div className="w-full border px-3 py-2 text-sm rounded bg-gray-100">
                 {selectedIOT.properties.endTime ?? "-"}
+              </div>
+            </div>
+            <div className="mt-2">
+              <label className="flex items-center text-sm font-semibold text-gray-700 mb-1">
+                Distribution
+                <RandomSeedHelp
+                  kind="arrival"
+                  value={selectedIOT.properties.arrivalSeed}
+                  onApply={(value) =>
+                    applySavedRandomSeed("arrivalSeed", value)
+                  }
+                />
+              </label>
+              <div className="w-full border px-3 py-2 text-sm rounded bg-gray-100">
+                {selectedIOT.properties.distribution || "-"}
               </div>
             </div>
           </div>
@@ -612,8 +689,13 @@ const EditIoTProperties = ({
           />
         </div>
         <div className="mt-2">
-          <label className="block text-sm font-semibold text-gray-700 mb-1">
+          <label className="flex items-center text-sm font-semibold text-gray-700 mb-1">
             Data Size Standard Deviation (KB)
+            <RandomSeedHelp
+              kind="dataSize"
+              value={editedIOT.properties?.dataSizeSeed}
+              onApply={(value) => handleChange("dataSizeSeed", value)}
+            />
           </label>
           <input
             type="number"
@@ -644,15 +726,27 @@ const EditIoTProperties = ({
         <div className="mt-2">
           <AutoSuggestSlack
             source={editedIOT}
+            locked={editedIOT.properties?.slackLocked === true}
             onSuggest={(value) => handleChange("slack", value)}
           />
-          <label className="block text-sm font-semibold text-gray-700 mb-1">
-            Slack{" "}
-            <SlackHelp
-              value={editedIOT.properties?.slack}
-              onApply={(value) => handleChange("slack", value)}
+          <div className="mb-1 flex items-center justify-between gap-2">
+            <label className="text-sm font-semibold text-gray-700">
+              Slack{" "}
+              <SlackHelp
+                value={editedIOT.properties?.slack}
+                onApply={(value) => handleChange("slack", value)}
+              />
+            </label>
+            <SlackLockButton
+              locked={editedIOT.properties?.slackLocked === true}
+              onToggle={() =>
+                handleChange(
+                  "slackLocked",
+                  editedIOT.properties?.slackLocked !== true,
+                )
+              }
             />
-          </label>
+          </div>
           <input
             type="number"
             min="0"
@@ -705,6 +799,26 @@ const EditIoTProperties = ({
             onChange={(e) => handleChange("endTime", Number(e.target.value))}
             className="w-full border px-3 py-2 text-sm rounded"
           />
+        </div>
+        <div className="mt-2">
+          <label className="flex items-center text-sm font-semibold text-gray-700 mb-1">
+            Distribution
+            <RandomSeedHelp
+              kind="arrival"
+              value={editedIOT.properties?.arrivalSeed}
+              onApply={(value) => handleChange("arrivalSeed", value)}
+            />
+          </label>
+          <select
+            value={editedIOT.properties?.distribution}
+            onChange={(e) => handleChange("distribution", e.target.value)}
+            className="w-full border px-3 py-2 text-sm rounded"
+          >
+            <option value="uniform">uniform</option>
+            <option value="normal">normal</option>
+            <option value="exponential">exponential</option>
+            <option value="spiky">spiky</option>
+          </select>
         </div>
       </div>
 

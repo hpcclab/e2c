@@ -86,6 +86,12 @@ const SlackHelp = ({ value, onApply }) => {
                   The suggested value is only a starting point; choose a value
                   that matches how strict you want the task's deadline to be.
                 </p>
+                <p>
+                  Use the <strong>lock icon</strong> beside Slack to freeze the
+                  current value. While locked, changes to machines, execution
+                  times, data size, or network speed will not replace it. Unlock
+                  it to resume automatic suggestions.
+                </p>
                 <ul className="list-disc space-y-2 pl-5">
                   <li>
                     <strong>Higher slack</strong> creates a later deadline and

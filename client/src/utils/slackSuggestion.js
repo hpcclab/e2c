@@ -18,6 +18,14 @@ function roundUpHundredth(value) {
   return Math.ceil((value - Number.EPSILON) * 100) / 100;
 }
 
+export function shouldApplySlackSuggestion({
+  locked = false,
+  lastAppliedSuggestion = null,
+  suggestedSlack,
+}) {
+  return !locked && lastAppliedSuggestion !== suggestedSlack;
+}
+
 export function calculateSuggestedSlack({
   source,
   machines = [],

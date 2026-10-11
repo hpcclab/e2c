@@ -11,6 +11,7 @@ const Reports = () => {
     completedTasks,
     simulationTime,
     machines,
+    iot,
     setIsPaused,
   } = useGlobalState();
 
@@ -30,6 +31,7 @@ const Reports = () => {
             unassignedTasks={unassignedTasks}
             simulationTime={simulationTime}
             machines={machines}
+            sources={iot}
           />
         </div>
       </main>

@@ -13,8 +13,10 @@ import {
   YAxis,
   Tooltip,
   ResponsiveContainer,
+  Legend,
 } from "recharts";
-import { useGlobalState } from "../context/GlobalStates";
+import { buildMachineChartData } from "../utils/reportCharts";
+import { buildTaskSummary } from "../utils/reportStats";
 
 const taskIdNumber = (task) => Number(task.taskId ?? task.id);
 const formatNumber = (value, digits = 3) => {
@@ -49,18 +51,17 @@ const compareTaskResults = (firstTask, secondTask, sortMode) => {
 
 const SimulationReport = ({
   dataResults,
-  completedTasks = [],
   totTasks,
   missedTasks,
-  unassignedTasks = [],
   simulationTime,
   machines = [],
+  sources = [],
 }) => {
   const [reportPosition, setReportPosition] = useState({ x: 100, y: 100 });
   const [isResizing, setIsResizing] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
   const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
-  const [exportType, setExportType] = useState("zip");
+  const [exportType, setExportType] = useState("excel");
   const [preparedExport, setPreparedExport] = useState(null);
   const [exportError, setExportError] = useState("");
   const [lifecycleTask, setLifecycleTask] = useState(null);
@@ -75,6 +76,11 @@ const SimulationReport = ({
       simulationTime,
     }),
     [dataResults, missedTasks, machines, simulationTime],
+  );
+
+  const machineChartData = useMemo(
+    () => buildMachineChartData({ machines, tasks: dataResults, sources }),
+    [machines, dataResults, sources],
   );
 
   useEffect(() => {
@@ -120,29 +126,17 @@ const SimulationReport = ({
   // Calculate summary statistics
   const summaryStats = useMemo(() => {
     const results = Array.isArray(dataResults) ? dataResults : [];
-    const missed = Array.isArray(missedTasks) ? missedTasks : [];
-    const done = Array.isArray(completedTasks) ? completedTasks : [];
-    const unassigned = Array.isArray(unassignedTasks) ? unassignedTasks : [];
+    const taskSummary = buildTaskSummary(results, totTasks);
+    const missed = taskSummary.missed;
+    const unassigned = taskSummary.unassigned;
     const machineList = Array.isArray(machines)
       ? machines.filter((m) => m.id !== -1)
       : [];
 
-    const totalTasks = totTasks; // shows up to date batch Q length
-    let inProgress =
-      totTasks - (done.length + unassigned.length + missed.length);
-    inProgress > 0 ? inProgress : (inProgress = 0);
-    inProgress != totTasks ? inProgress : (inProgress = 0); // in progress should never equal total tasks ( occurs when reset button is pressed but never played)
-
-    const totalTasksPreview =
-      done.length + unassigned.length + missed.length + inProgress; // shows preview of total tasks based on sim current position
-    // Dynamic: tasks that have been fully processed (completed + missed) so far
-    const tasksMapped = done.length + missed.length;
-    const tasksCancelled = results.filter(
-      (t) => t.status === "CANCELLED",
-    ).length;
-    // Dynamic: count from the live completedTasks accumulator
-    const tasksCompleted = done.length;
-    // Tasks never assigned to any machine (queue capacity constraint)
+    const totalTasks = taskSummary.total;
+    const inProgress = taskSummary.inProgress;
+    const tasksCancelled = taskSummary.cancelled.length;
+    const tasksCompleted = taskSummary.completed.length;
     const tasksUnassigned = unassigned.length;
     const unassignedByType = unassigned.reduce((acc, task) => {
       const type = task.task_type || "Unknown";
@@ -175,9 +169,6 @@ const SimulationReport = ({
       return acc;
     }, {});
 
-    const completionPercentage =
-      totalTasks > 0 ? ((tasksMapped / totalTasks) * 100).toFixed(2) : "0.00";
-
     const totalEnergyConsumed = machineList.reduce((sum, machine) => {
       const power = machine.power || 0;
       const utilizationTime = machine.utilization_time || 0;
@@ -191,21 +182,20 @@ const SimulationReport = ({
 
     return {
       totalTasks,
-      tasksMapped,
       tasksCancelled,
       tasksCompleted,
       tasksUnassigned,
       unassignedByType,
       missedByType,
       totalMissed: missed.length,
-      completionPercentage,
+      completionPercentage: taskSummary.completionPercentage,
       totalEnergyConsumed,
       totalCost,
       tasksPerMachine,
       inProgress,
-      totalTasksPreview,
+      totalTasksPreview: totalTasks,
     };
-  }, [dataResults, completedTasks, missedTasks, unassignedTasks, machines]);
+  }, [dataResults, machines, totTasks]);
 
   useEffect(() => {
     console.log("=== DEBUG dataResults ===");
@@ -282,8 +272,8 @@ const SimulationReport = ({
             className="bg-white text-gray-900 text-sm rounded border border-blue-200 px-2 py-1 cursor-pointer"
             onClick={(e) => e.stopPropagation()}
           >
-            <option value="zip">CSV Archive (.zip)</option>
             <option value="excel">Excel Workbook (.xlsx)</option>
+            <option value="zip">CSV Archive (.zip)</option>
           </select>
           <a
             href={preparedExport?.url}
@@ -334,7 +324,7 @@ const SimulationReport = ({
             </span>
             <span className="flex items-center">
               <span className="w-3 h-3 bg-yellow-500 rounded-full mr-1"></span>
-              Unassigned: {unassignedTasks.length}
+              Unassigned: {summaryStats.tasksUnassigned}
             </span>
             <span className="flex items-center">
               <span className="w-3 h-3 bg-pink-500 rounded-full mr-1"></span>
@@ -342,11 +332,11 @@ const SimulationReport = ({
             </span>
             <span className="flex items-center">
               <span className="w-3 h-3 bg-green-500 rounded-full mr-1"></span>
-              Completed: {completedTasks.length}
+              Completed: {summaryStats.tasksCompleted}
             </span>
             <span className="flex items-center">
               <span className="w-3 h-3 bg-red-500 rounded-full mr-1"></span>
-              Missed: {missedTasks.length}
+              Missed: {summaryStats.totalMissed}
             </span>
           </p>
         </div>
@@ -404,7 +394,7 @@ const SimulationReport = ({
               {/* Tasks Completed */}
               <div className="bg-green-50 rounded-lg p-4 text-center">
                 <div className="text-3xl font-bold text-green-700">
-                  {summaryStats.tasksMapped}
+                  {summaryStats.tasksCompleted}
                 </div>
                 <div className="text-sm text-green-600 font-medium">
                   Tasks Completed
@@ -456,7 +446,7 @@ const SimulationReport = ({
                     Tasks Completed
                   </td>
                   <td className="border border-gray-300 px-4 py-2 text-right">
-                    {summaryStats.tasksMapped}
+                    {summaryStats.tasksCompleted}
                   </td>
                 </tr>
 
@@ -749,18 +739,22 @@ const SimulationReport = ({
               </h5>
               <ResponsiveContainer width="100%" height={260}>
                 <BarChart
-                  data={machines
-                    .filter((m) => m.id !== -1)
-                    .map((m) => ({
-                      name: m.name,
-                      Tasks: summaryStats.tasksPerMachine[m.name] || 0,
-                    }))}
+                  data={machineChartData.taskCounts}
                   margin={{ top: 5, right: 10, left: 0, bottom: 5 }}
                 >
                   <XAxis dataKey="name" tick={{ fontSize: 11 }} />
                   <YAxis allowDecimals={false} tick={{ fontSize: 11 }} />
                   <Tooltip />
-                  <Bar dataKey="Tasks" fill="#3b82f6" radius={[4, 4, 0, 0]} />
+                  <Legend />
+                  {machineChartData.segments.map((segment) => (
+                    <Bar
+                      key={segment.key}
+                      dataKey={segment.key}
+                      name={segment.name}
+                      fill={segment.color}
+                      stackId="tasks"
+                    />
+                  ))}
                 </BarChart>
               </ResponsiveContainer>
             </div>
@@ -772,29 +766,27 @@ const SimulationReport = ({
               </h5>
               <ResponsiveContainer width="100%" height={260}>
                 <BarChart
-                  data={machines
-                    .filter((m) => m.id !== -1)
-                    .map((m) => {
-                      const kWh =
-                        ((m.power || 0) * (m.utilization_time || 0)) / 1000;
-                      const e = formatEnergy(kWh);
-                      return {
-                        name: m.name,
-                        energy: parseFloat(e.value),
-                        unit: e.unit,
-                      };
-                    })}
+                  data={machineChartData.energy}
                   margin={{ top: 5, right: 10, left: 0, bottom: 5 }}
                 >
                   <XAxis dataKey="name" tick={{ fontSize: 11 }} />
                   <YAxis tick={{ fontSize: 11 }} />
                   <Tooltip
-                    formatter={(val, _, props) => [
-                      `${val} ${props.payload.unit}`,
-                      "Energy",
-                    ]}
+                    formatter={(val, name) => {
+                      const formatted = formatEnergy(val);
+                      return [`${formatted.value} ${formatted.unit}`, name];
+                    }}
                   />
-                  <Bar dataKey="energy" fill="#eab308" radius={[4, 4, 0, 0]} />
+                  <Legend />
+                  {machineChartData.segments.map((segment) => (
+                    <Bar
+                      key={segment.key}
+                      dataKey={segment.key}
+                      name={segment.name}
+                      fill={segment.color}
+                      stackId="energy"
+                    />
+                  ))}
                 </BarChart>
               </ResponsiveContainer>
             </div>
@@ -806,28 +798,22 @@ const SimulationReport = ({
               </h5>
               <ResponsiveContainer width="100%" height={260}>
                 <BarChart
-                  data={machines
-                    .filter((m) => m.id !== -1)
-                    .map((m) => ({
-                      name: m.name,
-                      "Cost ($)": parseFloat(
-                        (
-                          (m.price || 0) *
-                          (m.utilization_time || 0) *
-                          3600
-                        ).toFixed(2),
-                      ),
-                    }))}
+                  data={machineChartData.cost}
                   margin={{ top: 5, right: 10, left: 0, bottom: 5 }}
                 >
                   <XAxis dataKey="name" tick={{ fontSize: 11 }} />
                   <YAxis tick={{ fontSize: 11 }} />
                   <Tooltip formatter={(val) => `$${val.toFixed(2)}`} />
-                  <Bar
-                    dataKey="Cost ($)"
-                    fill="#22c55e"
-                    radius={[4, 4, 0, 0]}
-                  />
+                  <Legend />
+                  {machineChartData.segments.map((segment) => (
+                    <Bar
+                      key={segment.key}
+                      dataKey={segment.key}
+                      name={segment.name}
+                      fill={segment.color}
+                      stackId="cost"
+                    />
+                  ))}
                 </BarChart>
               </ResponsiveContainer>
             </div>

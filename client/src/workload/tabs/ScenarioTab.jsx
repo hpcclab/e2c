@@ -5,29 +5,34 @@ import {
   CheckIcon,
   XMarkIcon,
 } from "@heroicons/react/24/outline";
-import seedrandom from "seedrandom";
 import { deadlineFromGeneration } from "../../utils/deadlines";
 import {
   calculateArrivalTime,
   calculateTravelTime,
 } from "../../utils/networkDelay";
 import { getSourceEdgeNetwork } from "../../utils/edgeNetwork";
+import { createRandomGenerator } from "../../utils/randomSeed";
 
 const distributionOptions = ["uniform", "normal", "exponential", "spiky"];
 
-function sampleGenerationTimes(start, end, n, dist, seed = 100) {
+export function sampleGenerationTimes(
+  start,
+  end,
+  n,
+  dist,
+  random = Math.random,
+) {
   let arr = [];
-  let rng = seedrandom(seed);
   if (dist === "uniform") {
     for (let i = 0; i < n; i++) {
-      arr.push(Number((start + (end - start) * rng()).toFixed(2)));
+      arr.push(Number((start + (end - start) * random()).toFixed(2)));
     }
   } else if (dist === "normal") {
     let mean = (start + end) / 2;
     let stddev = (end - start) / 6;
     for (let i = 0; i < n; i++) {
-      let u = rng();
-      let v = rng();
+      let u = Math.max(Number.MIN_VALUE, random());
+      let v = random();
       let z = Math.sqrt(-2.0 * Math.log(u)) * Math.cos(2.0 * Math.PI * v);
       let t = mean + stddev * z;
       t = Math.max(start, Math.min(end, t));
@@ -37,7 +42,7 @@ function sampleGenerationTimes(start, end, n, dist, seed = 100) {
     let lambda = n / (end - start);
     let time = start;
     for (let i = 0; i < n; i++) {
-      let u = rng();
+      let u = random();
       let interval = -Math.log(1 - u) / lambda;
       time += interval;
       if (time > end) time = end;
@@ -46,10 +51,10 @@ function sampleGenerationTimes(start, end, n, dist, seed = 100) {
   } else if (dist === "spiky") {
     let spikes = Math.max(1, Math.floor(n / 10));
     for (let s = 0; s < spikes; s++) {
-      let spikeTime = start + (end - start) * rng();
+      let spikeTime = start + (end - start) * random();
       let spikeSize = Math.max(1, Math.floor(n / spikes));
       for (let i = 0; i < spikeSize; i++) {
-        let t = spikeTime + ((rng() - 0.5) * (end - start)) / 20;
+        let t = spikeTime + ((random() - 0.5) * (end - start)) / 20;
         t = Math.max(start, Math.min(end, t));
         arr.push(Number(t.toFixed(2)));
       }
@@ -57,18 +62,23 @@ function sampleGenerationTimes(start, end, n, dist, seed = 100) {
     arr = arr.slice(0, n);
   } else {
     for (let i = 0; i < n; i++) {
-      arr.push(Number((start + (end - start) * rng()).toFixed(2)));
+      arr.push(Number((start + (end - start) * random()).toFixed(2)));
     }
   }
   arr.sort((a, b) => a - b);
   return arr;
 }
 
-function getDataSizes(mean, stdv, num_of_tasks) {
+export function getDataSizes(
+  mean,
+  stdv,
+  num_of_tasks,
+  random = Math.random,
+) {
   const sizes = [];
   for (let i = 0; i < num_of_tasks; i++) {
-    let u = Math.random();
-    let v = Math.random();
+    let u = Math.max(Number.MIN_VALUE, random());
+    let v = random();
     let z = Math.sqrt(-2.0 * Math.log(u)) * Math.cos(2.0 * Math.PI * v);
     let sample = mean + stdv * z;
     sizes.push(Number(Math.abs(sample).toFixed(2)));
@@ -84,18 +94,29 @@ export function generateWorkload(
 ) {
   let workload = [];
   scenarioRows.forEach((row, idx) => {
-    const sample = sampleGenerationTimes(
-      Number(row.startTime),
-      Number(row.endTime),
-      Number(row.numTasks),
-      row.distribution,
-      100 + 10 * idx + seedOffset, // unique seed for each file
-    );
     const typeObj =
       (row.srcID !== undefined && row.srcID !== null && row.srcID !== ""
         ? (taskTypes || []).find((t) => String(t.srcID) === String(row.srcID))
         : undefined) ??
       (taskTypes || []).find((t) => t.name === row.taskType);
+    const sourceNamespace = String(row.srcID ?? row.taskType ?? idx);
+    const arrivalRandom = createRandomGenerator(
+      row.arrivalSeed ?? typeObj?.arrivalSeed,
+      `arrival:${sourceNamespace}`,
+      seedOffset,
+    );
+    const dataSizeRandom = createRandomGenerator(
+      typeObj?.dataSizeSeed ?? row.dataSizeSeed,
+      `data-size:${sourceNamespace}`,
+      seedOffset,
+    );
+    const sample = sampleGenerationTimes(
+      Number(row.startTime),
+      Number(row.endTime),
+      Number(row.numTasks),
+      row.distribution,
+      arrivalRandom,
+    );
     const parsedMeanSize = Number(typeObj?.meanSize ?? 100);
     const parsedStdv = Number(typeObj?.dataSizeStdDev ?? typeObj?.stdv ?? 1);
     const meanSize = Number.isFinite(parsedMeanSize) ? parsedMeanSize : 100;
@@ -103,7 +124,12 @@ export function generateWorkload(
     const edgeNetwork = getSourceEdgeNetwork(row.srcID, edges, typeObj);
     const connectivity = edgeNetwork.networkType;
     const dataRateKbps = edgeNetwork.dataRateKbps;
-    const dataSizes = getDataSizes(meanSize, stdv, sample.length);
+    const dataSizes = getDataSizes(
+      meanSize,
+      stdv,
+      sample.length,
+      dataSizeRandom,
+    );
 
     sample.forEach((generation_time, i) => {
       const travel_time = calculateTravelTime(

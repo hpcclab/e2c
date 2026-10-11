@@ -2,10 +2,16 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import {
+  getTaskColor,
   getNextTaskColor,
   sourceTaskColorKey,
   TASK_COLOR_NAMES,
 } from "../utils/taskColors.js";
+
+test("resolves the same background color used by task cards", () => {
+  assert.equal(getTaskColor("Sky").bg, "#0369a1");
+  assert.equal(getTaskColor("not-a-color").name, "Slate");
+});
 
 test("a copied IoT receives the next unused task color", () => {
   const sources = [

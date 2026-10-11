@@ -12,6 +12,10 @@ import "../assets/ContextMenu.css";
 
 export default function ContextMenu({
   id,
+  kind,
+  onDuplicateEdge,
+  onDuplicateSelection,
+  selectedNodeIds = [],
   top,
   left,
   right,
@@ -121,6 +125,7 @@ export default function ContextMenu({
             meanSize: newIot.properties.meanSize,
             dataSizeStdDev:
               newIot.properties.dataSizeStdDev ?? newIot.properties.stdv ?? 1,
+            dataSizeSeed: newIot.properties.dataSizeSeed ?? "",
             connectivity: newIot.properties.connectivity,
             dataRateKbps: newIot.properties.dataRateKbps ?? 54000,
             urgency: newIot.properties.urgency,
@@ -140,6 +145,7 @@ export default function ContextMenu({
             startTime: newIot.properties.startTime,
             endTime: newIot.properties.endTime,
             distribution: newIot.properties.distribution,
+            arrivalSeed: newIot.properties.arrivalSeed ?? "",
           },
         ]);
 
@@ -227,6 +233,13 @@ export default function ContextMenu({
   ]);
   // Edge functions
 
+  const isEdgeMenu = kind === "edge" || (kind === undefined && id[0] === "e");
+  const isSelectionMenu = kind === "selection";
+  const duplicatesSelection =
+    !isEdgeMenu &&
+    selectedNodeIds.length > 1 &&
+    (isSelectionMenu || selectedNodeIds.includes(id));
+
   return (
     <div
       style={{ top, left, right, bottom }}
@@ -234,24 +247,46 @@ export default function ContextMenu({
       {...props}
     >
       <div className="menu-header">
-        {id[0] === "e" ? "Connection" : "Node"}
+        {isSelectionMenu ? "Selection" : isEdgeMenu ? "Connection" : "Node"}
       </div>
-      <div className="menu-sub">{id}</div>
-      {id[0] === "e" ? (
-        <button className="menu-item danger" onClick={deleteEdge}>
-          <FiTrash2 className="icon" />
-          Delete
-        </button>
-      ) : (
+      <div className="menu-sub">
+        {isSelectionMenu ? `${selectedNodeIds.length} objects` : id}
+      </div>
+      {isEdgeMenu ? (
         <>
-          <button className="menu-item" onClick={duplicateNode}>
+          <button
+            className="menu-item"
+            onClick={(event) => onDuplicateEdge?.(id, event)}
+          >
             <FiCopy className="icon" />
-            Duplicate
+            Duplicate properties
           </button>
-          <button className="menu-item danger" onClick={deleteNode}>
+          <button className="menu-item danger" onClick={deleteEdge}>
             <FiTrash2 className="icon" />
             Delete
           </button>
+        </>
+      ) : (
+        <>
+          <button
+            className="menu-item"
+            onClick={
+              duplicatesSelection
+                ? (event) => onDuplicateSelection?.(selectedNodeIds, event)
+                : duplicateNode
+            }
+          >
+            <FiCopy className="icon" />
+            {duplicatesSelection
+              ? `Duplicate selection (${selectedNodeIds.length})`
+              : "Duplicate"}
+          </button>
+          {!isSelectionMenu && (
+            <button className="menu-item danger" onClick={deleteNode}>
+              <FiTrash2 className="icon" />
+              Delete
+            </button>
+          )}
         </>
       )}
     </div>

@@ -1,4 +1,10 @@
-import React, { useEffect, useState, useCallback, useRef } from "react";
+import React, {
+  useEffect,
+  useState,
+  useCallback,
+  useRef,
+  useMemo,
+} from "react";
 
 import { motion, AnimatePresence } from "framer-motion";
 import EditMachineProperties from "./components/EditMachineProperties";
@@ -6,10 +12,20 @@ import EditIoTProperties from "./components/EditIoTProperties";
 import EditUserProperties from "./components/EditUserProperties";
 import EditEdgeProperties from "./components/EditEdgeProperties";
 import DeadlinePolicyHelp from "./components/DeadlinePolicyHelp";
+import SchedulingPolicyHelp from "./components/SchedulingPolicyHelp";
 
 // Drag and drop imports and requirements
-import { Background, ControlButton, Controls, ReactFlow, addEdge } from "@xyflow/react";
-import { MdDeleteOutline } from "react-icons/md";
+import {
+  Background,
+  ControlButton,
+  Controls,
+  ReactFlow,
+  SelectionMode,
+  addEdge,
+  useReactFlow,
+} from "@xyflow/react";
+import { MdDeleteOutline, MdLock, MdLockOpen } from "react-icons/md";
+import { FiCopy } from "react-icons/fi";
 
 import Sidebar from "./components/Sidebar";
 import ContextMenu from "./context/ContextMenu";
@@ -26,7 +42,22 @@ import LBNode from "./components/LBNode";
 import AutoScalerNode from "./components/AutoScalerNode";
 import AnimatedEdge from "./components/AnimatedEdge";
 import { colorMemory } from "./components/Task";
-import { createEdgeNetworkProperties } from "./utils/edgeNetwork";
+import {
+  getNextTaskColor,
+  sourceTaskColorKey,
+  TASK_COLOR_NAMES,
+} from "./utils/taskColors";
+import {
+  createEdgeNetworkProperties,
+  formatDataRate,
+  getEdgeNetworkVisual,
+  resolveEdgeNetwork,
+} from "./utils/edgeNetwork";
+import { duplicateEdgeProperties } from "./utils/edgeDuplication";
+import {
+  expandSelectionWithDescendants,
+  planGraphDuplication,
+} from "./utils/graphDuplication";
 const edgeTypes = {
   packet: AnimatedEdge,
 };
@@ -123,6 +154,8 @@ const SimDashboard = () => {
     setPolicyAlias,
     deadlinePolicy,
     setDeadlinePolicy,
+    isAutoFitLocked,
+    setIsAutoFitLocked,
     simCurrentRef,
     totalSimTimeRef,
     simulationWorkerError,
@@ -135,6 +168,24 @@ const SimDashboard = () => {
 
   // DND
   const reactFlowWrapper = useRef(null);
+  const { fitView, getNodesBounds, screenToFlowPosition } = useReactFlow();
+  const [edgeCopySource, setEdgeCopySource] = useState(null);
+  const [edgeCopyPointer, setEdgeCopyPointer] = useState({ x: 0, y: 0 });
+  const [nodeCopySource, setNodeCopySource] = useState(null);
+  const [nodeCopyPointer, setNodeCopyPointer] = useState({ x: 0, y: 0 });
+  const selectedNodes = useMemo(
+    () => nodes.filter((node) => node.selected),
+    [nodes],
+  );
+
+  const handleAutoFitLockToggle = useCallback(() => {
+    if (isAutoFitLocked) {
+      setIsAutoFitLocked(false);
+      fitView({ padding: 0.5, duration: 600, interpolate: "smooth" });
+      return;
+    }
+    setIsAutoFitLocked(true);
+  }, [fitView, isAutoFitLocked, setIsAutoFitLocked]);
 
   const handleNodeClick = useCallback((event, node) => {
     if (node.type !== "machineNode" || !node.data?.machine) return;
@@ -149,6 +200,23 @@ const SimDashboard = () => {
   const handleEdgeClick = useCallback(
     (event, edge) => {
       event.stopPropagation();
+
+      if (edgeCopySource) {
+        if (edgeCopySource.id === edge.id) return;
+        const updatedEdge = duplicateEdgeProperties(edgeCopySource, edge, iot);
+        setEdges((currentEdges) =>
+          currentEdges.map((currentEdge) =>
+            currentEdge.id === edge.id ? updatedEdge : currentEdge,
+          ),
+        );
+        setSelectedEdge(updatedEdge);
+        setEdgeCopySource(null);
+        setMenu(null);
+        setSidebarMode("edgeProps");
+        setShowSidebar(true);
+        return;
+      }
+
       setSelectedEdge(edge);
       setSidebarMode("edgeProps");
       setShowSidebar(true);
@@ -157,11 +225,336 @@ const SimDashboard = () => {
     },
     [
       setMenu,
+      edgeCopySource,
+      iot,
+      setEdges,
       setSelectedEdge,
       setShowSidebar,
       setSidebarMode,
       setSubmissionStatus,
     ],
+  );
+
+  const startEdgePropertyCopy = useCallback(
+    (edgeId, event) => {
+      const sourceEdge = edges.find((edge) => edge.id === edgeId);
+      if (!sourceEdge) return;
+      setEdgeCopySource(sourceEdge);
+      setEdgeCopyPointer({ x: event.clientX, y: event.clientY });
+      setMenu(null);
+    },
+    [edges, setMenu],
+  );
+
+  const duplicateNodeSelection = useCallback((selectedNodeIds, offset) => {
+    if (!selectedNodeIds.length) return;
+
+    const usedNumericIds = new Set(
+      [...machines, ...iot, ...workspaces]
+        .map((item) => Number(item.id))
+        .filter(Number.isFinite),
+    );
+    let nextNumericId = Date.now();
+    const allocateNumericId = () => {
+      while (usedNumericIds.has(nextNumericId)) nextNumericId += 1;
+      const allocated = nextNumericId;
+      usedNumericIds.add(allocated);
+      nextNumericId += 1;
+      return allocated;
+    };
+    const copyToken = Date.now();
+
+    const plan = planGraphDuplication({
+      nodes,
+      edges,
+      selectedNodeIds,
+      offset,
+      createNodeId: (node, index) => {
+        if (node.type === "machineNode") return String(allocateNumericId());
+        if (node.type === "iotNode" || node.type === "userNode") {
+          return `nd_${allocateNumericId()}`;
+        }
+        if (
+          node.type === "group" ||
+          node.type === "edgeSpace" ||
+          node.type === "cloudSpace"
+        ) {
+          return `nd-${allocateNumericId()}`;
+        }
+        return `${node.id}-copy-${copyToken}-${index}`;
+      },
+    });
+
+    const duplicateByOriginalId = new Map(
+      nodes
+        .filter((node) => plan.idMap.has(node.id))
+        .map((node) => [
+          node.id,
+          plan.duplicatedNodes.find(
+            (duplicate) => duplicate.id === plan.idMap.get(node.id),
+          ),
+        ]),
+    );
+    const colorPool = [...iot];
+    const newMachines = [];
+    const newIots = [];
+    const newTaskTypes = [];
+    const newScenarioRows = [];
+
+    nodes.forEach((node) => {
+      const duplicateNode = duplicateByOriginalId.get(node.id);
+      if (!duplicateNode) return;
+
+      if (node.type === "machineNode") {
+        const original =
+          node.data?.machine ??
+          machines.find((machine) => String(machine.id) === String(node.id));
+        if (!original) return;
+        newMachines.push({
+          ...original,
+          id: Number(duplicateNode.id),
+          name: `${original.name}_copy`,
+          position: duplicateNode.position,
+          parentId: duplicateNode.parentId,
+          extent: duplicateNode.parentId ? "parent" : undefined,
+          queue: [...(original.queue ?? [])],
+          eet: { ...(original.eet ?? {}) },
+          eetStdDev: { ...(original.eetStdDev ?? {}) },
+        });
+        return;
+      }
+
+      if (node.type === "iotNode" || node.type === "userNode") {
+        const original =
+          node.data?.iot ??
+          iot.find((source) => `nd_${source.id}` === String(node.id));
+        if (!original) return;
+        const originalTaskColor = original.properties?.taskColor ?? "Slate";
+        const copiedTaskColor = getNextTaskColor(originalTaskColor, colorPool);
+        const newIotId = Number(duplicateNode.id.replace(/^nd_/, ""));
+        const newIot = {
+          ...original,
+          id: newIotId,
+          name: `${original.name}_copy`,
+          position: duplicateNode.position,
+          parentId: duplicateNode.parentId,
+          extent: duplicateNode.parentId ? "parent" : undefined,
+          queue: [...(original.queue ?? [])],
+          properties: {
+            ...original.properties,
+            taskColor: copiedTaskColor,
+          },
+        };
+        newIots.push(newIot);
+        colorPool.push(newIot);
+
+        const sourceTaskType = taskTypes.find(
+          (taskType) => Number(taskType.srcID) === Number(original.id),
+        );
+        newTaskTypes.push({
+          ...(sourceTaskType ?? {}),
+          srcID: newIot.id,
+          name: newIot.name,
+          dataInput: newIot.properties.dataInput,
+          meanSize: newIot.properties.meanSize,
+          dataSizeStdDev:
+            newIot.properties.dataSizeStdDev ?? newIot.properties.stdv ?? 1,
+          dataSizeSeed: newIot.properties.dataSizeSeed ?? "",
+          connectivity: newIot.properties.connectivity,
+          dataRateKbps: newIot.properties.dataRateKbps ?? 54000,
+          urgency: newIot.properties.urgency,
+          slack: newIot.properties.slack,
+          numTasks: newIot.properties.numTasks,
+          startTime: newIot.properties.startTime,
+          endTime: newIot.properties.endTime,
+        });
+
+        const sourceScenario = scenarioRows.find(
+          (row) => Number(row.srcID) === Number(original.id),
+        );
+        newScenarioRows.push({
+          ...(sourceScenario ?? {}),
+          srcID: newIot.id,
+          taskType: newIot.properties.task_type,
+          numTasks: newIot.properties.numTasks,
+          startTime: newIot.properties.startTime,
+          endTime: newIot.properties.endTime,
+          distribution: newIot.properties.distribution,
+          arrivalSeed: newIot.properties.arrivalSeed ?? "",
+        });
+
+        const copiedColorIndex = TASK_COLOR_NAMES.indexOf(copiedTaskColor);
+        colorMemory[sourceTaskColorKey(newIot.id)] = copiedColorIndex;
+      }
+    });
+
+    const workspaceNodeTypes = new Set([
+      "group",
+      "edgeSpace",
+      "cloudSpace",
+    ]);
+    const newWorkspaces = nodes
+      .filter(
+        (node) =>
+          plan.idMap.has(node.id) && workspaceNodeTypes.has(node.type),
+      )
+      .map((node) => {
+        const originalWorkspaceId =
+          node.data?.workspaceId ?? Number(node.id.replace(/^nd-/, ""));
+        const original = workspaces.find(
+          (workspace) =>
+            Number(workspace.id) === Number(originalWorkspaceId),
+        );
+        const newNodeId = plan.idMap.get(node.id);
+        const newWorkspaceId = Number(newNodeId.replace(/^nd-/, ""));
+        return {
+          ...(original ?? {
+            type: node.data?.workspaceType ?? "edge",
+            job_q: [],
+            system_config: {},
+          }),
+          id: newWorkspaceId,
+          machines: newMachines
+            .filter((machine) => machine.parentId === newNodeId)
+            .map((machine) => machine.id),
+          iots: newIots
+            .filter((source) => source.parentId === newNodeId)
+            .map((source) => source.id),
+        };
+      });
+    const newWorkspaceNodeIds = new Set(
+      newWorkspaces.map((workspace) => `nd-${workspace.id}`),
+    );
+
+    setMachines((current) => [...current, ...newMachines]);
+    setIot((current) => [...current, ...newIots]);
+    setTaskTypes((current) => [...current, ...newTaskTypes]);
+    setScenarioRows((current) => [...current, ...newScenarioRows]);
+    setWorkspaces((current) => {
+      const updatedExisting = current.map((workspace) => {
+        const workspaceNodeId = `nd-${workspace.id}`;
+        const addedMachines = newMachines
+          .filter(
+            (machine) =>
+              machine.parentId === workspaceNodeId &&
+              !newWorkspaceNodeIds.has(machine.parentId),
+          )
+          .map((machine) => machine.id);
+        const addedIots = newIots
+          .filter(
+            (source) =>
+              source.parentId === workspaceNodeId &&
+              !newWorkspaceNodeIds.has(source.parentId),
+          )
+          .map((source) => source.id);
+        if (!addedMachines.length && !addedIots.length) return workspace;
+        return {
+          ...workspace,
+          machines: [...(workspace.machines ?? []), ...addedMachines],
+          iots: [...(workspace.iots ?? []), ...addedIots],
+        };
+      });
+      return [...updatedExisting, ...newWorkspaces];
+    });
+
+    const genericDuplicates = plan.duplicatedNodes
+      .filter(
+        (node) =>
+          node.type !== "machineNode" &&
+          node.type !== "iotNode" &&
+          node.type !== "userNode",
+      )
+      .map((node) => {
+        if (!workspaceNodeTypes.has(node.type)) {
+          return { ...node, selected: false };
+        }
+        return {
+          ...node,
+          selected: false,
+          data: {
+            ...node.data,
+            workspaceId: Number(node.id.replace(/^nd-/, "")),
+            name: `${node.data?.name ?? "Workspace"} Copy`,
+          },
+        };
+      })
+      .sort((a, b) => Number(Boolean(a.parentId)) - Number(Boolean(b.parentId)));
+
+    setNodes((current) => [
+      ...current.map((node) => ({ ...node, selected: false })),
+      ...genericDuplicates,
+    ]);
+    setEdges((current) => [...current, ...plan.duplicatedEdges]);
+    const copiedLoadBalancers = genericDuplicates
+      .filter((node) => node.type === "LBNode")
+      .map((node) => node.id);
+    if (copiedLoadBalancers.length) {
+      setLoadBalancers((current) => [...current, ...copiedLoadBalancers]);
+    }
+    if (newIots.length) {
+      window.dispatchEvent(new Event("taskColorChanged"));
+    }
+    setMenu(null);
+  }, [
+    edges,
+    iot,
+    machines,
+    nodes,
+    scenarioRows,
+    setEdges,
+    setIot,
+    setLoadBalancers,
+    setMachines,
+    setMenu,
+    setNodes,
+    setScenarioRows,
+    setTaskTypes,
+    setWorkspaces,
+    taskTypes,
+    workspaces,
+  ]);
+
+  const startNodeSelectionCopy = useCallback(
+    (selectedNodeIds, event) => {
+      const expandedIds = expandSelectionWithDescendants(
+        nodes,
+        selectedNodeIds,
+      );
+      const copyNodes = nodes.filter((node) => expandedIds.has(node.id));
+      if (copyNodes.length < 2) return;
+      const copyEdges = edges.filter(
+        (edge) => expandedIds.has(edge.source) && expandedIds.has(edge.target),
+      );
+
+      setNodeCopySource({
+        nodeIds: [...selectedNodeIds],
+        nodes: copyNodes,
+        edges: copyEdges,
+        bounds: getNodesBounds(copyNodes),
+        paneRect: reactFlowWrapper.current.getBoundingClientRect(),
+      });
+      setNodeCopyPointer({ x: event.clientX, y: event.clientY });
+      setEdgeCopySource(null);
+      setMenu(null);
+    },
+    [edges, getNodesBounds, nodes, setMenu],
+  );
+
+  const placeNodeSelectionCopy = useCallback(
+    (event) => {
+      if (!nodeCopySource) return false;
+      const placement = screenToFlowPosition({
+        x: event.clientX + 14,
+        y: event.clientY + 14,
+      });
+      duplicateNodeSelection(nodeCopySource.nodeIds, {
+        x: placement.x - nodeCopySource.bounds.x,
+        y: placement.y - nodeCopySource.bounds.y,
+      });
+      setNodeCopySource(null);
+      return true;
+    },
+    [duplicateNodeSelection, nodeCopySource, screenToFlowPosition],
   );
 
   const onConnect = useCallback(
@@ -194,9 +587,65 @@ const SimDashboard = () => {
     (event, node) => {
       event.preventDefault();
       const pane = reactFlowWrapper.current.getBoundingClientRect();
+      const selectionIds = selectedNodes.map((selected) => selected.id);
+      const useSelection = node.selected && selectionIds.length > 1;
 
       setMenu({
-        id: node.id,
+        id: useSelection ? "selection" : node.id,
+        kind: useSelection ? "selection" : "node",
+        selectedNodeIds: useSelection ? selectionIds : [],
+        top: event.clientY < pane.height - 200 ? event.clientY : null,
+        left: event.clientX < pane.width - 200 ? event.clientX : null,
+        right:
+          event.clientX >= pane.width - 200 ? pane.width - event.clientX : null,
+        bottom:
+          event.clientY >= pane.height - 200
+            ? pane.height - event.clientY
+            : null,
+      });
+    },
+    [selectedNodes, setMenu],
+  );
+  const onPaneContextMenu = useCallback(
+    (event) => {
+      if (selectedNodes.length < 2) return;
+      const selectionBounds = getNodesBounds(selectedNodes);
+      const pointer = screenToFlowPosition({
+        x: event.clientX,
+        y: event.clientY,
+      });
+      const isInsideSelection =
+        pointer.x >= selectionBounds.x &&
+        pointer.x <= selectionBounds.x + selectionBounds.width &&
+        pointer.y >= selectionBounds.y &&
+        pointer.y <= selectionBounds.y + selectionBounds.height;
+      if (!isInsideSelection) return;
+
+      event.preventDefault();
+      const pane = reactFlowWrapper.current.getBoundingClientRect();
+      setMenu({
+        id: "selection",
+        kind: "selection",
+        selectedNodeIds: selectedNodes.map((node) => node.id),
+        top: event.clientY < pane.height - 200 ? event.clientY : null,
+        left: event.clientX < pane.width - 200 ? event.clientX : null,
+        right:
+          event.clientX >= pane.width - 200 ? pane.width - event.clientX : null,
+        bottom:
+          event.clientY >= pane.height - 200
+            ? pane.height - event.clientY
+            : null,
+      });
+    }, [getNodesBounds, screenToFlowPosition, selectedNodes, setMenu]);
+  const onSelectionContextMenu = useCallback(
+    (event, selectionNodes) => {
+      if (selectionNodes.length < 2) return;
+      event.preventDefault();
+      const pane = reactFlowWrapper.current.getBoundingClientRect();
+      setMenu({
+        id: "selection",
+        kind: "selection",
+        selectedNodeIds: selectionNodes.map((node) => node.id),
         top: event.clientY < pane.height - 200 ? event.clientY : null,
         left: event.clientX < pane.width - 200 ? event.clientX : null,
         right:
@@ -216,6 +665,7 @@ const SimDashboard = () => {
 
       setMenu({
         id: edge.id,
+        kind: "edge",
         top: event.clientY < pane.height - 200 ? event.clientY : null,
         left: event.clientX < pane.width - 200 ? event.clientX : null,
         right:
@@ -229,7 +679,101 @@ const SimDashboard = () => {
     },
     [setMenu, setSelectedEdge],
   );
-  const onPaneClick = useCallback(() => setMenu(null), [setMenu]); // Close the context menu if it's open whenever the window is clicked.
+  const closeContextMenu = useCallback(() => setMenu(null), [setMenu]);
+  const onPaneClick = useCallback((event) => {
+    if (placeNodeSelectionCopy(event)) return;
+    setMenu(null);
+    setEdgeCopySource(null);
+  }, [placeNodeSelectionCopy, setMenu]);
+
+  useEffect(() => {
+    if (!edgeCopySource) return undefined;
+
+    const followPointer = (event) => {
+      setEdgeCopyPointer({ x: event.clientX, y: event.clientY });
+    };
+    const cancelOnEscape = (event) => {
+      if (event.key === "Escape") setEdgeCopySource(null);
+    };
+
+    window.addEventListener("pointermove", followPointer);
+    window.addEventListener("keydown", cancelOnEscape);
+    return () => {
+      window.removeEventListener("pointermove", followPointer);
+      window.removeEventListener("keydown", cancelOnEscape);
+    };
+  }, [edgeCopySource]);
+
+  useEffect(() => {
+    if (!nodeCopySource) return undefined;
+
+    const followPointer = (event) => {
+      setNodeCopyPointer({ x: event.clientX, y: event.clientY });
+    };
+    const cancelOnEscape = (event) => {
+      if (event.key === "Escape") setNodeCopySource(null);
+    };
+
+    window.addEventListener("pointermove", followPointer);
+    window.addEventListener("keydown", cancelOnEscape);
+    return () => {
+      window.removeEventListener("pointermove", followPointer);
+      window.removeEventListener("keydown", cancelOnEscape);
+    };
+  }, [nodeCopySource]);
+
+  const edgeCopyNetwork = useMemo(() => {
+    if (!edgeCopySource) return null;
+    const sourceId = String(edgeCopySource.source ?? "").replace(/^nd_/, "");
+    const sourceProperties = iot.find(
+      (source) => String(source.id) === sourceId,
+    )?.properties;
+    return resolveEdgeNetwork(edgeCopySource, sourceProperties);
+  }, [edgeCopySource, iot]);
+
+  const nodeCopyPreview = useMemo(() => {
+    if (!nodeCopySource) return null;
+    const maxWidth = 300;
+    const maxHeight = 190;
+    const scale = Math.min(
+      1,
+      maxWidth / Math.max(nodeCopySource.bounds.width, 1),
+      maxHeight / Math.max(nodeCopySource.bounds.height, 1),
+    );
+    const positionOf = (node) =>
+      node.positionAbsolute ?? node.internals?.positionAbsolute ?? node.position;
+    const previewNodes = nodeCopySource.nodes.map((node) => {
+      const position = positionOf(node);
+      const width = node.measured?.width ?? node.width ?? 120;
+      const height = node.measured?.height ?? node.height ?? 70;
+      return {
+        id: node.id,
+        type: node.type,
+        label:
+          node.data?.machine?.name ??
+          node.data?.iot?.name ??
+          node.data?.name ??
+          (node.type === "LBNode" ? "Load Balancer" : node.type),
+        x: (position.x - nodeCopySource.bounds.x) * scale,
+        y: (position.y - nodeCopySource.bounds.y) * scale,
+        width: Math.max(width * scale, 28),
+        height: Math.max(height * scale, 20),
+      };
+    });
+    const byId = new Map(previewNodes.map((node) => [node.id, node]));
+    return {
+      width: Math.max(nodeCopySource.bounds.width * scale, 90),
+      height: Math.max(nodeCopySource.bounds.height * scale, 55),
+      nodes: previewNodes,
+      edges: nodeCopySource.edges
+        .map((edge) => ({
+          id: edge.id,
+          source: byId.get(edge.source),
+          target: byId.get(edge.target),
+        }))
+        .filter((edge) => edge.source && edge.target),
+    };
+  }, [nodeCopySource]);
 
   // END DND
 
@@ -533,6 +1077,7 @@ const SimDashboard = () => {
       meanSize: updatedIOT.properties.meanSize,
       dataSizeStdDev:
         updatedIOT.properties.dataSizeStdDev ?? updatedIOT.properties.stdv ?? 1,
+      dataSizeSeed: updatedIOT.properties.dataSizeSeed ?? "",
       connectivity: updatedIOT.properties.connectivity,
       dataRateKbps: updatedIOT.properties.dataRateKbps ?? 54000,
       urgency: updatedIOT.properties.urgency,
@@ -546,6 +1091,7 @@ const SimDashboard = () => {
       startTime: updatedIOT.properties.startTime,
       endTime: updatedIOT.properties.endTime,
       distribution: updatedIOT.properties.distribution,
+      arrivalSeed: updatedIOT.properties.arrivalSeed ?? "",
     };
 
     setTaskTypes(
@@ -770,8 +1316,13 @@ const SimDashboard = () => {
               onEdgesChange={onEdgesChange}
               onConnect={onConnect}
               onPaneClick={onPaneClick}
+              onPaneContextMenu={onPaneContextMenu}
+              onSelectionContextMenu={onSelectionContextMenu}
               onNodeContextMenu={onNodeContextMenu}
               onEdgeContextMenu={onEdgeContextMenu}
+              selectionOnDrag
+              selectionMode={SelectionMode.Partial}
+              panOnDrag={[1, 2]}
               fitView
               fitViewOptions={{
                 padding: 0.5,
@@ -779,7 +1330,27 @@ const SimDashboard = () => {
                 interpolate: "smooth",
               }}
             >
-              <Controls position="center-left">
+              <Controls position="center-left" showInteractive={false}>
+                <ControlButton
+                  onClick={handleAutoFitLockToggle}
+                  title={
+                    isAutoFitLocked
+                      ? "Unlock automatic zoom and fit the workspace"
+                      : "Lock automatic zoom"
+                  }
+                  aria-label={
+                    isAutoFitLocked
+                      ? "Unlock automatic zoom"
+                      : "Lock automatic zoom"
+                  }
+                  className={isAutoFitLocked ? "!bg-blue-100 !text-blue-700" : ""}
+                >
+                  {isAutoFitLocked ? (
+                    <MdLock size={16} aria-hidden="true" />
+                  ) : (
+                    <MdLockOpen size={16} aria-hidden="true" />
+                  )}
+                </ControlButton>
                 <ControlButton
                   onClick={handleClearWorkspace}
                   title="Clear workspace"
@@ -789,11 +1360,119 @@ const SimDashboard = () => {
                 </ControlButton>
               </Controls>
               <Background />
-              {menu && <ContextMenu onClick={onPaneClick} {...menu} />}
+              {menu && (
+                <ContextMenu
+                  onClick={closeContextMenu}
+                  onDuplicateEdge={startEdgePropertyCopy}
+                  onDuplicateSelection={startNodeSelectionCopy}
+                  selectedNodeIds={selectedNodes.map((node) => node.id)}
+                  {...menu}
+                />
+              )}
             </ReactFlow>
           </div>
           <Sidebar setNodes={setNodes} />
         </div>
+        {edgeCopySource && edgeCopyNetwork && (
+          <div
+            className="fixed z-[100000] pointer-events-none flex items-center gap-2 rounded-full border border-blue-300 bg-white px-3 py-2 text-xs font-semibold text-gray-800 shadow-xl"
+            style={{
+              left: edgeCopyPointer.x + 14,
+              top: edgeCopyPointer.y + 14,
+            }}
+            role="status"
+            aria-live="polite"
+          >
+            <FiCopy className="text-blue-600" aria-hidden="true" />
+            <span
+              className="block w-7"
+              style={{
+                borderTop: `3px ${getEdgeNetworkVisual(edgeCopyNetwork.networkType).dash ? "dashed" : "solid"} ${getEdgeNetworkVisual(edgeCopyNetwork.networkType).color}`,
+              }}
+              aria-hidden="true"
+            />
+            <span>
+              {edgeCopyNetwork.networkType} · {formatDataRate(edgeCopyNetwork.dataRateKbps)}
+            </span>
+            <span className="font-normal text-gray-500">Click a connection</span>
+          </div>
+        )}
+        {nodeCopySource && (
+          <div
+            className="fixed z-[99999] cursor-copy"
+            style={{
+              left: nodeCopySource.paneRect.left,
+              top: nodeCopySource.paneRect.top,
+              width: nodeCopySource.paneRect.width,
+              height: nodeCopySource.paneRect.height,
+            }}
+            onClick={placeNodeSelectionCopy}
+            onContextMenu={(event) => event.preventDefault()}
+            aria-label="Click to place duplicated selection"
+          />
+        )}
+        {nodeCopySource && nodeCopyPreview && (
+          <div
+            className="fixed z-[100000] pointer-events-none"
+            style={{
+              left: nodeCopyPointer.x + 14,
+              top: nodeCopyPointer.y + 14,
+              width: nodeCopyPreview.width,
+              height: nodeCopyPreview.height + 32,
+            }}
+            role="status"
+            aria-live="polite"
+          >
+            <div
+              className="relative rounded-lg border-2 border-dashed border-blue-500 bg-blue-100/70 shadow-xl backdrop-blur-sm"
+              style={{
+                width: nodeCopyPreview.width,
+                height: nodeCopyPreview.height,
+              }}
+            >
+              <svg
+                className="absolute inset-0 h-full w-full"
+                aria-hidden="true"
+              >
+                {nodeCopyPreview.edges.map((edge) => (
+                  <line
+                    key={edge.id}
+                    x1={edge.source.x + edge.source.width / 2}
+                    y1={edge.source.y + edge.source.height / 2}
+                    x2={edge.target.x + edge.target.width / 2}
+                    y2={edge.target.y + edge.target.height / 2}
+                    stroke="#2563eb"
+                    strokeWidth="2"
+                    strokeDasharray="5 4"
+                  />
+                ))}
+              </svg>
+              {nodeCopyPreview.nodes.map((node) => (
+                <div
+                  key={node.id}
+                  className={`absolute flex items-center justify-center overflow-hidden rounded border border-blue-500 px-1 text-[10px] font-semibold text-blue-950 ${
+                    node.type === "group" ||
+                    node.type === "edgeSpace" ||
+                    node.type === "cloudSpace"
+                      ? "bg-blue-50/30"
+                      : "bg-white/90"
+                  }`}
+                  style={{
+                    left: node.x,
+                    top: node.y,
+                    width: node.width,
+                    height: node.height,
+                  }}
+                >
+                  {node.label}
+                </div>
+              ))}
+            </div>
+            <div className="mt-1 rounded-full bg-blue-600 px-3 py-1 text-center text-xs font-semibold text-white shadow-lg">
+              Click the canvas to place · Esc to cancel
+            </div>
+          </div>
+        )}
         <div className="absolute top-8 left-1/2 transform -translate-x-1/2 z-10">
           <div className="flex flex-col gap-1">
             <div className="flex justify-between space-x-4 bg-white rounded-full shadow-lg px-6 py-3">
@@ -888,8 +1567,9 @@ const SimDashboard = () => {
               <form className="space-y-6">
                 {/* Load Balancer Sidebar Content */}
                 <div className="space-y-2">
-                  <label className="text-sm font-medium text-gray-700">
+                  <label className="flex items-center text-sm font-medium text-gray-700">
                     Load Balancing Policy
+                    <SchedulingPolicyHelp selectedPolicy={policyAlias} />
                   </label>
                   <div className="space-y-1">
                     <select

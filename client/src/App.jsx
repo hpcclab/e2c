@@ -1,12 +1,18 @@
-import React from "react";
+import React, { useEffect } from "react";
 import { HashRouter as Router, Routes, Route, Link } from "react-router-dom";
 import SimDashboard from "./SimDashboard";
 import "./assets/index.css";
 import Reports from "./Reports";
 import FlowSaveLoadPanel from "./components/SaveLoadPanel";
 import Help from "./help";
+import { warnBeforeUnload } from "./utils/beforeUnload";
 
 const App = () => {
+  useEffect(() => {
+    window.addEventListener("beforeunload", warnBeforeUnload);
+    return () => window.removeEventListener("beforeunload", warnBeforeUnload);
+  }, []);
+
   return (
     <Router>
       <div className="max-w-screen max-h-screen bg-gray-50 ">

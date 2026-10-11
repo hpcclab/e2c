@@ -1,16 +1,8 @@
 import { useState, useEffect } from "react";
-import { sourceTaskColorKey } from "../utils/taskColors";
-
-const PALETTE = [
-  { name: "Slate", bg: "#334155", text: "#e2e8f0", accent: "#94a3b8" },
-  { name: "Sky", bg: "#0369a1", text: "#e0f2fe", accent: "#7dd3fc" },
-  { name: "Teal", bg: "#0f766e", text: "#ccfbf1", accent: "#5eead4" },
-  { name: "Emerald", bg: "#166534", text: "#dcfce7", accent: "#86efac" },
-  { name: "Violet", bg: "#5b21b6", text: "#ede9fe", accent: "#c4b5fd" },
-  { name: "Rose", bg: "#9f1239", text: "#ffe4e6", accent: "#fda4af" },
-  { name: "Amber", bg: "#92400e", text: "#fef3c7", accent: "#fcd34d" },
-  { name: "Fuchsia", bg: "#86198f", text: "#fae8ff", accent: "#e879f9" },
-];
+import {
+  sourceTaskColorKey,
+  TASK_COLOR_PALETTE,
+} from "../utils/taskColors";
 
 // Shared registry. New entries are keyed by source ID so two IoTs that create
 // the same task type can still use different colors. Task-type keys remain as
@@ -100,7 +92,7 @@ export default function Task({ task, setSelectedTask }) {
     (sourceColorKey ? colorMemory[sourceColorKey] : undefined) ??
     colorMemory[task.task_type] ??
     0;
-  const color = PALETTE[idx];
+  const color = TASK_COLOR_PALETTE[idx] ?? TASK_COLOR_PALETTE[0];
 
   return (
     <>

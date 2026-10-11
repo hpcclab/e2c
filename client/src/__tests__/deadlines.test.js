@@ -100,6 +100,7 @@ test("data size standard deviation controls generated task-size variation", () =
     startTime: 0,
     endTime: 0,
     distribution: "uniform",
+    arrivalSeed: "fixed-arrivals",
   }];
   const source = [{
     srcID: 7,
@@ -128,6 +129,67 @@ test("data size standard deviation controls generated task-size variation", () =
   } finally {
     Math.random = originalRandom;
   }
+});
+
+test("arrival and data-size seeds reproduce workload randomness independently", () => {
+  const scenario = [{
+    srcID: 9,
+    taskType: "Seeded Task",
+    numTasks: 8,
+    startTime: 0,
+    endTime: 20,
+    distribution: "normal",
+    arrivalSeed: "arrival-seed-42",
+  }];
+  const source = [{
+    srcID: 9,
+    name: "Seeded Task",
+    meanSize: 100,
+    dataSizeStdDev: 15,
+    dataSizeSeed: "size-seed-42",
+    connectivity: "WiFi",
+    dataRateKbps: 54000,
+    slack: 5,
+  }];
+
+  const first = generateWorkload(scenario, source);
+  const repeated = generateWorkload(scenario, source);
+
+  assert.deepEqual(
+    repeated.map(({ generation_time, data_size }) => ({
+      generation_time,
+      data_size,
+    })),
+    first.map(({ generation_time, data_size }) => ({
+      generation_time,
+      data_size,
+    })),
+  );
+
+  const differentArrivals = generateWorkload(
+    [{ ...scenario[0], arrivalSeed: "another-arrival-seed" }],
+    source,
+  );
+  assert.notDeepEqual(
+    differentArrivals.map((task) => task.generation_time),
+    first.map((task) => task.generation_time),
+  );
+  assert.deepEqual(
+    differentArrivals.map((task) => task.data_size).sort((a, b) => a - b),
+    first.map((task) => task.data_size).sort((a, b) => a - b),
+  );
+
+  const differentSizes = generateWorkload(scenario, [
+    { ...source[0], dataSizeSeed: "another-size-seed" },
+  ]);
+  assert.deepEqual(
+    differentSizes.map((task) => task.generation_time),
+    first.map((task) => task.generation_time),
+  );
+  assert.notDeepEqual(
+    differentSizes.map((task) => task.data_size),
+    first.map((task) => task.data_size),
+  );
 });
 
 function processTask({ start, deadline, eet, now, deadlinePolicy = "drop" }) {

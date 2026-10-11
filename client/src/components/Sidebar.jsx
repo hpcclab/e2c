@@ -349,12 +349,12 @@ export default function Sidebar() {
     nodes,
     loadBalancers,
     setLoadBalancers,
+    fitWorkspace,
   } = useGlobalState();
 
   const {
     setNodes,
     screenToFlowPosition,
-    fitView,
     getNodes,
     getNodesBounds,
     getIntersectingNodes,
@@ -443,12 +443,15 @@ export default function Sidebar() {
             dataInput: "binary",
             meanSize: 6,
             dataSizeStdDev: 1,
+            dataSizeSeed: "",
             urgency: "BestEffort",
             slack: 1,
+            slackLocked: false,
             numTasks: 10,
             startTime: 0,
             endTime: 15,
             distribution: distributionOptions[0],
+            arrivalSeed: "",
             deviceRole: "sensor",
             frequency: 0,
             connectivity: "WiFi",
@@ -471,6 +474,7 @@ export default function Sidebar() {
             dataInput: newIot.properties.dataInput,
             meanSize: newIot.properties.meanSize,
             dataSizeStdDev: newIot.properties.dataSizeStdDev,
+            dataSizeSeed: newIot.properties.dataSizeSeed,
             connectivity: newIot.properties.connectivity,
             dataRateKbps: newIot.properties.dataRateKbps,
             urgency: newIot.properties.urgency,
@@ -489,6 +493,7 @@ export default function Sidebar() {
             startTime: newIot.properties.startTime,
             endTime: newIot.properties.endTime,
             distribution: newIot.properties.distribution,
+            arrivalSeed: newIot.properties.arrivalSeed,
           },
         ]);
         if (parentId) {
@@ -520,12 +525,15 @@ export default function Sidebar() {
             dataInput: "binary",
             meanSize: 6,
             dataSizeStdDev: 1,
+            dataSizeSeed: "",
             urgency: "BestEffort",
             slack: 1,
+            slackLocked: false,
             numTasks: 10,
             startTime: 0,
             endTime: 15,
             distribution: distributionOptions[0],
+            arrivalSeed: "",
             deviceRole: "sensor",
             frequency: 0,
             connectivity: "WiFi",
@@ -548,6 +556,7 @@ export default function Sidebar() {
             dataInput: newIot.properties.dataInput,
             meanSize: newIot.properties.meanSize,
             dataSizeStdDev: newIot.properties.dataSizeStdDev,
+            dataSizeSeed: newIot.properties.dataSizeSeed,
             connectivity: newIot.properties.connectivity,
             dataRateKbps: newIot.properties.dataRateKbps,
             urgency: newIot.properties.urgency,
@@ -566,6 +575,7 @@ export default function Sidebar() {
             startTime: newIot.properties.startTime,
             endTime: newIot.properties.endTime,
             distribution: newIot.properties.distribution,
+            arrivalSeed: newIot.properties.arrivalSeed,
           },
         ]);
         if (parentId) {
@@ -646,7 +656,7 @@ export default function Sidebar() {
         );
       }
 
-      fitView({ padding: 0.5, duration: 600, interpolate: "smooth" });
+      fitWorkspace();
     },
     [
       getNodes,
@@ -656,7 +666,7 @@ export default function Sidebar() {
       setTaskTypes,
       setScenarioRows,
       screenToFlowPosition,
-      fitView,
+      fitWorkspace,
     ],
   );
 

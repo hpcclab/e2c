@@ -1,6 +1,5 @@
 import React, { useState, useRef, useEffect } from "react";
 import { useGlobalState } from "../context/GlobalStates";
-import { useReactFlow } from "@xyflow/react";
 import * as localStore from "../utils/localStore";
 import { VscFiles } from "react-icons/vsc";
 import {
@@ -53,9 +52,8 @@ export default function FlowSaveLoadPanel() {
     setPolicyAlias,
     deadlinePolicy,
     setDeadlinePolicy,
+    fitWorkspace,
   } = useGlobalState();
-
-  const { fitView } = useReactFlow();
   const [open, setOpen] = useState(false);
   const [activeSection, setActiveSection] = useState("open");
   const [files, setFiles] = useState([]);
@@ -253,7 +251,7 @@ export default function FlowSaveLoadPanel() {
       setSelectedFile(file);
       notify("Loaded " + file);
       setIsRunning(false);
-      fitView({ padding: 0.5, duration: 600, interpolate: "smooth" });
+      fitWorkspace();
       closePanel();
     } catch (err) {
       notify("Load failed: " + err.message, true);

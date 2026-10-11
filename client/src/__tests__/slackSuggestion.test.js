@@ -1,6 +1,9 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { calculateSuggestedSlack } from "../utils/slackSuggestion.js";
+import {
+  calculateSuggestedSlack,
+  shouldApplySlackSuggestion,
+} from "../utils/slackSuggestion.js";
 import { sourceEetKey } from "../utils/executionTime.js";
 
 const source = {
@@ -85,4 +88,23 @@ test("suggested slack uses the network configured on the source edge", () => {
 
   assert.equal(result.slack, 2.75);
   assert.ok(result.transferTime > 1);
+});
+
+test("locking Slack prevents automatic suggestions from replacing it", () => {
+  assert.equal(
+    shouldApplySlackSuggestion({
+      locked: true,
+      lastAppliedSuggestion: 1,
+      suggestedSlack: 2,
+    }),
+    false,
+  );
+  assert.equal(
+    shouldApplySlackSuggestion({
+      locked: false,
+      lastAppliedSuggestion: 1,
+      suggestedSlack: 2,
+    }),
+    true,
+  );
 });

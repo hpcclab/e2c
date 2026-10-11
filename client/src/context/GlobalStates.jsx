@@ -50,12 +50,15 @@ export const GlobalProvider = ({ children }) => {
       dataInput: "binary",
       meanSize: 0,
       dataSizeStdDev: 1,
+      dataSizeSeed: "",
       urgency: "BestEffort",
       slack: 0,
+      slackLocked: false,
       numTasks: 0,
       startTime: 0,
       endTime: 0,
       distribution: "uniform",
+      arrivalSeed: "",
       deviceRole: "sensor",
       frequency: 0,
       connectivity: "WiFi",
@@ -123,6 +126,21 @@ export const GlobalProvider = ({ children }) => {
   const schedulerRef = useRef(null);
   const [policyAlias, setPolicyAlias] = useState("FCFS");
   const [deadlinePolicy, setDeadlinePolicy] = useState("drop");
+  const [isAutoFitLocked, setIsAutoFitLocked] = useState(false);
+
+  const fitWorkspace = useCallback(
+    (options = {}) => {
+      if (isAutoFitLocked) return false;
+      fitView({
+        padding: 0.5,
+        duration: 600,
+        interpolate: "smooth",
+        ...options,
+      });
+      return true;
+    },
+    [fitView, isAutoFitLocked],
+  );
 
   const getNeighbors = (sourceID) => {
     let outies =
@@ -151,7 +169,7 @@ export const GlobalProvider = ({ children }) => {
   };
   const onDragStop = (event, node) => {
     // Adjust viewport nicely after drag
-    fitView({ padding: 0.5, duration: 600, interpolate: "smooth" });
+    fitWorkspace();
 
     // Only handle machine, IoT, and human-user source nodes
     if (
@@ -312,12 +330,15 @@ export const GlobalProvider = ({ children }) => {
             dataInput: taskType,
             meanSize: 6,
             dataSizeStdDev: 1,
+            dataSizeSeed: "",
             urgency: "BestEffort",
             slack: 0,
+            slackLocked: false,
             numTasks: 10,
             startTime: 0,
             endTime: 30,
             distribution: distributionOptions[0],
+            arrivalSeed: "",
             connectivity: "WiFi",
             dataRateKbps: 54000,
           },
@@ -332,6 +353,7 @@ export const GlobalProvider = ({ children }) => {
           dataInput: iotObj.properties.dataInput,
           meanSize: iotObj.properties.meanSize,
           dataSizeStdDev: iotObj.properties.dataSizeStdDev,
+          dataSizeSeed: iotObj.properties.dataSizeSeed,
           connectivity: iotObj.properties.connectivity,
           dataRateKbps: iotObj.properties.dataRateKbps,
           urgency: iotObj.properties.urgency,
@@ -345,6 +367,7 @@ export const GlobalProvider = ({ children }) => {
           startTime: iotObj.properties.startTime,
           endTime: iotObj.properties.endTime,
           distribution: iotObj.properties.distribution,
+          arrivalSeed: iotObj.properties.arrivalSeed,
         };
         newScenarios.push(iotScenarios);
 
@@ -368,7 +391,7 @@ export const GlobalProvider = ({ children }) => {
       setIot((prevIot) => [...prevIot, ...newIoTs]);
       setTaskTypes((prev) => [...prev, ...newTypes]);
       setScenarioRows((prev) => [...prev, ...newScenarios]);
-      fitView({ padding: 0.5, duration: 600, interpolate: "smooth" });
+      fitWorkspace();
     };
 
     reader.readAsText(file);
@@ -439,7 +462,7 @@ export const GlobalProvider = ({ children }) => {
       console.log("Processed machines with replicas:", machinesWithIds);
       setMachines((prev) => [...prev]);
       machinesRef.current = machinesWithIds;
-      fitView({ padding: 0.5, duration: 600, interpolate: "smooth" });
+      fitWorkspace();
     } catch (err) {
       console.error("Config upload error:", err);
       alert("Failed to upload configuration file.");
@@ -670,6 +693,9 @@ export const GlobalProvider = ({ children }) => {
     setPolicyAlias,
     deadlinePolicy,
     setDeadlinePolicy,
+    isAutoFitLocked,
+    setIsAutoFitLocked,
+    fitWorkspace,
     simulationIntervalRef,
     simCurrentRef,
     totalSimTimeRef,
