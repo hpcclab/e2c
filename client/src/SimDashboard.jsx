@@ -13,6 +13,7 @@ import EditUserProperties from "./components/EditUserProperties";
 import EditEdgeProperties from "./components/EditEdgeProperties";
 import DeadlinePolicyHelp from "./components/DeadlinePolicyHelp";
 import SchedulingPolicyHelp from "./components/SchedulingPolicyHelp";
+import SimulationSeedSettings from "./components/SimulationSeedSettings";
 
 // Drag and drop imports and requirements
 import {
@@ -59,6 +60,12 @@ import {
   expandSelectionWithDescendants,
   planGraphDuplication,
 } from "./utils/graphDuplication";
+import {
+  MAX_BACKGROUND_WORKERS,
+  MAX_BATCH_TASKS,
+  normalizeSimulationRunCount,
+  normalizeSimulationSeeds,
+} from "./utils/simulationBatch";
 const edgeTypes = {
   packet: AnimatedEdge,
 };
@@ -155,17 +162,44 @@ const SimDashboard = () => {
     setPolicyAlias,
     deadlinePolicy,
     setDeadlinePolicy,
+    simulationSeed,
+    setSimulationSeed,
+    simulationRunCount,
+    setSimulationRunCount,
+    simulationSeeds,
+    setSimulationSeeds,
+    batchRunResults,
     isAutoFitLocked,
     setIsAutoFitLocked,
     simCurrentRef,
     totalSimTimeRef,
     simulationWorkerError,
-    startSimulationWorker,
+    startSimulationBatch,
     pauseSimulationWorker,
     resumeSimulationWorker,
     stopSimulationWorker,
   } = useGlobalState();
   // End Global States
+
+  const applySimulationSettings = useCallback(
+    ({ runCount, seeds }) => {
+      const normalizedRunCount = normalizeSimulationRunCount(runCount);
+      const normalizedSeeds = normalizeSimulationSeeds(
+        normalizedRunCount,
+        seeds,
+        simulationSeed,
+      );
+      setSimulationRunCount(normalizedRunCount);
+      setSimulationSeeds(normalizedSeeds);
+      setSimulationSeed(normalizedSeeds[0] ?? "");
+    },
+    [
+      setSimulationRunCount,
+      setSimulationSeed,
+      setSimulationSeeds,
+      simulationSeed,
+    ],
+  );
 
   // DND
   const reactFlowWrapper = useRef(null);
@@ -1116,9 +1150,29 @@ const SimDashboard = () => {
         return;
       }
 
-      const workload = generateWorkload(scenarioRows, taskTypes, 0, edges);
+      const runCount = normalizeSimulationRunCount(simulationRunCount);
+      const runSeeds = normalizeSimulationSeeds(
+        runCount,
+        simulationSeeds,
+        simulationSeed,
+      );
+      const workload = generateWorkload(
+        scenarioRows,
+        taskTypes,
+        0,
+        edges,
+        runSeeds[0],
+      );
       if (!workload.length) {
         alert("Failed to run simulation. No tasks were generated.");
+        return;
+      }
+      if (workload.length * runCount > MAX_BATCH_TASKS) {
+        alert(
+          `This batch would process ${(
+            workload.length * runCount
+          ).toLocaleString()} tasks. Reduce the number of simulations or tasks so the batch stays at or below ${MAX_BATCH_TASKS.toLocaleString()} tasks.`,
+        );
         return;
       }
 
@@ -1147,14 +1201,41 @@ const SimDashboard = () => {
       setSimTotal(Infinity);
       totalSimTimeRef.current = Infinity;
 
-      const started = startSimulationWorker({
+      const commonPayload = {
         policyAlias,
         deadlinePolicy,
         machines: clearedMachines,
         iot,
-        tasks: workload,
         edges: edges.map(({ source, target }) => ({ source, target })),
         nodes: nodes.map(({ id, type }) => ({ id, type })),
+      };
+      const backgroundRuns = runSeeds.slice(1).map((seed, index) => ({
+        runNumber: index + 2,
+        seed,
+        payload: {
+          ...commonPayload,
+          tasks: generateWorkload(
+            scenarioRows,
+            taskTypes,
+            0,
+            edges,
+            seed,
+          ),
+          simulationSeed: seed,
+        },
+      }));
+      const started = startSimulationBatch({
+        visibleRun: {
+          runNumber: 1,
+          seed: runSeeds[0],
+          payload: {
+            ...commonPayload,
+            tasks: workload,
+            simulationSeed: runSeeds[0],
+          },
+        },
+        backgroundRuns,
+        maxWorkers: MAX_BACKGROUND_WORKERS,
       });
       if (!started) {
         alert("Failed to start the background simulation worker.");
@@ -1185,9 +1266,18 @@ const SimDashboard = () => {
       dataResults.length >= totalTasks
     ) {
       wasRunningRef.current = false;
-      alert("Simulation complete! Check the Reports page for results.");
+      const backgroundRunsPending = batchRunResults.some(
+        (entry) =>
+          entry.runNumber > 1 &&
+          (entry.status === "pending" || entry.status === "running"),
+      );
+      alert(
+        backgroundRunsPending
+          ? "The visible simulation is complete. Background runs are still finishing; Reports will update automatically."
+          : "Simulation batch complete! Check the Reports page for results.",
+      );
     }
-  }, [dataResults.length, isRunning, totalTasks]);
+  }, [batchRunResults, dataResults.length, isRunning, totalTasks]);
 
   // /* -------------------- WORKSPACE, EDGE, MACHINE, and IOT NODES -------------------- */
   useEffect(() => {
@@ -1475,6 +1565,13 @@ const SimDashboard = () => {
           <div className="flex flex-col gap-1">
             <div className="flex justify-between space-x-4 bg-white rounded-full shadow-lg px-6 py-3">
               <>
+                <SimulationSeedSettings
+                  value={simulationSeed}
+                  runCount={simulationRunCount}
+                  seeds={simulationSeeds}
+                  onApply={applySimulationSettings}
+                  disabled={isRunning}
+                />
                 <button
                   onClick={runDataSimulation}
                   className={` bg-green-600 hover:bg-green-700 text-white rounded-full w-12 h-12 flex items-center justify-center transition shadow-md`}

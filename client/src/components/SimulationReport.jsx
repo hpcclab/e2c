@@ -57,6 +57,7 @@ const SimulationReport = ({
   simulationTime,
   machines = [],
   sources = [],
+  edges = [],
 }) => {
   const [reportPosition, setReportPosition] = useState({ x: 100, y: 100 });
   const [isResizing, setIsResizing] = useState(false);
@@ -74,9 +75,11 @@ const SimulationReport = ({
       dataResults,
       missedTasks,
       machines,
+      sources,
+      edges,
       simulationTime,
     }),
-    [dataResults, missedTasks, machines, simulationTime],
+    [dataResults, missedTasks, machines, sources, edges, simulationTime],
   );
 
   const machineChartData = useMemo(
@@ -133,6 +136,10 @@ const SimulationReport = ({
     const machineList = Array.isArray(machines)
       ? machines.filter((m) => m.id !== -1)
       : [];
+    const sourceList = Array.isArray(sources)
+      ? sources.filter((source) => source.id !== -3)
+      : [];
+    const edgeList = Array.isArray(edges) ? edges : [];
 
     const totalTasks = taskSummary.total;
     const inProgress = taskSummary.inProgress;
@@ -202,8 +209,11 @@ const SimulationReport = ({
       tasksPerMachine,
       inProgress,
       totalTasksPreview: totalTasks,
+      totalMachines: machineList.length,
+      totalIotDevices: sourceList.length,
+      totalEdges: edgeList.length,
     };
-  }, [dataResults, machines, sources, totTasks]);
+  }, [dataResults, edges, machines, sources, totTasks]);
 
   useEffect(() => {
     console.log("=== DEBUG dataResults ===");
@@ -420,6 +430,33 @@ const SimulationReport = ({
               </div>
             </div>
 
+            <div className="grid grid-cols-1 gap-3 mb-6 sm:grid-cols-3">
+              <div className="rounded-lg bg-slate-50 p-4 text-center">
+                <div className="text-3xl font-bold text-slate-700">
+                  {summaryStats.totalMachines}
+                </div>
+                <div className="text-sm font-medium text-slate-600">
+                  Machines
+                </div>
+              </div>
+              <div className="rounded-lg bg-cyan-50 p-4 text-center">
+                <div className="text-3xl font-bold text-cyan-700">
+                  {summaryStats.totalIotDevices}
+                </div>
+                <div className="text-sm font-medium text-cyan-700">
+                  IoT Devices
+                </div>
+              </div>
+              <div className="rounded-lg bg-indigo-50 p-4 text-center">
+                <div className="text-3xl font-bold text-indigo-700">
+                  {summaryStats.totalEdges}
+                </div>
+                <div className="text-sm font-medium text-indigo-700">
+                  Edges
+                </div>
+              </div>
+            </div>
+
             {(summaryStats.sourceBatteryFailures > 0 ||
               summaryStats.machineBatteryFailures > 0) && (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-6">
@@ -504,6 +541,30 @@ const SimulationReport = ({
                   </td>
                   <td className="border border-gray-300 px-4 py-2 text-right">
                     {summaryStats.totalTasks}
+                  </td>
+                </tr>
+                <tr className="hover:bg-gray-50">
+                  <td className="border border-gray-300 px-4 py-2 font-medium">
+                    Total Machines
+                  </td>
+                  <td className="border border-gray-300 px-4 py-2 text-right">
+                    {summaryStats.totalMachines}
+                  </td>
+                </tr>
+                <tr className="hover:bg-gray-50">
+                  <td className="border border-gray-300 px-4 py-2 font-medium">
+                    Total IoT Devices
+                  </td>
+                  <td className="border border-gray-300 px-4 py-2 text-right">
+                    {summaryStats.totalIotDevices}
+                  </td>
+                </tr>
+                <tr className="hover:bg-gray-50">
+                  <td className="border border-gray-300 px-4 py-2 font-medium">
+                    Total Edges
+                  </td>
+                  <td className="border border-gray-300 px-4 py-2 text-right">
+                    {summaryStats.totalEdges}
                   </td>
                 </tr>
                 <tr className="hover:bg-gray-50 bg-blue-50">

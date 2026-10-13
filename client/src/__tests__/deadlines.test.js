@@ -106,7 +106,6 @@ test("data size standard deviation controls generated task-size variation", () =
     startTime: 0,
     endTime: 0,
     distribution: "uniform",
-    arrivalSeed: "fixed-arrivals",
   }];
   const source = [{
     srcID: 7,
@@ -116,28 +115,19 @@ test("data size standard deviation controls generated task-size variation", () =
     connectivity: "WiFi",
     slack: 5,
   }];
-  const originalRandom = Math.random;
-  const draws = [
-    Math.exp(-0.5), 0,
-    Math.exp(-0.5), 0.5,
-    0.5, 0.25,
-    0.5, 0.75,
-  ];
-  Math.random = () => draws.shift();
-  try {
-    const tasks = generateWorkload(scenario, source);
-    assert.deepEqual(tasks.map((task) => task.data_size), [90, 110]);
-    const constantTasks = generateWorkload(scenario, [{
-      ...source[0],
-      dataSizeStdDev: 0,
-    }]);
-    assert.deepEqual(constantTasks.map((task) => task.data_size), [100, 100]);
-  } finally {
-    Math.random = originalRandom;
-  }
+  const tasks = generateWorkload(scenario, source, 0, [], "variation-test");
+  assert.equal(tasks.some((task) => task.data_size !== 100), true);
+  const constantTasks = generateWorkload(
+    scenario,
+    [{ ...source[0], dataSizeStdDev: 0 }],
+    0,
+    [],
+    "variation-test",
+  );
+  assert.deepEqual(constantTasks.map((task) => task.data_size), [100, 100]);
 });
 
-test("arrival and data-size seeds reproduce workload randomness independently", () => {
+test("one simulation seed reproduces generation times and data sizes", () => {
   const scenario = [{
     srcID: 9,
     taskType: "Seeded Task",
@@ -145,21 +135,25 @@ test("arrival and data-size seeds reproduce workload randomness independently", 
     startTime: 0,
     endTime: 20,
     distribution: "normal",
-    arrivalSeed: "arrival-seed-42",
   }];
   const source = [{
     srcID: 9,
     name: "Seeded Task",
     meanSize: 100,
     dataSizeStdDev: 15,
-    dataSizeSeed: "size-seed-42",
     connectivity: "WiFi",
     dataRateKbps: 54000,
     slack: 5,
   }];
 
-  const first = generateWorkload(scenario, source);
-  const repeated = generateWorkload(scenario, source);
+  const first = generateWorkload(scenario, source, 0, [], "simulation-42");
+  const repeated = generateWorkload(
+    scenario,
+    source,
+    0,
+    [],
+    "simulation-42",
+  );
 
   assert.deepEqual(
     repeated.map(({ generation_time, data_size }) => ({
@@ -172,30 +166,71 @@ test("arrival and data-size seeds reproduce workload randomness independently", 
     })),
   );
 
-  const differentArrivals = generateWorkload(
-    [{ ...scenario[0], arrivalSeed: "another-arrival-seed" }],
-    source,
-  );
+  const changed = generateWorkload(scenario, source, 0, [], "simulation-43");
   assert.notDeepEqual(
-    differentArrivals.map((task) => task.generation_time),
-    first.map((task) => task.generation_time),
-  );
-  assert.deepEqual(
-    differentArrivals.map((task) => task.data_size).sort((a, b) => a - b),
-    first.map((task) => task.data_size).sort((a, b) => a - b),
-  );
-
-  const differentSizes = generateWorkload(scenario, [
-    { ...source[0], dataSizeSeed: "another-size-seed" },
-  ]);
-  assert.deepEqual(
-    differentSizes.map((task) => task.generation_time),
+    changed.map((task) => task.generation_time),
     first.map((task) => task.generation_time),
   );
   assert.notDeepEqual(
-    differentSizes.map((task) => task.data_size),
+    changed.map((task) => task.data_size),
     first.map((task) => task.data_size),
   );
+});
+
+test("legacy per-IoT seeds no longer override the simulation seed", () => {
+  const scenario = [{
+    srcID: 9,
+    taskType: "Seeded Task",
+    numTasks: 5,
+    startTime: 0,
+    endTime: 10,
+    distribution: "uniform",
+    arrivalSeed: "legacy-arrival-a",
+  }];
+  const source = [{
+    srcID: 9,
+    name: "Seeded Task",
+    meanSize: 50,
+    dataSizeStdDev: 5,
+    dataSizeSeed: "legacy-size-a",
+    connectivity: "WiFi",
+  }];
+
+  const first = generateWorkload(scenario, source, 0, [], "global-seed");
+  const repeated = generateWorkload(
+    [{ ...scenario[0], arrivalSeed: "legacy-arrival-b" }],
+    [{ ...source[0], dataSizeSeed: "legacy-size-b" }],
+    0,
+    [],
+    "global-seed",
+  );
+
+  assert.deepEqual(repeated, first);
+});
+
+test("spiky generation keeps every task when the count is not divisible by its spike count", () => {
+  const tasks = generateWorkload(
+    [{
+      srcID: 4,
+      taskType: "Spiky Task",
+      numTasks: 25,
+      startTime: 0,
+      endTime: 10,
+      distribution: "spiky",
+    }],
+    [{
+      srcID: 4,
+      name: "Spiky Task",
+      meanSize: 1,
+      dataSizeStdDev: 0,
+      connectivity: "WiFi",
+    }],
+    0,
+    [],
+    "spiky-seed",
+  );
+
+  assert.equal(tasks.length, 25);
 });
 
 function processTask({ start, deadline, eet, now, deadlinePolicy = "drop" }) {

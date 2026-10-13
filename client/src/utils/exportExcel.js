@@ -31,9 +31,12 @@ export const buildExcelReportData = ({
   dataResults = [],
   missedTasks = [],
   machines = [],
+  sources = [],
+  edges = [],
   simulationTime = 0,
 } = {}) => {
   const machineList = machines.filter((machine) => machine.id !== -1);
+  const sourceList = sources.filter((source) => source.id !== -3);
   const completedTasks = dataResults.filter(
     (task) => normalizeStatus(task.status) === "COMPLETED",
   ).length;
@@ -64,6 +67,8 @@ export const buildExcelReportData = ({
         ).length,
       ],
       ["Total Machines", machineList.length],
+      ["Total IoT Devices", sourceList.length],
+      ["Total Edges", edges.length],
       ["Total Cost ($)", totalCost],
     ],
     Tasks: [
@@ -217,7 +222,7 @@ const getStyleId = (sheetName, rowNumber, columnNumber) => {
   if (rowNumber === 1) return 1;
   if (sheetName === "Summary" && columnNumber === 2) {
     if (rowNumber === 2) return 2;
-    if (rowNumber === 7) return 5;
+    if (rowNumber === 11) return 5;
   }
   return columnStyles[sheetName]?.[columnNumber];
 };

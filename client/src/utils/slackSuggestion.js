@@ -67,7 +67,14 @@ function conservativeDuration(machine, source) {
   );
 }
 
-function buildConservativeTasks(sources, machines, edges, nodes, targetSourceId) {
+function buildConservativeTasks(
+  sources,
+  machines,
+  edges,
+  nodes,
+  targetSourceId,
+  simulationSeed,
+) {
   const tasks = [];
   for (const source of sources) {
     const count = taskCount(source);
@@ -83,7 +90,7 @@ function buildConservativeTasks(sources, machines, edges, nodes, targetSourceId)
     const start = nonNegativeNumber(properties.startTime);
     const end = Math.max(start, nonNegativeNumber(properties.endTime, start));
     const random = createRandomGenerator(
-      properties.arrivalSeed || SUGGESTION_SEED,
+      simulationSeed || SUGGESTION_SEED,
       `slack-arrival:${source.id}`,
     );
     const generationTimes = sampleGenerationTimes(
@@ -161,6 +168,7 @@ function calculateQueueAwareSuggestion({
   edges,
   nodes,
   policyAlias,
+  simulationSeed,
 }) {
   const allSources = mergeCurrentSource(source, sources);
   const tasks = buildConservativeTasks(
@@ -169,6 +177,7 @@ function calculateQueueAwareSuggestion({
     edges,
     nodes,
     source.id,
+    simulationSeed,
   );
   const ownTaskCount = tasks.filter(
     (task) => String(task.source_id) === String(source.id),
@@ -190,7 +199,10 @@ function calculateQueueAwareSuggestion({
     tasks,
     edges,
     nodes,
-    random: createRandomGenerator(SUGGESTION_SEED, "scheduler"),
+    random: createRandomGenerator(
+      simulationSeed || SUGGESTION_SEED,
+      "slack-scheduler",
+    ),
   });
 
   // This is computation only—there is no timer or animation. The guard avoids
@@ -299,6 +311,7 @@ export function calculateSuggestedSlack({
   edges = [],
   nodes = [],
   policyAlias = "FCFS",
+  simulationSeed = "",
 }) {
   if (!source?.properties || source.id === undefined || source.id === null) {
     return null;
@@ -319,6 +332,7 @@ export function calculateSuggestedSlack({
       edges,
       nodes,
       policyAlias,
+      simulationSeed,
     }) ?? isolated
   );
 }

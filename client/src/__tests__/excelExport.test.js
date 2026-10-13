@@ -65,6 +65,8 @@ const reportData = {
       utilization_time: 0.001,
     },
   ],
+  sources: [{ id: 20 }, { id: 21 }],
+  edges: [{ id: "e1" }, { id: "e2" }, { id: "e3" }],
 };
 
 test("builds one worksheet dataset for each existing report CSV", () => {
@@ -79,6 +81,11 @@ test("builds one worksheet dataset for each existing report CSV", () => {
   assert.equal(sheets.Tasks.length, 3);
   assert.equal(sheets["Missed Tasks"].length, 2);
   assert.equal(sheets.Machines.length, 2);
+  assert.deepEqual(sheets.Summary.slice(7, 10), [
+    ["Total Machines", 1],
+    ["Total IoT Devices", 2],
+    ["Total Edges", 3],
+  ]);
   assert.deepEqual(sheets.Machines[0], [
     "Machine Name",
     "Power (W)",

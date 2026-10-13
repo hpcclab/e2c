@@ -68,7 +68,6 @@ export const GlobalProvider = ({ children }) => {
       distribution: "uniform",
       arrivalSeed: "",
       deviceRole: "sensor",
-      frequency: 0,
       connectivity: "WiFi",
       dataRateKbps: 54000,
       energySource: "Grid-Powered",
@@ -137,6 +136,10 @@ export const GlobalProvider = ({ children }) => {
   const [policyAlias, setPolicyAlias] = useState("FCFS");
   const [deadlinePolicy, setDeadlinePolicy] = useState("drop");
   const [isAutoFitLocked, setIsAutoFitLocked] = useState(false);
+  const [simulationSeed, setSimulationSeed] = useState("");
+  const [simulationRunCount, setSimulationRunCount] = useState(1);
+  const [simulationSeeds, setSimulationSeeds] = useState([""]);
+  const [batchRunResults, setBatchRunResults] = useState([]);
 
   const fitWorkspace = useCallback(
     (options = {}) => {
@@ -487,7 +490,13 @@ export const GlobalProvider = ({ children }) => {
   const [machineTypes, setMachineTypes] = useState([]);
 
   const ld_workspace = () => {
-    const stuff = generateWorkload(scenarioRows, taskTypes, 0, edges);
+    const stuff = generateWorkload(
+      scenarioRows,
+      taskTypes,
+      0,
+      edges,
+      simulationSeed,
+    );
     setBatchQ({ id: -2, name: "Batch Queue", queue: [...stuff] });
     setWorkloadTableData([...stuff]);
     // setWorkloadSubmissionStatus(true);
@@ -508,6 +517,9 @@ export const GlobalProvider = ({ children }) => {
   const simCurrentRef = useRef(0);
   const totalSimTimeRef = useRef(Infinity);
   const simulationWorkerRef = useRef(null);
+  const backgroundSimulationWorkersRef = useRef(new Set());
+  const simulationBatchIdRef = useRef(0);
+  const visibleBatchRunRef = useRef(null);
   const [simulationWorkerError, setSimulationWorkerError] = useState("");
 
   const handleSimulationWorkerMessage = useCallback(({ data }) => {
@@ -546,6 +558,20 @@ export const GlobalProvider = ({ children }) => {
     setTotalTasks(snapshot.totalTasks);
 
     if (data.type === "COMPLETE" || snapshot.complete) {
+      const visibleRun = visibleBatchRunRef.current;
+      if (
+        visibleRun &&
+        simulationBatchIdRef.current === visibleRun.batchId
+      ) {
+        setBatchRunResults((current) =>
+          current.map((entry) =>
+            entry.runNumber === visibleRun.runNumber
+              ? { ...entry, status: "complete", snapshot, error: "" }
+              : entry,
+          ),
+        );
+        visibleBatchRunRef.current = null;
+      }
       setIsRunning(false);
       setIsPaused(false);
     } else if (data.type === "PAUSED") {
@@ -576,6 +602,21 @@ export const GlobalProvider = ({ children }) => {
       );
       setIsRunning(false);
       setIsPaused(false);
+      const visibleRun = visibleBatchRunRef.current;
+      if (visibleRun) {
+        setBatchRunResults((current) =>
+          current.map((entry) =>
+            entry.runNumber === visibleRun.runNumber
+              ? {
+                  ...entry,
+                  status: "error",
+                  error: event.message || "The visible run failed.",
+                }
+              : entry,
+          ),
+        );
+        visibleBatchRunRef.current = null;
+      }
     };
     simulationWorkerRef.current = worker;
     setSimulationWorkerError("");
@@ -587,6 +628,10 @@ export const GlobalProvider = ({ children }) => {
     return () => {
       simulationWorkerRef.current?.terminate();
       simulationWorkerRef.current = null;
+      backgroundSimulationWorkersRef.current.forEach((worker) =>
+        worker.terminate(),
+      );
+      backgroundSimulationWorkersRef.current.clear();
     };
   }, [ensureSimulationWorker]);
 
@@ -603,6 +648,121 @@ export const GlobalProvider = ({ children }) => {
     [ensureSimulationWorker],
   );
 
+  const stopBackgroundSimulationWorkers = useCallback(() => {
+    simulationBatchIdRef.current += 1;
+    backgroundSimulationWorkersRef.current.forEach((worker) =>
+      worker.terminate(),
+    );
+    backgroundSimulationWorkersRef.current.clear();
+    visibleBatchRunRef.current = null;
+  }, []);
+
+  const startSimulationBatch = useCallback(
+    ({ visibleRun, backgroundRuns = [], maxWorkers = 3 }) => {
+      stopBackgroundSimulationWorkers();
+      const batchId = simulationBatchIdRef.current;
+      const allRuns = [visibleRun, ...backgroundRuns];
+      setBatchRunResults(
+        allRuns.map((run) => ({
+          runNumber: run.runNumber,
+          seed: run.seed,
+          status: run.runNumber === visibleRun.runNumber ? "running" : "pending",
+          snapshot: null,
+          error: "",
+        })),
+      );
+      visibleBatchRunRef.current = {
+        batchId,
+        runNumber: visibleRun.runNumber,
+      };
+
+      const visibleStarted = startSimulationWorker(visibleRun.payload);
+      if (!visibleStarted) {
+        visibleBatchRunRef.current = null;
+        setBatchRunResults((current) =>
+          current.map((entry) =>
+            entry.runNumber === visibleRun.runNumber
+              ? {
+                  ...entry,
+                  status: "error",
+                  error: "The visible simulation could not be started.",
+                }
+              : entry,
+          ),
+        );
+        return false;
+      }
+
+      const queue = [...backgroundRuns];
+      let activeWorkers = 0;
+      const workerLimit = Math.max(
+        1,
+        Math.min(Number(maxWorkers) || 1, queue.length || 1),
+      );
+
+      const launchNext = () => {
+        if (simulationBatchIdRef.current !== batchId) return;
+        while (activeWorkers < workerLimit && queue.length > 0) {
+          const run = queue.shift();
+          const worker = new Worker(
+            new URL("../workers/batchSimulationWorker.js", import.meta.url),
+            { type: "module" },
+          );
+          activeWorkers += 1;
+          backgroundSimulationWorkersRef.current.add(worker);
+          setBatchRunResults((current) =>
+            current.map((entry) =>
+              entry.runNumber === run.runNumber
+                ? { ...entry, status: "running" }
+                : entry,
+            ),
+          );
+
+          const finish = (update) => {
+            worker.terminate();
+            backgroundSimulationWorkersRef.current.delete(worker);
+            activeWorkers -= 1;
+            if (simulationBatchIdRef.current !== batchId) return;
+            setBatchRunResults((current) =>
+              current.map((entry) =>
+                entry.runNumber === run.runNumber
+                  ? { ...entry, ...update }
+                  : entry,
+              ),
+            );
+            launchNext();
+          };
+
+          worker.onmessage = ({ data }) => {
+            if (data?.type === "COMPLETE") {
+              finish({ status: "complete", snapshot: data.snapshot, error: "" });
+            } else if (data?.type === "ERROR") {
+              finish({
+                status: "error",
+                error: data.message || "The background run failed.",
+              });
+            }
+          };
+          worker.onerror = (event) => {
+            finish({
+              status: "error",
+              error: event.message || "The background worker failed.",
+            });
+          };
+          worker.postMessage({
+            type: "RUN",
+            runNumber: run.runNumber,
+            payload: run.payload,
+          });
+        }
+      };
+
+      launchNext();
+      return true;
+    },
+    [startSimulationWorker, stopBackgroundSimulationWorkers],
+  );
+
   const pauseSimulationWorker = useCallback(() => {
     simulationWorkerRef.current?.postMessage({ type: "PAUSE" });
   }, []);
@@ -613,7 +773,8 @@ export const GlobalProvider = ({ children }) => {
 
   const stopSimulationWorker = useCallback(() => {
     simulationWorkerRef.current?.postMessage({ type: "STOP" });
-  }, []);
+    stopBackgroundSimulationWorkers();
+  }, [stopBackgroundSimulationWorkers]);
 
   // End Define States
 
@@ -724,6 +885,14 @@ export const GlobalProvider = ({ children }) => {
     setPolicyAlias,
     deadlinePolicy,
     setDeadlinePolicy,
+    simulationSeed,
+    setSimulationSeed,
+    simulationRunCount,
+    setSimulationRunCount,
+    simulationSeeds,
+    setSimulationSeeds,
+    batchRunResults,
+    setBatchRunResults,
     isAutoFitLocked,
     setIsAutoFitLocked,
     fitWorkspace,
@@ -732,6 +901,7 @@ export const GlobalProvider = ({ children }) => {
     totalSimTimeRef,
     simulationWorkerError,
     startSimulationWorker,
+    startSimulationBatch,
     pauseSimulationWorker,
     resumeSimulationWorker,
     stopSimulationWorker,

@@ -52,6 +52,13 @@ export default function FlowSaveLoadPanel() {
     setPolicyAlias,
     deadlinePolicy,
     setDeadlinePolicy,
+    simulationSeed,
+    setSimulationSeed,
+    simulationRunCount,
+    setSimulationRunCount,
+    simulationSeeds,
+    setSimulationSeeds,
+    setBatchRunResults,
     fitWorkspace,
   } = useGlobalState();
   const [open, setOpen] = useState(false);
@@ -169,6 +176,9 @@ export default function FlowSaveLoadPanel() {
         scenarioRows,
         policyAlias,
         deadlinePolicy,
+        simulationSeed,
+        simulationRunCount,
+        simulationSeeds,
         colorMemory: persistedColorMemory,
         filename: fileWithExtension,
       });
@@ -200,6 +210,9 @@ export default function FlowSaveLoadPanel() {
         scenarioRows,
         policyAlias,
         deadlinePolicy,
+        simulationSeed,
+        simulationRunCount,
+        simulationSeeds,
         colorMemory: persistedColorMemory,
         filename: selectedFile,
       });
@@ -243,6 +256,12 @@ export default function FlowSaveLoadPanel() {
       setDeadlinePolicy(
         data.deadlinePolicy === "continue" ? "continue" : "drop",
       );
+      setSimulationSeed(data.simulationSeed ?? "");
+      setSimulationRunCount(data.simulationRunCount ?? 1);
+      setSimulationSeeds(
+        data.simulationSeeds ?? [data.simulationSeed ?? ""],
+      );
+      setBatchRunResults([]);
       setNodes([...otherNodes, ...machinesArr, ...iotArr]);
       setEdges(data.edges || []);
       setMachines(loadedMachines);
@@ -299,6 +318,9 @@ export default function FlowSaveLoadPanel() {
       machineConfig,
       policyAlias,
       deadlinePolicy,
+      simulationSeed,
+      simulationRunCount,
+      simulationSeeds,
       colorMemory: getPersistedTaskColorMemory(iot),
     });
     notify("Exported " + filename);
@@ -345,6 +367,12 @@ export default function FlowSaveLoadPanel() {
           setDeadlinePolicy(
             data.deadlinePolicy === "continue" ? "continue" : "drop",
           );
+          setSimulationSeed(data.simulationSeed ?? "");
+          setSimulationRunCount(data.simulationRunCount ?? 1);
+          setSimulationSeeds(
+            data.simulationSeeds ?? [data.simulationSeed ?? ""],
+          );
+          setBatchRunResults([]);
           const importedColorMemory = {
             ...getDerivedTaskColorMemory(data.iot),
             ...normalizeTaskColorMemory(data.colorMemory || {}),
@@ -387,6 +415,10 @@ export default function FlowSaveLoadPanel() {
     setTaskTypes([]);
     setScenarioRows([]);
     setMachineConfig([]);
+    setSimulationSeed("");
+    setSimulationRunCount(1);
+    setSimulationSeeds([""]);
+    setBatchRunResults([]);
     Object.keys(colorMemory).forEach((key) => delete colorMemory[key]);
     window.dispatchEvent(new Event("taskColorChanged"));
     setSelectedFile("");

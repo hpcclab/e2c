@@ -10,6 +10,7 @@ import {
   getDataSizes,
   sampleGenerationTimes,
 } from "../../utils/workloadGeneration";
+import DistributionHelp from "../../components/DistributionHelp";
 
 export { generateWorkload, getDataSizes, sampleGenerationTimes };
 
@@ -22,6 +23,7 @@ const ScenarioTab = ({
   setWorkloadFiles,
   setSelectedWorkloadIdx,
   taskTypes,
+  simulationSeed,
 }) => {
   const initialTaskType =
     taskTypes && taskTypes.length > 0 ? taskTypes[0].name || taskTypes[0] : "";
@@ -90,7 +92,13 @@ const ScenarioTab = ({
   const handleGenerateMultipleWorkloads = () => {
     const allWorkloads = [];
     for (let i = 1; i <= numWorkloads; i++) {
-      const workload = generateWorkload(scenarioRows, taskTypes, i * 1000);
+      const workload = generateWorkload(
+        scenarioRows,
+        taskTypes,
+        i * 1000,
+        [],
+        simulationSeed,
+      );
       allWorkloads.push(workload);
     }
     setWorkloadFiles(allWorkloads);
@@ -109,7 +117,11 @@ const ScenarioTab = ({
               <th className="border px-2 py-1"># Tasks</th>
               <th className="border px-2 py-1">Generation Start</th>
               <th className="border px-2 py-1">Generation End</th>
-              <th className="border px-2 py-1">Distribution</th>
+              <th className="border px-2 py-1">
+                <span className="inline-flex items-center">
+                  Distribution <DistributionHelp />
+                </span>
+              </th>
               <th className="border px-2 py-1">Actions</th>
             </tr>
           </thead>

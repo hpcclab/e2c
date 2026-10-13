@@ -65,6 +65,8 @@ const reportData = {
       utilization_time: 0.001,
     },
   ],
+  sources: [{ id: 20 }, { id: 21 }],
+  edges: [{ id: "e1" }, { id: "e2" }, { id: "e3" }],
 };
 
 test("builds four separate CSV reports with consistent columns", () => {
@@ -77,6 +79,9 @@ test("builds four separate CSV reports with consistent columns", () => {
     "machine_stats.csv",
   ]);
   assert.match(files["simulation_summary.csv"], /Completed Tasks,1/);
+  assert.match(files["simulation_summary.csv"], /Total Machines,1/);
+  assert.match(files["simulation_summary.csv"], /Total IoT Devices,2/);
+  assert.match(files["simulation_summary.csv"], /Total Edges,3/);
   assert.match(files["simulation_tasks.csv"], /"Sensor, indoor"/);
   assert.match(
     files["simulation_tasks.csv"],

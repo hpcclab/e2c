@@ -4,6 +4,8 @@ import TaskList from "./TaskList";
 import { MACHINE_ICON_MAP } from "../utils/machineIcons";
 import { formatUtilizationTime } from "../utils/formatTime";
 import { getMachineSelection } from "../utils/machineSelection";
+import BatteryIndicator from "./BatteryIndicator";
+import { isBatteryDepleted } from "../utils/energy";
 
 // Define a list of colors for machines
 const machineColors = [
@@ -71,11 +73,18 @@ export const Machine = ({
   const totalCost = calculateCost(machine);
   const utilDisplay = formatUtilizationTime(machine.utilization_time || 0);
   const totalTasks = machine.total_tasks || 0;
+  const depleted = isBatteryDepleted(machine);
 
   return (
     <div>
       {/* Main Machine Row */}
-      <div className="bg-white border-4 p-4 rounded-lg shadow-md flex items-center space-x-4">
+      <div
+        className={`border-4 p-4 rounded-lg shadow-md flex items-center space-x-4 transition ${
+          depleted
+            ? "bg-gray-200 border-gray-400 opacity-50 grayscale"
+            : "bg-white"
+        }`}
+      >
         {/* Expand/Collapse Button */}
         {hasReplicas && (
           <button
@@ -131,6 +140,7 @@ export const Machine = ({
               )}
             </div>
           )}
+          <BatteryIndicator device={machine} />
         </div>
       </div>
 

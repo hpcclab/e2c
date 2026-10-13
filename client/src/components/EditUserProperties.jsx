@@ -6,7 +6,7 @@ import { nonNegativeSlack } from "../utils/deadlines";
 import AutoSuggestSlack from "./AutoSuggestSlack";
 import SlackHelp from "./SlackHelp";
 import SlackLockButton from "./SlackLockButton";
-import RandomSeedHelp from "./RandomSeedHelp";
+import DistributionHelp from "./DistributionHelp";
 import { normalizeDataInput } from "../utils/dataInput";
 import {
   nonNegativeNumberDraft,
@@ -277,7 +277,6 @@ const EditIoTProperties = ({
         distribution: selectedIOT.properties.distribution || "uniform",
         arrivalSeed: selectedIOT.properties.arrivalSeed ?? "",
         deviceRole: selectedIOT.properties.deviceRole || "sensor",
-        frequency: selectedIOT.properties.frequency || 0,
         connectivity: selectedIOT.properties.connectivity || "WiFi",
         dataRateKbps: selectedIOT.properties.dataRateKbps ?? 54000,
         energySource:
@@ -347,13 +346,6 @@ const EditIoTProperties = ({
     </div>
   );
 
-  const frequencyLabel = (role) =>
-    role === "actuator"
-      ? "Writing Frequency (Hz)"
-      : role === "sensor"
-        ? "Reading Frequency (Hz)"
-        : "Frequency (Hz)";
-
   const handleChange = (field, value, is_property = true) => {
     if (!is_property) setEditedIOT((prev) => ({ ...prev, [field]: value }));
     else
@@ -368,6 +360,7 @@ const EditIoTProperties = ({
       const withColor = {
         ...editedIOT,
         properties: {
+          ...selectedIOT.properties,
           ...editedIOT.properties,
           user: true,
           dataSizeStdDev: Math.max(
@@ -423,23 +416,6 @@ const EditIoTProperties = ({
     await onSave(updated);
   };
 
-  const applySavedRandomSeed = async (field, value) => {
-    const updated = {
-      ...selectedIOT,
-      properties: {
-        ...selectedIOT.properties,
-        [field]: value,
-      },
-    };
-    setSelectedIOT(updated);
-    setAnimatedIOTs((prev) =>
-      prev.map((iot) =>
-        iot.id === updated.id ? { ...iot, ...updated } : iot,
-      ),
-    );
-    await onSave(updated);
-  };
-
   const handleCancel = () => {
     setEditedIOT({
       id: selectedIOT.id,
@@ -464,7 +440,6 @@ const EditIoTProperties = ({
         distribution: selectedIOT.properties.distribution || "uniform",
         arrivalSeed: selectedIOT.properties.arrivalSeed ?? "",
         deviceRole: selectedIOT.properties.deviceRole || "sensor",
-        frequency: selectedIOT.properties.frequency || 0,
         connectivity: selectedIOT.properties.connectivity || "WiFi",
         dataRateKbps: selectedIOT.properties.dataRateKbps ?? 54000,
         energySource:
@@ -569,15 +544,8 @@ const EditIoTProperties = ({
               </div>
             </div>
             <div className="mt-2">
-              <label className="flex items-center text-sm font-semibold text-gray-700 mb-1">
+              <label className="block text-sm font-semibold text-gray-700 mb-1">
                 Data Size Standard Deviation (KB)
-                <RandomSeedHelp
-                  kind="dataSize"
-                  value={selectedIOT.properties.dataSizeSeed}
-                  onApply={(value) =>
-                    applySavedRandomSeed("dataSizeSeed", value)
-                  }
-                />
               </label>
               <div className="w-full border px-3 py-2 text-sm rounded bg-gray-100">
                 {selectedIOT.properties.dataSizeStdDev ??
@@ -639,13 +607,7 @@ const EditIoTProperties = ({
             <div className="mt-2">
               <label className="flex items-center text-sm font-semibold text-gray-700 mb-1">
                 Distribution
-                <RandomSeedHelp
-                  kind="arrival"
-                  value={selectedIOT.properties.arrivalSeed}
-                  onApply={(value) =>
-                    applySavedRandomSeed("arrivalSeed", value)
-                  }
-                />
+                <DistributionHelp />
               </label>
               <div className="w-full border px-3 py-2 text-sm rounded bg-gray-100">
                 {selectedIOT.properties.distribution || "-"}
@@ -788,13 +750,8 @@ const EditIoTProperties = ({
           />
         </div>
         <div className="mt-2">
-          <label className="flex items-center text-sm font-semibold text-gray-700 mb-1">
+          <label className="block text-sm font-semibold text-gray-700 mb-1">
             Data Size Standard Deviation (KB)
-            <RandomSeedHelp
-              kind="dataSize"
-              value={editedIOT.properties?.dataSizeSeed}
-              onApply={(value) => handleChange("dataSizeSeed", value)}
-            />
           </label>
           <input
             type="number"
@@ -902,11 +859,7 @@ const EditIoTProperties = ({
         <div className="mt-2">
           <label className="flex items-center text-sm font-semibold text-gray-700 mb-1">
             Distribution
-            <RandomSeedHelp
-              kind="arrival"
-              value={editedIOT.properties?.arrivalSeed}
-              onApply={(value) => handleChange("arrivalSeed", value)}
-            />
+            <DistributionHelp />
           </label>
           <select
             value={editedIOT.properties?.distribution}

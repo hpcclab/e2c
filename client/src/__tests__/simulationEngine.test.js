@@ -76,6 +76,46 @@ test("pause-compatible snapshots preserve unfinished work", () => {
   assert.equal(snapshot.time, 1);
 });
 
+test("the simulation seed reproduces execution-time randomness", () => {
+  const tasks = Array.from({ length: 6 }, (_, index) => ({
+    task_type: "Task A",
+    source_id: 7,
+    generation_time: 0,
+    arrival_time: 0,
+    deadline: 100,
+    status: "NEW",
+    id: index + 1,
+  }));
+  const overrides = {
+    simulationSeed: "complete-experiment-seed",
+    machines: [{
+      id: 1,
+      name: "Machine 1",
+      price: 0,
+      queue: [],
+      eet: { "7::Task A": 1, "Task A": 1 },
+      eetStdDev: { "7::Task A": 0.25, "Task A": 0.25 },
+    }],
+    tasks,
+  };
+
+  const first = buildEngine(overrides).advanceTo(100).results;
+  const repeated = buildEngine(overrides).advanceTo(100).results;
+  const changed = buildEngine({
+    ...overrides,
+    simulationSeed: "another-experiment-seed",
+  }).advanceTo(100).results;
+
+  assert.deepEqual(
+    repeated.map((task) => task.execution_time),
+    first.map((task) => task.execution_time),
+  );
+  assert.notDeepEqual(
+    changed.map((task) => task.execution_time),
+    first.map((task) => task.execution_time),
+  );
+});
+
 test("an IoT battery limits generation and reports ungenerated tasks", () => {
   const tasks = Array.from({ length: 3 }, (_, index) => ({
     task_type: "Task A",
@@ -239,4 +279,61 @@ test("generation, upload, and processing energy scale with task data size", () =
   assert.equal(task.processing_energy_j, 4);
   assert.equal(snapshot.iot[0].properties.energyConsumedJ, 5);
   assert.equal(snapshot.machines[0].energyConsumedJ, 4);
+});
+
+test("an unaffordable source task exhausts the remaining IoT battery", () => {
+  const engine = buildEngine({
+    iot: [{
+      id: 7,
+      properties: {
+        task_type: "Task A",
+        energySource: "Battery",
+        batteryCapacityJ: 10,
+        generationEnergyPerKbJ: 3,
+      },
+    }],
+    tasks: [{
+      task_type: "Task A",
+      source_id: 7,
+      data_size: 10,
+      generation_time: 0,
+      arrival_time: 0,
+      deadline: 5,
+      status: "NEW",
+    }],
+  });
+
+  const snapshot = engine.getSnapshot();
+  assert.equal(snapshot.iot[0].properties.batteryRemainingJ, 0);
+  assert.equal(snapshot.iot[0].properties.energyConsumedJ, 10);
+  assert.equal(snapshot.missed[0].status, "NOT_GENERATED");
+});
+
+test("an unaffordable processing task exhausts the remaining machine battery", () => {
+  const engine = buildEngine({
+    machines: [{
+      id: 1,
+      name: "Machine 1",
+      energySource: "Battery",
+      batteryCapacityJ: 10,
+      processingEnergyPerKbJ: 3,
+      queue: [],
+      eet: { "7::Task A": 0.1, "Task A": 0.1 },
+      eetStdDev: { "7::Task A": 0, "Task A": 0 },
+    }],
+    tasks: [{
+      task_type: "Task A",
+      source_id: 7,
+      data_size: 10,
+      generation_time: 0,
+      arrival_time: 0,
+      deadline: 5,
+      status: "NEW",
+    }],
+  });
+
+  const snapshot = engine.getSnapshot();
+  assert.equal(snapshot.machines[0].batteryRemainingJ, 0);
+  assert.equal(snapshot.machines[0].energyConsumedJ, 10);
+  assert.equal(snapshot.missed[0].status, "DNR");
 });

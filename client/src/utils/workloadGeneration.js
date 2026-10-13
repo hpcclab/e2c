@@ -46,7 +46,8 @@ export function sampleGenerationTimes(
     const spikes = Math.max(1, Math.floor(n / 10));
     for (let s = 0; s < spikes; s++) {
       const spikeTime = start + (end - start) * random();
-      const spikeSize = Math.max(1, Math.floor(n / spikes));
+      const spikeSize =
+        Math.floor(n / spikes) + (s < n % spikes ? 1 : 0);
       for (let i = 0; i < spikeSize; i++) {
         let t = spikeTime + ((random() - 0.5) * (end - start)) / 20;
         t = Math.max(start, Math.min(end, t));
@@ -85,6 +86,7 @@ export function generateWorkload(
   taskTypes,
   seedOffset = 0,
   edges = [],
+  simulationSeed = "",
 ) {
   const workload = [];
   scenarioRows.forEach((row, idx) => {
@@ -95,12 +97,12 @@ export function generateWorkload(
       (taskTypes || []).find((t) => t.name === row.taskType);
     const sourceNamespace = String(row.srcID ?? row.taskType ?? idx);
     const arrivalRandom = createRandomGenerator(
-      row.arrivalSeed ?? typeObj?.arrivalSeed,
-      `arrival:${sourceNamespace}`,
+      simulationSeed,
+      `generation-time:${sourceNamespace}`,
       seedOffset,
     );
     const dataSizeRandom = createRandomGenerator(
-      typeObj?.dataSizeSeed ?? row.dataSizeSeed,
+      simulationSeed,
       `data-size:${sourceNamespace}`,
       seedOffset,
     );

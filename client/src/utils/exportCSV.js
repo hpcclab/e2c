@@ -40,9 +40,12 @@ export const buildCsvReportFiles = ({
   dataResults = [],
   missedTasks = [],
   machines = [],
+  sources = [],
+  edges = [],
   simulationTime = 0,
 } = {}) => {
   const machineList = machines.filter((machine) => machine.id !== -1);
+  const sourceList = sources.filter((source) => source.id !== -3);
   const completedTasks = dataResults.filter(
     (task) => normalizeStatus(task.status) === "COMPLETED",
   ).length;
@@ -73,6 +76,8 @@ export const buildCsvReportFiles = ({
         ).length,
       ],
       ["Total Machines", machineList.length],
+      ["Total IoT Devices", sourceList.length],
+      ["Total Edges", edges.length],
       ["Total Cost ($)", totalCost],
     ],
     "simulation_tasks.csv": [

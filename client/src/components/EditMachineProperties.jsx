@@ -122,6 +122,7 @@ const EditMachineProperties = ({
   const handleSave = async () => {
     try {
       const updatedMachine = {
+        ...selectedMachine,
         ...editedMachine,
         batteryCapacityJ: nonNegativeNumberValue(
           editedMachine.batteryCapacityJ,

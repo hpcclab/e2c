@@ -10,11 +10,13 @@ import {
   ENERGY_FAILURE_REASONS,
   batteryCapacityJ,
   canSpendBattery,
+  exhaustBattery,
   isBatteryPowered,
   networkTransferEnergyJ,
   sourceGenerationEnergyJ,
   sourceTaskEnergyJ,
 } from "./energy.js";
+import { createRandomGenerator } from "./randomSeed.js";
 
 const TICK_SECONDS = 0.01;
 
@@ -32,7 +34,8 @@ export class SimulationEngine {
     tasks = [],
     edges = [],
     nodes = [],
-    random = Math.random,
+    random,
+    simulationSeed = "",
   }) {
     const SchedulerClass = SCHEDULER_REGISTRY[policyAlias];
     if (!SchedulerClass) throw new Error(`Unknown scheduler: ${policyAlias}`);
@@ -78,6 +81,8 @@ export class SimulationEngine {
     this.totalTasks = tasks.length;
     this.sourceFailures = [];
 
+    const simulationRandom =
+      random ?? createRandomGenerator(simulationSeed, "runtime-and-scheduling");
     this.scheduler = new SchedulerClass({
       machines: this.machines,
       iot: this.iot,
@@ -90,7 +95,7 @@ export class SimulationEngine {
           this.edges,
           this.nodes,
         ),
-      config: { deadlinePolicy, random },
+      config: { deadlinePolicy, random: simulationRandom },
     });
     this.scheduler.setMachines(this.machines);
     this.scheduler.setIot(this.iot);
@@ -135,6 +140,7 @@ export class SimulationEngine {
         isBatteryPowered(source) &&
         !canSpendBattery(source, energyJ)
       ) {
+        exhaustBattery(source);
         this.failSourceTask(task);
         return;
       }
@@ -180,6 +186,7 @@ export class SimulationEngine {
       ) {
         return true;
       }
+      exhaustBattery(source);
       this.failSourceTask(task);
       return false;
     });
@@ -259,6 +266,7 @@ export class SimulationEngine {
       time: this.currentTime,
       machines: this.machines,
       iot: this.iot,
+      edges: this.edges,
       completed,
       missed,
       unassigned,

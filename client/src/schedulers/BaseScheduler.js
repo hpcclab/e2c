@@ -6,6 +6,7 @@ import {
 import {
   ENERGY_FAILURE_REASONS,
   canSpendBattery,
+  exhaustBattery,
   isBatteryPowered,
   machineTaskEnergyJ,
   remainingBatteryJ,
@@ -147,6 +148,14 @@ export class BaseScheduler {
   }
 
   recordMachineBatteryFailure(task) {
+    this.getConnectedMachines(task).forEach((machine) => {
+      if (
+        isBatteryPowered(machine) &&
+        !canSpendBattery(machine, machineTaskEnergyJ(machine, task))
+      ) {
+        exhaustBattery(machine);
+      }
+    });
     task.status = "DNR";
     task.failure_reason = ENERGY_FAILURE_REASONS.MACHINE_BATTERY_DEPLETED;
     task.assigned_machine = null;
@@ -201,6 +210,7 @@ export class BaseScheduler {
 
     const taskEnergyJ = machineTaskEnergyJ(machine, task);
     if (!canSpendBattery(machine, taskEnergyJ)) {
+      exhaustBattery(machine);
       this.unmappedTask.push(task);
       return null;
     }

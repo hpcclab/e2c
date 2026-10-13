@@ -1,9 +1,12 @@
 import React from "react";
 import { IOT_ICON_MAP } from "../utils/iotIcons";
+import BatteryIndicator from "./BatteryIndicator";
+import { isBatteryDepleted } from "../utils/energy";
 
 export default function IoT({ iot, setSelectedIOT, onClicked }) {
   const isHumanUser = Boolean(iot.properties?.user);
   const displayIconKey = isHumanUser ? "MdPerson" : iot.icon;
+  const depleted = isBatteryDepleted(iot);
 
   function handleChildClick(event) {
     event.stopPropagation();
@@ -21,7 +24,11 @@ export default function IoT({ iot, setSelectedIOT, onClicked }) {
     <div
       key={iot.id}
       onClick={handleChildClick}
-      className="bg-white border-4 p-3 rounded-lg shadow-md flex flex-col items-center cursor-pointer hover:scale-105 transition min-w-[72px]"
+      className={`border-4 p-3 rounded-lg shadow-md flex flex-col items-center cursor-pointer transition min-w-[72px] ${
+        depleted
+          ? "bg-gray-200 border-gray-400 opacity-50 grayscale"
+          : "bg-white hover:scale-105"
+      }`}
     >
       {displayIconKey && IOT_ICON_MAP[displayIconKey] ? (
         <>
@@ -38,6 +45,7 @@ export default function IoT({ iot, setSelectedIOT, onClicked }) {
           {iot.name}
         </div>
       )}
+      <BatteryIndicator device={iot} className="mt-1" />
     </div>
   );
 }

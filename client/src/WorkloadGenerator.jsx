@@ -24,6 +24,7 @@ const WorkloadGenerator = () => {
     setScenarioRows,
     machineTypes,
     setMachineTypes,
+    simulationSeed,
   } = useGlobalState();
 
   const [eet, setEET] = useState([
@@ -47,6 +48,7 @@ const WorkloadGenerator = () => {
             setWorkloadFiles={setWorkloadFiles}
             setSelectedWorkloadIdx={setSelectedWorkloadIdx}
             taskTypes={taskTypes}
+            simulationSeed={simulationSeed}
           />
         );
       case "taskTypes":

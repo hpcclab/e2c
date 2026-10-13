@@ -84,6 +84,35 @@ export const sourceTaskEnergyJ = (source, task) =>
 export const machineTaskEnergyJ = (machine, task) =>
   machineProcessingEnergyRateJPerKb(machine) * taskDataSizeKb(task);
 
+export const batteryPercentage = (device) => {
+  if (!isBatteryPowered(device)) return null;
+  const capacity = batteryCapacityJ(device);
+  if (capacity <= 0) return 0;
+  return Math.min(100, Math.max(0, (remainingBatteryJ(device) / capacity) * 100));
+};
+
+export const isBatteryDepleted = (device) =>
+  isBatteryPowered(device) && remainingBatteryJ(device) <= Number.EPSILON;
+
+// When a device attempts work that costs more than its remaining charge, the
+// attempt exhausts that partial charge even though the task cannot finish.
+export const exhaustBattery = (device) => {
+  if (!isBatteryPowered(device)) return 0;
+  const remaining = remainingBatteryJ(device);
+  if (device?.properties) {
+    device.properties.batteryRemainingJ = 0;
+    device.properties.energyConsumedJ = Number(
+      ((Number(device.properties.energyConsumedJ) || 0) + remaining).toFixed(6),
+    );
+  } else if (device) {
+    device.batteryRemainingJ = 0;
+    device.energyConsumedJ = Number(
+      ((Number(device.energyConsumedJ) || 0) + remaining).toFixed(6),
+    );
+  }
+  return remaining;
+};
+
 export const canSpendBattery = (device, energyJ) => {
   if (!isBatteryPowered(device)) return true;
   const remaining = remainingBatteryJ(device);
