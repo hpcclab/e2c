@@ -81,7 +81,11 @@ test("workload travel time uses the source edge instead of the IoT default", () 
     source: "nd_42",
     target: "1",
     data: {
-      properties: { networkType: "Bluetooth", dataRateKbps: 800 },
+      properties: {
+        networkType: "Bluetooth",
+        dataRateKbps: 800,
+        uploadPowerW: 2,
+      },
     },
   }];
 
@@ -90,6 +94,8 @@ test("workload travel time uses the source edge instead of the IoT default", () 
   assert.equal(task.data_rate_kbps, 800);
   assert.equal(task.travel_time, 1);
   assert.equal(task.arrival_time, 3);
+  assert.equal(task.network_upload_power_w, 2);
+  assert.equal(task.network_energy_j, 2);
 });
 
 test("data size standard deviation controls generated task-size variation", () => {

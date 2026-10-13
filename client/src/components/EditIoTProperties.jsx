@@ -8,6 +8,11 @@ import SlackHelp from "./SlackHelp";
 import SlackLockButton from "./SlackLockButton";
 import RandomSeedHelp from "./RandomSeedHelp";
 import { normalizeDataInput } from "../utils/dataInput";
+import {
+  nonNegativeNumberDraft,
+  nonNegativeNumberValue,
+} from "../utils/numericInput";
+import { sourceGenerationEnergyRateJPerKb } from "../utils/energy";
 
 const IOT_PRESETS = [
   { name: "Camera", icon: "MdVideocam" },
@@ -276,6 +281,8 @@ const EditIoTProperties = ({
           selectedIOT.properties.energySource === "Wired"
             ? "Grid-Powered"
             : selectedIOT.properties.energySource || "Grid-Powered",
+        batteryCapacityJ: selectedIOT.properties.batteryCapacityJ ?? 100,
+        generationEnergyPerKbJ: sourceGenerationEnergyRateJPerKb(selectedIOT),
         taskColor: selectedIOT.properties.taskColor || "Slate",
       },
       queue: selectedIOT.queue || [],
@@ -364,6 +371,12 @@ const EditIoTProperties = ({
             Number(editedIOT.properties.dataSizeStdDev) || 0,
           ),
           slack: nonNegativeSlack(editedIOT.properties.slack),
+          batteryCapacityJ: nonNegativeNumberValue(
+            editedIOT.properties.batteryCapacityJ,
+          ),
+          generationEnergyPerKbJ: nonNegativeNumberValue(
+            editedIOT.properties.generationEnergyPerKbJ,
+          ),
           taskColor: PALETTE[colorIdx].name,
         },
       };
@@ -452,6 +465,8 @@ const EditIoTProperties = ({
           selectedIOT.properties.energySource === "Wired"
             ? "Grid-Powered"
             : selectedIOT.properties.energySource || "Grid-Powered",
+        batteryCapacityJ: selectedIOT.properties.batteryCapacityJ ?? 100,
+        generationEnergyPerKbJ: sourceGenerationEnergyRateJPerKb(selectedIOT),
       },
       queue: selectedIOT.queue || [],
     });
@@ -514,6 +529,26 @@ const EditIoTProperties = ({
               </label>
               <div className="w-full border px-3 py-2 text-sm rounded bg-gray-100">
                 {selectedIOT.properties.frequency ?? "-"}
+              </div>
+            </div>
+            {(selectedIOT.properties.energySource === "Battery") && (
+              <div className="mt-2">
+                <label className="block text-sm font-semibold text-gray-700 mb-1">
+                  Battery Remaining / Capacity (J)
+                </label>
+                <div className="w-full border px-3 py-2 text-sm rounded bg-gray-100">
+                  {selectedIOT.properties.batteryRemainingJ ?? selectedIOT.properties.batteryCapacityJ ?? 100}
+                  {" / "}
+                  {selectedIOT.properties.batteryCapacityJ ?? 100}
+                </div>
+              </div>
+            )}
+            <div className="mt-2">
+              <label className="block text-sm font-semibold text-gray-700 mb-1">
+                Generation Energy Rate (J/KB)
+              </label>
+              <div className="w-full border px-3 py-2 text-sm rounded bg-gray-100">
+                {sourceGenerationEnergyRateJPerKb(selectedIOT)}
               </div>
             </div>
             <div className="mt-2">
@@ -709,6 +744,47 @@ const EditIoTProperties = ({
             <option value="Solar">Solar</option>
             <option value="Other">Other</option>
           </select>
+        </div>
+        {editedIOT.properties?.energySource === "Battery" && (
+          <div className="mt-2">
+            <label className="block text-sm font-semibold text-gray-700 mb-1">
+              Battery Capacity (J)
+            </label>
+            <input
+              type="number"
+              min="0"
+              step="any"
+              value={editedIOT.properties?.batteryCapacityJ}
+              onChange={(e) =>
+                handleChange(
+                  "batteryCapacityJ",
+                  nonNegativeNumberDraft(e.target.value),
+                )
+              }
+              className="w-full border px-3 py-2 text-sm rounded"
+            />
+          </div>
+        )}
+        <div className="mt-2">
+          <label className="block text-sm font-semibold text-gray-700 mb-1">
+            Generation Energy Rate (J/KB)
+          </label>
+          <input
+            type="number"
+            min="0"
+            step="any"
+            value={editedIOT.properties?.generationEnergyPerKbJ}
+            onChange={(e) =>
+              handleChange(
+                "generationEnergyPerKbJ",
+                nonNegativeNumberDraft(e.target.value),
+              )
+            }
+            className="w-full border px-3 py-2 text-sm rounded"
+          />
+          <p className="mt-1 text-xs text-gray-500">
+            Generation energy equals this rate multiplied by the task data size.
+          </p>
         </div>
       </div>
 

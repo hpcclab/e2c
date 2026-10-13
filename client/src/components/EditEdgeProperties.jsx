@@ -3,6 +3,7 @@ import { useGlobalState } from "../context/GlobalStates";
 import {
   EDGE_NETWORK_TYPES,
   formatDataRate,
+  getDefaultUploadPowerW,
   getEdgeNetworkVisual,
   resolveEdgeNetwork,
 } from "../utils/edgeNetwork";
@@ -19,6 +20,9 @@ const EditEdgeProperties = ({ selectedEdge }) => {
   const [dataRateKbps, setDataRateKbps] = useState(
     initialNetwork.dataRateKbps,
   );
+  const [uploadPowerW, setUploadPowerW] = useState(
+    initialNetwork.uploadPowerW,
+  );
 
   const edgeId = selectedEdge?.id ?? null;
 
@@ -26,6 +30,7 @@ const EditEdgeProperties = ({ selectedEdge }) => {
     const nextNetwork = resolveEdgeNetwork(selectedEdge, sourceProperties);
     setNetworkType(nextNetwork.networkType);
     setDataRateKbps(nextNetwork.dataRateKbps);
+    setUploadPowerW(nextNetwork.uploadPowerW);
   }, [edgeId, selectedEdge, sourceProperties]);
 
   if (!selectedEdge) {
@@ -37,6 +42,7 @@ const EditEdgeProperties = ({ selectedEdge }) => {
   const handleTypeChange = (nextType) => {
     setNetworkType(nextType);
     setDataRateKbps(getDefaultDataRateKbps(nextType));
+    setUploadPowerW(getDefaultUploadPowerW(nextType));
   };
 
   const handleSave = () => {
@@ -44,6 +50,7 @@ const EditEdgeProperties = ({ selectedEdge }) => {
       ...selectedEdge.data?.properties,
       networkType,
       dataRateKbps: Math.max(0.001, Number(dataRateKbps) || 0.001),
+      uploadPowerW: Math.max(0, Number(uploadPowerW) || 0),
     };
     const updatedEdge = {
       ...selectedEdge,
@@ -68,8 +75,9 @@ const EditEdgeProperties = ({ selectedEdge }) => {
           Edge Properties
         </h3>
         <p className="text-xs text-gray-500 mt-1 leading-5">
-          These settings control how long task data takes to travel from its
-          source. Slower links and larger tasks create longer travel times.
+          These settings control task upload time and energy. Slower links and
+          larger tasks take longer; network energy equals upload power ×
+          transfer time.
         </p>
       </div>
 
@@ -119,6 +127,28 @@ const EditEdgeProperties = ({ selectedEdge }) => {
             );
           })}
         </div>
+      </div>
+
+      <div>
+        <label
+          htmlFor="edge-upload-power"
+          className="block text-sm font-semibold text-gray-700 mb-1"
+        >
+          Upload Power (W)
+        </label>
+        <input
+          id="edge-upload-power"
+          type="number"
+          min="0"
+          step="any"
+          value={uploadPowerW}
+          onChange={(event) => setUploadPowerW(event.target.value)}
+          className="w-full border px-3 py-2 text-sm rounded-lg"
+        />
+        <p className="text-xs text-gray-500 mt-1">
+          Energy used to upload a task is this power multiplied by the task&apos;s
+          transfer time. A slower link therefore consumes more energy.
+        </p>
       </div>
 
       <div>

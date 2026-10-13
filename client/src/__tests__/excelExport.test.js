@@ -88,11 +88,15 @@ test("builds one worksheet dataset for each existing report CSV", () => {
     "Utilization Time (hr)",
     "Total Cost ($)",
     "Tasks Processed",
+    "Power Source",
+    "Battery Capacity (J)",
+    "Battery Remaining (J)",
+    "Processing Energy Rate (J/KB)",
   ]);
-  assert.equal(sheets.Tasks[1][8], 0.2);
-  assert.equal(sheets.Tasks[1][9], 1.2);
-  assert.equal(sheets.Tasks[2][8], "DNR");
-  assert.equal(sheets.Tasks[2][9], "DNR");
+  assert.equal(sheets.Tasks[1][11], 0.2);
+  assert.equal(sheets.Tasks[1][12], 1.2);
+  assert.equal(sheets.Tasks[2][11], "DNR");
+  assert.equal(sheets.Tasks[2][12], "DNR");
 });
 
 test("creates a valid multi-sheet xlsx workbook", async () => {
@@ -110,10 +114,10 @@ test("creates a valid multi-sheet xlsx workbook", async () => {
   ["Summary", "Tasks", "Missed Tasks", "Machines"].forEach((sheetName) => {
     assert.match(workbookXml, new RegExp(`name="${sheetName}"`));
   });
-  assert.match(taskSheetXml, /<c r="I2" s="2"><v>0\.2<\/v><\/c>/);
+  assert.match(taskSheetXml, /<c r="L2" s="2"><v>0\.2<\/v><\/c>/);
   assert.match(
     taskSheetXml,
-    /<c r="J3" t="inlineStr"><is><t xml:space="preserve">DNR<\/t><\/is><\/c>/,
+    /<c r="M3" t="inlineStr" s="2"><is><t xml:space="preserve">DNR<\/t><\/is><\/c>/,
   );
   assert.doesNotMatch(machineSheetXml, /Machine ID/);
   assert.match(machineSheetXml, /<c r="H2"><v>2<\/v><\/c>/);

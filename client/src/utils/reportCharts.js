@@ -61,9 +61,18 @@ export function buildMachineChartData({
       const current = bySource.get(identity.key) ?? {
         count: 0,
         runtimeSeconds: 0,
+        processingEnergyJ: 0,
+        hasProcessingEnergy: false,
       };
       current.count += 1;
       current.runtimeSeconds += actualTaskRuntime(task);
+      if (Number.isFinite(Number(task?.processing_energy_j))) {
+        current.processingEnergyJ += Math.max(
+          0,
+          Number(task.processing_energy_j),
+        );
+        current.hasProcessingEnergy = true;
+      }
       bySource.set(identity.key, current);
 
       if (!segmentsByKey.has(identity.key)) {
@@ -93,7 +102,10 @@ export function buildMachineChartData({
       (sum, value) => sum + value.runtimeSeconds,
       0,
     );
-    const totalEnergy =
+    const hasTaskEnergy = [...bySource.values()].some(
+      (value) => value.hasProcessingEnergy,
+    );
+    const legacyTotalEnergy =
       ((Number(machine.power) || 0) *
         (Number(machine.utilization_time) || 0)) /
       1000;
@@ -103,7 +115,12 @@ export function buildMachineChartData({
       3600;
 
     segments.forEach(({ key }) => {
-      const values = bySource.get(key) ?? { count: 0, runtimeSeconds: 0 };
+      const values = bySource.get(key) ?? {
+        count: 0,
+        runtimeSeconds: 0,
+        processingEnergyJ: 0,
+        hasProcessingEnergy: false,
+      };
       const share = totalRuntime > 0
         ? values.runtimeSeconds / totalRuntime
         : assignedTasks.length > 0
@@ -111,7 +128,9 @@ export function buildMachineChartData({
           : 0;
 
       taskRow[key] = values.count;
-      energyRow[key] = totalEnergy * share;
+      energyRow[key] = hasTaskEnergy
+        ? values.processingEnergyJ / 3_600_000
+        : legacyTotalEnergy * share;
       costRow[key] = totalCost * share;
     });
 

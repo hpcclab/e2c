@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from "react";
+import React, { useEffect, useMemo, useRef } from "react";
 import { useGlobalState } from "../context/GlobalStates";
 import {
   calculateSuggestedSlack,
@@ -6,9 +6,20 @@ import {
 } from "../utils/slackSuggestion";
 
 const AutoSuggestSlack = ({ source, onSuggest, locked = false }) => {
-  const { machines, edges, nodes } = useGlobalState();
+  const { machines, iot, edges, nodes, policyAlias } = useGlobalState();
   const lastAppliedSuggestion = useRef(null);
-  const suggestion = calculateSuggestedSlack({ source, machines, edges, nodes });
+  const suggestion = useMemo(
+    () =>
+      calculateSuggestedSlack({
+        source,
+        sources: iot,
+        machines,
+        edges,
+        nodes,
+        policyAlias,
+      }),
+    [source, iot, machines, edges, nodes, policyAlias],
+  );
 
   useEffect(() => {
     lastAppliedSuggestion.current = null;

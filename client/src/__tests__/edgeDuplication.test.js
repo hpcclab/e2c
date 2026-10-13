@@ -9,7 +9,11 @@ test("duplicating an edge copies network type and speed to the target", () => {
     source: "nd_1",
     target: "2",
     data: {
-      properties: { networkType: "Bluetooth", dataRateKbps: 725 },
+      properties: {
+        networkType: "Bluetooth",
+        dataRateKbps: 725,
+        uploadPowerW: 0.2,
+      },
     },
   };
   const target = {
@@ -29,6 +33,7 @@ test("duplicating an edge copies network type and speed to the target", () => {
   assert.deepEqual(copied.data.properties, {
     networkType: "Bluetooth",
     dataRateKbps: 725,
+    uploadPowerW: 0.2,
   });
   assert.notEqual(copied.data.properties, source.data.properties);
 });
@@ -47,4 +52,5 @@ test("legacy edge settings are resolved before being copied", () => {
 
   assert.equal(copied.data.properties.networkType, "WiFi");
   assert.equal(copied.data.properties.dataRateKbps, 12345);
+  assert.equal(copied.data.properties.uploadPowerW, 0.8);
 });

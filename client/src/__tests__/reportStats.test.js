@@ -44,3 +44,23 @@ test("result rows prevent a stale configured total from undercounting tasks", ()
 
   assert.equal(buildTaskSummary(results, 0).total, 2);
 });
+
+test("battery failures are counted once and separated by cause", () => {
+  const summary = buildTaskSummary([
+    {
+      id: 1,
+      status: "NOT_GENERATED",
+      failure_reason: "IOT_BATTERY_DEPLETED",
+    },
+    {
+      id: 2,
+      status: "DNR",
+      failure_reason: "MACHINE_BATTERY_DEPLETED",
+    },
+  ], 2);
+
+  assert.equal(summary.missed.length, 2);
+  assert.equal(summary.sourceBatteryFailures.length, 1);
+  assert.equal(summary.machineBatteryFailures.length, 1);
+  assert.equal(summary.inProgress, 0);
+});

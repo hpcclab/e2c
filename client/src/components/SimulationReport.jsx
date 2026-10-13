@@ -17,6 +17,7 @@ import {
 } from "recharts";
 import { buildMachineChartData } from "../utils/reportCharts";
 import { buildTaskSummary } from "../utils/reportStats";
+import { failureReasonLabel } from "../utils/energy";
 
 const taskIdNumber = (task) => Number(task.taskId ?? task.id);
 const formatNumber = (value, digits = 3) => {
@@ -26,7 +27,7 @@ const formatNumber = (value, digits = 3) => {
 
 const taskStatusRank = (task, sortMode) => {
   const status = String(task.status || "").toUpperCase();
-  const missed = ["DEADLINE_MISSED", "MISSED", "DNR"].includes(status);
+  const missed = ["DEADLINE_MISSED", "MISSED", "DNR", "NOT_GENERATED"].includes(status);
   const completed = status === "COMPLETED";
 
   if (sortMode === "missed-first") {
@@ -169,11 +170,16 @@ const SimulationReport = ({
       return acc;
     }, {});
 
-    const totalEnergyConsumed = machineList.reduce((sum, machine) => {
-      const power = machine.power || 0;
-      const utilizationTime = machine.utilization_time || 0;
-      return sum + (power * utilizationTime) / 1000;
-    }, 0);
+    const machineEnergyJ = machineList.reduce(
+      (sum, machine) => sum + (Number(machine.energyConsumedJ) || 0),
+      0,
+    );
+    const sourceEnergyJ = (Array.isArray(sources) ? sources : []).reduce(
+      (sum, source) =>
+        sum + (Number(source.properties?.energyConsumedJ) || 0),
+      0,
+    );
+    const totalEnergyConsumed = (machineEnergyJ + sourceEnergyJ) / 3_600_000;
 
     const totalCost = machineList.reduce(
       (sum, m) => sum + (m.price || 0) * (m.utilization_time || 0) * 3600,
@@ -188,6 +194,8 @@ const SimulationReport = ({
       unassignedByType,
       missedByType,
       totalMissed: missed.length,
+      sourceBatteryFailures: taskSummary.sourceBatteryFailures.length,
+      machineBatteryFailures: taskSummary.machineBatteryFailures.length,
       completionPercentage: taskSummary.completionPercentage,
       totalEnergyConsumed,
       totalCost,
@@ -195,7 +203,7 @@ const SimulationReport = ({
       inProgress,
       totalTasksPreview: totalTasks,
     };
-  }, [dataResults, machines, totTasks]);
+  }, [dataResults, machines, sources, totTasks]);
 
   useEffect(() => {
     console.log("=== DEBUG dataResults ===");
@@ -411,6 +419,28 @@ const SimulationReport = ({
                 </div>
               </div>
             </div>
+
+            {(summaryStats.sourceBatteryFailures > 0 ||
+              summaryStats.machineBatteryFailures > 0) && (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-6">
+                <div className="rounded-lg border border-orange-200 bg-orange-50 p-4">
+                  <div className="text-2xl font-bold text-orange-700">
+                    {summaryStats.sourceBatteryFailures}
+                  </div>
+                  <div className="text-sm font-semibold text-orange-800">
+                    Not generated — IoT battery depleted
+                  </div>
+                </div>
+                <div className="rounded-lg border border-slate-300 bg-slate-50 p-4">
+                  <div className="text-2xl font-bold text-slate-700">
+                    {summaryStats.machineBatteryFailures}
+                  </div>
+                  <div className="text-sm font-semibold text-slate-800">
+                    Did not run — machine battery depleted
+                  </div>
+                </div>
+              </div>
+            )}
 
             {/* Detailed Stats Table */}
             <table className="table-auto border-collapse border border-gray-300 w-full text-sm mb-4">
@@ -1061,6 +1091,15 @@ const SimulationReport = ({
                       Data (KB)
                     </th>
                     <th className="border border-gray-300 px-3 py-2 font-semibold">
+                      Generation Energy (J)
+                    </th>
+                    <th className="border border-gray-300 px-3 py-2 font-semibold">
+                      Upload Energy (J)
+                    </th>
+                    <th className="border border-gray-300 px-3 py-2 font-semibold">
+                      Processing Energy (J)
+                    </th>
+                    <th className="border border-gray-300 px-3 py-2 font-semibold">
                       Connection
                     </th>
                     <th className="border border-gray-300 px-3 py-2 font-semibold">
@@ -1084,6 +1123,9 @@ const SimulationReport = ({
                     <th className="border border-gray-300 px-3 py-2 font-semibold">
                       Status
                     </th>
+                    <th className="border border-gray-300 px-3 py-2 font-semibold">
+                      Failure Reason
+                    </th>
                   </tr>
                 </thead>
                 <tbody>
@@ -1100,6 +1142,7 @@ const SimulationReport = ({
                           .toLowerCase()
                           .includes(q) ||
                         (task.status || "").toLowerCase().includes(q)
+                        || failureReasonLabel(task.failure_reason).toLowerCase().includes(q)
                       );
                     })
                     .sort((firstTask, secondTask) =>
@@ -1109,6 +1152,7 @@ const SimulationReport = ({
                       // Check if deadline was missed
                       const deadlineMissed = task.status === "DEADLINE_MISSED";
                       const didNotRun = task.status === "DNR";
+                      const notGenerated = task.status === "NOT_GENERATED";
                       const isUnassigned = task.machineId === null;
 
                       return (
@@ -1137,12 +1181,21 @@ const SimulationReport = ({
                             {task.assigned_machine ?? "N/A"}
                           </td>
                           <td className="border border-gray-300 px-3 py-2">
-                            {formatNumber(
-                              task.generation_time ?? task.arrival_time,
-                            )}
+                            {notGenerated
+                              ? "Not generated"
+                              : formatNumber(task.generation_time ?? task.arrival_time)}
                           </td>
                           <td className="border border-gray-300 px-3 py-2">
                             {formatNumber(task.data_size, 2)}
+                          </td>
+                          <td className="border border-gray-300 px-3 py-2">
+                            {formatNumber(task.generation_energy_j, 4)}
+                          </td>
+                          <td className="border border-gray-300 px-3 py-2">
+                            {formatNumber(task.network_energy_j, 4)}
+                          </td>
+                          <td className="border border-gray-300 px-3 py-2">
+                            {formatNumber(task.processing_energy_j, 4)}
                           </td>
                           <td className="border border-gray-300 px-3 py-2">
                             {task.connectivity ?? "-"}
@@ -1154,13 +1207,17 @@ const SimulationReport = ({
                             {formatNumber(task.arrival_time)}
                           </td>
                           <td className="border border-gray-300 px-3 py-2">
-                            {didNotRun
-                              ? "DNR"
+                            {notGenerated
+                              ? "Not generated"
+                              : didNotRun
+                                ? "DNR"
                               : formatNumber(task.start_time)}
                           </td>
                           <td className="border border-gray-300 px-3 py-2">
-                            {didNotRun
-                              ? "DNR"
+                            {notGenerated
+                              ? "Not generated"
+                              : didNotRun
+                                ? "DNR"
                               : formatNumber(task.end_time)}
                           </td>
                           <td className="border border-gray-300 px-3 py-2 text-purple-700 font-medium">
@@ -1178,7 +1235,7 @@ const SimulationReport = ({
                               className={`px-2 py-1 rounded text-xs font-semibold ${
                                 task.status === "COMPLETED"
                                   ? "bg-green-100 text-green-800"
-                                  : didNotRun
+                                  : didNotRun || notGenerated
                                     ? "bg-gray-200 text-gray-800"
                                   : isUnassigned
                                     ? "bg-amber-100 text-amber-800"
@@ -1189,12 +1246,17 @@ const SimulationReport = ({
                                         : "bg-yellow-100 text-yellow-800"
                               }`}
                             >
-                              {didNotRun
-                                ? "DNR (Did Not Run)"
+                              {notGenerated
+                                ? "NOT GENERATED"
+                                : didNotRun
+                                  ? "DNR (Did Not Run)"
                                 : isUnassigned
                                   ? "UNASSIGNED"
                                   : task.status}
                             </span>
+                          </td>
+                          <td className="border border-gray-300 px-3 py-2 text-sm text-gray-700">
+                            {failureReasonLabel(task.failure_reason) || "—"}
                           </td>
                         </tr>
                       );

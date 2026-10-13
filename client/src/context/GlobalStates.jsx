@@ -17,6 +17,11 @@ import axios from "axios";
 import { eetTable } from "../utils/exportCSV";
 import { generateWorkload } from "../workload/tabs/ScenarioTab";
 import { generateMachineConfig } from "../workload/tabs/MachineTypesTab";
+import {
+  DEFAULT_GENERATION_ENERGY_PER_KB_J,
+  DEFAULT_PROCESSING_ENERGY_PER_KB_J,
+  machineProcessingEnergyRateJPerKb,
+} from "../utils/energy";
 
 const GlobalContext = createContext();
 
@@ -31,6 +36,9 @@ export const GlobalProvider = ({ children }) => {
     name: "",
     power: 0,
     idle_power: 0,
+    energySource: "Grid-Powered",
+    batteryCapacityJ: 100,
+    processingEnergyPerKbJ: DEFAULT_PROCESSING_ENERGY_PER_KB_J,
     replicas: 1,
     price: 0,
     cost: 0,
@@ -64,6 +72,8 @@ export const GlobalProvider = ({ children }) => {
       connectivity: "WiFi",
       dataRateKbps: 54000,
       energySource: "Grid-Powered",
+      batteryCapacityJ: 100,
+      generationEnergyPerKbJ: DEFAULT_GENERATION_ENERGY_PER_KB_J,
       taskColor: "Slate",
     },
     queue: [],
@@ -341,6 +351,9 @@ export const GlobalProvider = ({ children }) => {
             arrivalSeed: "",
             connectivity: "WiFi",
             dataRateKbps: 54000,
+            energySource: "Grid-Powered",
+            batteryCapacityJ: 100,
+            generationEnergyPerKbJ: DEFAULT_GENERATION_ENERGY_PER_KB_J,
           },
           parentId: selectedWorkspace?.id,
           extent: undefined,
@@ -442,6 +455,9 @@ export const GlobalProvider = ({ children }) => {
             name: baseName,
             power: machine.power || 0,
             idle_power: machine.idle_power || 0,
+            energySource: machine.energySource || "Grid-Powered",
+            batteryCapacityJ: machine.batteryCapacityJ ?? 100,
+            processingEnergyPerKbJ: machineProcessingEnergyRateJPerKb(machine),
             replicas: machine.replicas || 1,
             price: machine.price || 0,
             cost: machine.cost || 0,
@@ -508,6 +524,21 @@ export const GlobalProvider = ({ children }) => {
     setSimulationTime(snapshot.time);
     setMachines(snapshot.machines);
     machinesRef.current = snapshot.machines;
+    setSelectedMachine((current) => {
+      const updated = snapshot.machines.find(
+        (machine) => String(machine.id) === String(current.id),
+      );
+      return updated ? { ...current, ...updated } : current;
+    });
+    if (snapshot.iot) {
+      setIot(snapshot.iot);
+      setSelectedIOT((current) => {
+        const updated = snapshot.iot.find(
+          (source) => String(source.id) === String(current.id),
+        );
+        return updated ? { ...current, ...updated } : current;
+      });
+    }
     setCompletedTasks(snapshot.completed);
     setUnassignedTasks(snapshot.unassigned);
     setMissedTasks(snapshot.missed);

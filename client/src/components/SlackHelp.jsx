@@ -75,11 +75,14 @@ const SlackHelp = ({ value, onApply }) => {
                   Its arrival time is generation time + travel time.
                 </p>
                 <p>
-                  The automatic suggestion combines a 95% transfer-time
-                  estimate with a 95% execution-time estimate for the slowest
-                  connected machine. Time waiting in the machine queue is not
-                  predictable from these values, so a busy system may require
-                  additional slack.
+                  The automatic suggestion performs a fast internal dry run of
+                  the configured workload and scheduling policy. It includes
+                  conservative travel and execution times, time waiting behind
+                  other tasks, and competition from other connected IoTs. E2C
+                  chooses the 95th-percentile required completion window and
+                  rounds it upward slightly. For ten predicted tasks, this uses
+                  the longest predicted window so approximately nine or ten
+                  tasks should meet their deadlines despite normal variation.
                 </p>
                 <p>
                   <strong>You can change the slack at your own discretion.</strong>{" "}

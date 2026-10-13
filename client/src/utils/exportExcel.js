@@ -1,5 +1,9 @@
 import JSZip from "jszip";
 import { downloadBlob } from "./downloadBlob.js";
+import {
+  failureReasonLabel,
+  machineProcessingEnergyRateJPerKb,
+} from "./energy.js";
 
 const EXCEL_MIME_TYPE =
   "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
@@ -49,6 +53,16 @@ export const buildExcelReportData = ({
       ["Total Tasks", dataResults.length],
       ["Completed Tasks", completedTasks],
       ["Missed Tasks", missedTasks.length],
+      [
+        "IoT Battery Generation/Upload Failures",
+        dataResults.filter((task) => task.status === "NOT_GENERATED").length,
+      ],
+      [
+        "Machine Battery Processing Failures",
+        dataResults.filter(
+          (task) => task.failure_reason === "MACHINE_BATTERY_DEPLETED",
+        ).length,
+      ],
       ["Total Machines", machineList.length],
       ["Total Cost ($)", totalCost],
     ],
@@ -59,6 +73,9 @@ export const buildExcelReportData = ({
         "Assigned Machine",
         "Generation Time",
         "Data Size (KB)",
+        "Generation Energy (J)",
+        "Network Upload Energy (J)",
+        "Processing Energy (J)",
         "Connectivity",
         "Travel Time",
         "Arrival Time",
@@ -66,6 +83,7 @@ export const buildExcelReportData = ({
         "Completion Time",
         "Exec Time",
         "Status",
+        "Failure Reason",
         "Deadline",
       ],
       ...dataResults.map((task) => [
@@ -74,6 +92,9 @@ export const buildExcelReportData = ({
         task.assigned_machine || "N/A",
         task.generation_time ?? task.arrival_time ?? "N/A",
         task.data_size ?? "N/A",
+        task.generation_energy_j ?? "N/A",
+        task.network_energy_j ?? "N/A",
+        task.processing_energy_j ?? "N/A",
         task.connectivity ?? "N/A",
         task.travel_time ?? 0,
         task.arrival_time ?? "N/A",
@@ -81,6 +102,7 @@ export const buildExcelReportData = ({
         getTaskTime(task, "end_time"),
         task.execution_time ?? "N/A",
         task.status || "N/A",
+        failureReasonLabel(task.failure_reason),
         task.deadline ?? "N/A",
       ]),
     ],
@@ -91,11 +113,15 @@ export const buildExcelReportData = ({
         "Assigned Machine",
         "Generation Time",
         "Data Size (KB)",
+        "Generation Energy (J)",
+        "Network Upload Energy (J)",
+        "Processing Energy (J)",
         "Connectivity",
         "Travel Time",
         "Arrival Time",
         "Deadline",
         "Status",
+        "Failure Reason",
       ],
       ...missedTasks.map((task) => [
         getTaskId(task),
@@ -103,11 +129,15 @@ export const buildExcelReportData = ({
         task.assigned_machine || "N/A",
         task.generation_time ?? task.arrival_time ?? "N/A",
         task.data_size ?? "N/A",
+        task.generation_energy_j ?? "N/A",
+        task.network_energy_j ?? "N/A",
+        task.processing_energy_j ?? "N/A",
         task.connectivity ?? "N/A",
         task.travel_time ?? 0,
         task.arrival_time ?? "N/A",
         task.deadline ?? "N/A",
         task.status || "MISSED",
+        failureReasonLabel(task.failure_reason),
       ]),
     ],
     Machines: [
@@ -120,6 +150,10 @@ export const buildExcelReportData = ({
         "Utilization Time (hr)",
         "Total Cost ($)",
         "Tasks Processed",
+        "Power Source",
+        "Battery Capacity (J)",
+        "Battery Remaining (J)",
+        "Processing Energy Rate (J/KB)",
       ],
       ...machineList.map((machine) => [
         machine.name || "N/A",
@@ -132,6 +166,10 @@ export const buildExcelReportData = ({
           (Number(machine.utilization_time) || 0) *
           3600,
         getMachineTaskCount(machine, dataResults),
+        machine.energySource || "Grid-Powered",
+        machine.energySource === "Battery" ? machine.batteryCapacityJ ?? 100 : "N/A",
+        machine.energySource === "Battery" ? machine.batteryRemainingJ ?? machine.batteryCapacityJ ?? 100 : "N/A",
+        machineProcessingEnergyRateJPerKb(machine),
       ]),
     ],
   };
@@ -158,8 +196,20 @@ const columnName = (columnNumber) => {
 };
 
 const columnStyles = {
-  Tasks: { 4: 2, 5: 2, 6: 2, 7: 2, 9: 2 },
-  "Missed Tasks": { 4: 2, 5: 2 },
+  Tasks: {
+    4: 2,
+    5: 2,
+    6: 2,
+    7: 2,
+    8: 2,
+    10: 2,
+    11: 2,
+    12: 2,
+    13: 2,
+    14: 2,
+    17: 2,
+  },
+  "Missed Tasks": { 4: 2, 5: 2, 6: 2, 7: 2, 8: 2, 10: 2, 11: 2, 12: 2 },
   Machines: { 5: 3, 6: 4, 7: 5 },
 };
 

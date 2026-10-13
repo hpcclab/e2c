@@ -10,6 +10,10 @@ import {
   getWorkspaceName,
   isWorkspaceNode,
 } from "../utils/workspaceNodes";
+import {
+  DEFAULT_GENERATION_ENERGY_PER_KB_J,
+  DEFAULT_PROCESSING_ENERGY_PER_KB_J,
+} from "../utils/energy";
 
 // Contains node spawners through drag and drop
 // Simple ID generator for nodes
@@ -259,11 +263,18 @@ const CARD_STYLES = `
 function DraggableNode({ config, onDrop }) {
   // The anchor element stays in the sidebar (invisible while dragging)
   const anchorRef = useRef(null);
+  // NeoDrag keeps the callbacks from its initial setup. Always dispatch through
+  // a ref so changes such as locking automatic zoom are respected on the next drop.
+  const onDropRef = useRef(onDrop);
   const [dragging, setDragging] = useState(false);
   // Ghost position follows the mouse in a portal
   const [ghostPos, setGhostPos] = useState({ x: 0, y: 0 });
   // Remember card size so we can center the ghost under the cursor
   const cardSizeRef = useRef({ width: 190, height: 56 });
+
+  useEffect(() => {
+    onDropRef.current = onDrop;
+  }, [onDrop]);
 
   useDraggable(anchorRef, {
     // Keep the actual element at 0,0; we move the ghost instead
@@ -282,7 +293,7 @@ function DraggableNode({ config, onDrop }) {
     },
     onDragEnd: ({ event }) => {
       setDragging(false);
-      onDrop(config.type, {
+      onDropRef.current(config.type, {
         x: event.clientX - cardSizeRef.current.width / 2,
         y: event.clientY - cardSizeRef.current.height / 2,
       });
@@ -413,6 +424,9 @@ export default function Sidebar() {
           queue: [],
           power: 10,
           idle_power: 1,
+          energySource: "Grid-Powered",
+          batteryCapacityJ: 100,
+          processingEnergyPerKbJ: DEFAULT_PROCESSING_ENERGY_PER_KB_J,
           replicas: 1,
           price: 0.15,
           cost: 0,
@@ -457,6 +471,8 @@ export default function Sidebar() {
             connectivity: "WiFi",
             dataRateKbps: 54000,
             energySource: "Grid-Powered",
+            batteryCapacityJ: 100,
+            generationEnergyPerKbJ: DEFAULT_GENERATION_ENERGY_PER_KB_J,
             taskColor: colorNames[getNodes().length % colorNames.length],
             user: false,
           },
@@ -539,6 +555,8 @@ export default function Sidebar() {
             connectivity: "WiFi",
             dataRateKbps: 54000,
             energySource: "Grid-Powered",
+            batteryCapacityJ: 100,
+            generationEnergyPerKbJ: DEFAULT_GENERATION_ENERGY_PER_KB_J,
             taskColor: colorNames[getNodes().length % colorNames.length],
             user: true,
           },

@@ -10,6 +10,13 @@ import {
   sourceEetKey,
 } from "../utils/executionTime";
 import { connectedSources } from "../utils/connections";
+import {
+  nonNegativeNumberDraft,
+  nonNegativeNumberValue,
+} from "../utils/numericInput";
+import {
+  machineProcessingEnergyRateJPerKb,
+} from "../utils/energy";
 
 const MACHINE_PRESETS = [
   { name: "CPU", icon: "MdComputer" },
@@ -36,6 +43,9 @@ const EditMachineProperties = ({
       icon: selectedMachine.icon,
       power: selectedMachine.power || 0,
       idle_power: selectedMachine.idle_power || 0,
+      energySource: selectedMachine.energySource || "Grid-Powered",
+      batteryCapacityJ: selectedMachine.batteryCapacityJ ?? 100,
+      processingEnergyPerKbJ: machineProcessingEnergyRateJPerKb(selectedMachine),
       replicas: selectedMachine.replicas || 1,
       price: selectedMachine.price || 0,
       cost: selectedMachine.cost || 0,
@@ -113,6 +123,12 @@ const EditMachineProperties = ({
     try {
       const updatedMachine = {
         ...editedMachine,
+        batteryCapacityJ: nonNegativeNumberValue(
+          editedMachine.batteryCapacityJ,
+        ),
+        processingEnergyPerKbJ: nonNegativeNumberValue(
+          editedMachine.processingEnergyPerKbJ,
+        ),
         eet: {
           ...editedMachine.eet,
           ...Object.fromEntries(connectedIot.map((node) => [
@@ -157,6 +173,9 @@ const EditMachineProperties = ({
       icon: selectedMachine.icon,
       power: selectedMachine.power || 0,
       idle_power: selectedMachine.idle_power || 0,
+      energySource: selectedMachine.energySource || "Grid-Powered",
+      batteryCapacityJ: selectedMachine.batteryCapacityJ ?? 100,
+      processingEnergyPerKbJ: machineProcessingEnergyRateJPerKb(selectedMachine),
       replicas: selectedMachine.replicas || 1,
       price: selectedMachine.price || 0,
       cost: selectedMachine.cost || 0,
@@ -219,6 +238,65 @@ const EditMachineProperties = ({
             onChange={(e) => handleChange("idle_power", Number(e.target.value))}
             className="w-full border px-3 py-2 text-sm rounded"
           />
+        </div>
+
+        <div>
+          <label className="block text-sm font-semibold text-gray-700 mb-1">
+            Power Source
+          </label>
+          <select
+            value={editedMachine.energySource}
+            onChange={(e) => handleChange("energySource", e.target.value)}
+            className="w-full border px-3 py-2 text-sm rounded"
+          >
+            <option value="Grid-Powered">Grid-Powered</option>
+            <option value="Battery">Battery</option>
+            <option value="Solar">Solar</option>
+            <option value="Other">Other</option>
+          </select>
+        </div>
+
+        {editedMachine.energySource === "Battery" && (
+          <div>
+            <label className="block text-sm font-semibold text-gray-700 mb-1">
+              Battery Capacity (J)
+            </label>
+            <input
+              type="number"
+              min="0"
+              step="any"
+              value={editedMachine.batteryCapacityJ}
+              onChange={(e) =>
+                handleChange(
+                  "batteryCapacityJ",
+                  nonNegativeNumberDraft(e.target.value),
+                )
+              }
+              className="w-full border px-3 py-2 text-sm rounded"
+            />
+          </div>
+        )}
+
+        <div>
+          <label className="block text-sm font-semibold text-gray-700 mb-1">
+            Processing Energy Rate (J/KB)
+          </label>
+          <input
+            type="number"
+            min="0"
+            step="any"
+            value={editedMachine.processingEnergyPerKbJ}
+            onChange={(e) =>
+              handleChange(
+                "processingEnergyPerKbJ",
+                nonNegativeNumberDraft(e.target.value),
+              )
+            }
+            className="w-full border px-3 py-2 text-sm rounded"
+          />
+          <p className="mt-1 text-xs text-gray-500">
+            Processing energy equals this rate multiplied by the task data size.
+          </p>
         </div>
 
         <div>
@@ -391,6 +469,37 @@ const EditMachineProperties = ({
 
         <div>
           <label className="block text-sm font-semibold text-gray-700 mb-1">
+            Power Source
+          </label>
+          <div className="w-full border px-3 py-2 text-sm rounded bg-gray-100">
+            {selectedMachine.energySource || "Grid-Powered"}
+          </div>
+        </div>
+
+        {(selectedMachine.energySource || "Grid-Powered") === "Battery" && (
+          <div>
+            <label className="block text-sm font-semibold text-gray-700 mb-1">
+              Battery Remaining / Capacity (J)
+            </label>
+            <div className="w-full border px-3 py-2 text-sm rounded bg-gray-100">
+              {selectedMachine.batteryRemainingJ ?? selectedMachine.batteryCapacityJ ?? 100}
+              {" / "}
+              {selectedMachine.batteryCapacityJ ?? 100}
+            </div>
+          </div>
+        )}
+
+        <div>
+          <label className="block text-sm font-semibold text-gray-700 mb-1">
+            Processing Energy Rate (J/KB)
+          </label>
+          <div className="w-full border px-3 py-2 text-sm rounded bg-gray-100">
+            {machineProcessingEnergyRateJPerKb(selectedMachine)}
+          </div>
+        </div>
+
+        <div>
+          <label className="block text-sm font-semibold text-gray-700 mb-1">
             Replicas
           </label>
           <div className="w-full border px-3 py-2 text-sm rounded bg-gray-100">
@@ -496,9 +605,7 @@ const EditMachineProperties = ({
               <div className="bg-purple-50 font-bold px-2 py-1 rounded">
                 {(() => {
                   const e = formatEnergy(
-                    ((selectedMachine.power || 0) *
-                      (selectedMachine.utilization_time || 0)) /
-                      1000,
+                    (Number(selectedMachine.energyConsumedJ) || 0) / 3_600_000,
                   );
                   return `${e.value} ${e.unit}`;
                 })()}

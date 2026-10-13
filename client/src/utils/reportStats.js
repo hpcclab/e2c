@@ -1,4 +1,11 @@
-const MISSED_STATUSES = new Set(["MISSED", "DEADLINE_MISSED", "DNR"]);
+import { ENERGY_FAILURE_REASONS } from "./energy.js";
+
+const MISSED_STATUSES = new Set([
+  "MISSED",
+  "DEADLINE_MISSED",
+  "DNR",
+  "NOT_GENERATED",
+]);
 
 const normalizedStatus = (task) => String(task?.status || "").toUpperCase();
 
@@ -9,6 +16,14 @@ export function buildTaskSummary(dataResults = [], configuredTotal = 0) {
   );
   const missed = results.filter((task) =>
     MISSED_STATUSES.has(normalizedStatus(task)),
+  );
+  const sourceBatteryFailures = results.filter(
+    (task) =>
+      task.failure_reason === ENERGY_FAILURE_REASONS.IOT_BATTERY_DEPLETED,
+  );
+  const machineBatteryFailures = results.filter(
+    (task) =>
+      task.failure_reason === ENERGY_FAILURE_REASONS.MACHINE_BATTERY_DEPLETED,
   );
   const cancelled = results.filter(
     (task) => normalizedStatus(task) === "CANCELLED",
@@ -27,6 +42,8 @@ export function buildTaskSummary(dataResults = [], configuredTotal = 0) {
     total,
     completed,
     missed,
+    sourceBatteryFailures,
+    machineBatteryFailures,
     cancelled,
     unassigned,
     inProgress: Math.max(0, total - accountedFor),

@@ -95,3 +95,25 @@ test("splits machine energy and cost by each IoT's actual runtime", () => {
   assert.ok(Math.abs(totalEnergy - (100 * (3 / 3600)) / 1000) < 1e-12);
   assert.equal(totalCost, 6);
 });
+
+test("uses each task's data-sized processing energy when it is available", () => {
+  const result = buildMachineChartData({
+    machines,
+    sources,
+    tasks: [
+      {
+        source_id: 1,
+        assigned_machine: "Machine A",
+        processing_energy_j: 2,
+      },
+      {
+        source_id: 2,
+        assigned_machine: "Machine A",
+        processing_energy_j: 8,
+      },
+    ],
+  });
+
+  assert.equal(result.energy[0].source_1, 2 / 3_600_000);
+  assert.equal(result.energy[0].source_2, 8 / 3_600_000);
+});

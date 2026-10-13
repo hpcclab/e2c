@@ -11,8 +11,8 @@ export class RAND extends BaseScheduler {
     const len = machines.length;
     if (!len) return null;
 
-    const rm1 = Math.floor(Math.random() * len);
-    const rm2 = Math.floor(Math.random() * len);
+    const rm1 = Math.floor(this.random() * len);
+    const rm2 = Math.floor(this.random() * len);
 
     const m1 = machines[rm1];
     const m2 = machines[rm2];

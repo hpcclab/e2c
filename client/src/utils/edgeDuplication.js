@@ -16,6 +16,7 @@ export function duplicateEdgeProperties(sourceEdge, targetEdge, sources = []) {
     ...(sourceEdge.data?.properties ?? sourceEdge.properties ?? {}),
     networkType: resolvedNetwork.networkType,
     dataRateKbps: resolvedNetwork.dataRateKbps,
+    uploadPowerW: resolvedNetwork.uploadPowerW,
   };
 
   return {

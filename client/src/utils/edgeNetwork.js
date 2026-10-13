@@ -14,6 +14,28 @@ export const EDGE_NETWORK_TYPES = [
   "Custom",
 ];
 
+// Representative transmit power defaults. These are simulation starting
+// points rather than hardware guarantees; every edge remains user-editable.
+export const EDGE_DEFAULT_UPLOAD_POWER_W = Object.freeze({
+  Ethernet: 0.5,
+  WiFi: 0.8,
+  "5G": 1.5,
+  LTE: 1.8,
+  Bluetooth: 0.05,
+  Custom: 1,
+});
+
+export function getDefaultUploadPowerW(networkType) {
+  return EDGE_DEFAULT_UPLOAD_POWER_W[normalizeConnectivity(networkType)] ?? 1;
+}
+
+function resolveUploadPowerW(value, networkType) {
+  const parsed = Number(value);
+  return Number.isFinite(parsed) && parsed >= 0
+    ? parsed
+    : getDefaultUploadPowerW(networkType);
+}
+
 export const EDGE_NETWORK_VISUALS = Object.freeze({
   Ethernet: { color: "#2563eb", dash: undefined, label: "Wired" },
   WiFi: { color: "#0ea5e9", dash: "12 7", label: "Wireless" },
@@ -33,6 +55,10 @@ export function createEdgeNetworkProperties(sourceProperties = {}) {
       ...sourceProperties,
       connectivity: networkType,
     }),
+    uploadPowerW: resolveUploadPowerW(
+      sourceProperties.uploadPowerW,
+      networkType,
+    ),
   };
 }
 
@@ -47,8 +73,12 @@ export function resolveEdgeNetwork(edge, fallbackProperties = {}) {
     networkType,
     properties.dataRateKbps ?? (explicitType ? undefined : fallback.dataRateKbps),
   );
+  const uploadPowerW = resolveUploadPowerW(
+    properties.uploadPowerW ?? (explicitType ? undefined : fallback.uploadPowerW),
+    networkType,
+  );
 
-  return { networkType, dataRateKbps };
+  return { networkType, dataRateKbps, uploadPowerW };
 }
 
 export function getSourceEdgeNetwork(

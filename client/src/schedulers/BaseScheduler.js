@@ -3,6 +3,13 @@ import {
   getMachineEetStdDev,
   sampleExecutionTime,
 } from "../utils/executionTime.js";
+import {
+  ENERGY_FAILURE_REASONS,
+  canSpendBattery,
+  isBatteryPowered,
+  machineTaskEnergyJ,
+  remainingBatteryJ,
+} from "../utils/energy.js";
 
 export class BaseScheduler {
   constructor({ machines, iot, enqueue, dequeue, isNeighbors, config }) {
@@ -97,7 +104,7 @@ export class BaseScheduler {
       this.unmappedTask.push(task);
     }
     this.task_counter += 1;
-    task.id = this.task_counter;
+    task.id ??= this.task_counter;
     return task;
   }
 
@@ -114,9 +121,60 @@ export class BaseScheduler {
   getEligibleMachines(task) {
     const source = this.getTaskSource(task);
     if (!source) return [];
+    return this.getConnectedMachines(task).filter((machine) =>
+      canSpendBattery(machine, machineTaskEnergyJ(machine, task)),
+    );
+  }
+
+  getConnectedMachines(task) {
+    const source = this.getTaskSource(task);
+    if (!source) return [];
     return this.machines.filter((machine) =>
       this.isNeighbors(`nd_${source.id}`, machine.id),
     );
+  }
+
+  hasOnlyDepletedBatteryMachines(task) {
+    const connected = this.getConnectedMachines(task);
+    return (
+      connected.length > 0 &&
+      connected.every(
+        (machine) =>
+          isBatteryPowered(machine) &&
+          !canSpendBattery(machine, machineTaskEnergyJ(machine, task)),
+      )
+    );
+  }
+
+  recordMachineBatteryFailure(task) {
+    task.status = "DNR";
+    task.failure_reason = ENERGY_FAILURE_REASONS.MACHINE_BATTERY_DEPLETED;
+    task.assigned_machine = null;
+    task.start_time = null;
+    task.end_time = null;
+    this.stats.missed.push(task);
+  }
+
+  failBatteryBlockedTasks(additionalTasks = []) {
+    const failTask = (task) => this.recordMachineBatteryFailure(task);
+
+    this.unmappedTask = this.unmappedTask.filter((task) => {
+      if (!this.hasOnlyDepletedBatteryMachines(task)) return true;
+      failTask(task);
+      return false;
+    });
+
+    this.batchQueue = this.batchQueue.filter((task) => {
+      if (!this.hasOnlyDepletedBatteryMachines(task)) return true;
+      failTask(task);
+      return false;
+    });
+
+    return additionalTasks.filter((task) => {
+      if (!this.hasOnlyDepletedBatteryMachines(task)) return true;
+      failTask(task);
+      return false;
+    });
   }
 
   map(machine) {
@@ -140,6 +198,22 @@ export class BaseScheduler {
       this.unmappedTask.push(task);
       return;
     }
+
+    const taskEnergyJ = machineTaskEnergyJ(machine, task);
+    if (!canSpendBattery(machine, taskEnergyJ)) {
+      this.unmappedTask.push(task);
+      return null;
+    }
+
+    if (isBatteryPowered(machine)) {
+      machine.batteryRemainingJ = Number(
+        Math.max(0, remainingBatteryJ(machine) - taskEnergyJ).toFixed(6),
+      );
+    }
+    machine.energyConsumedJ = Number(
+      ((Number(machine.energyConsumedJ) || 0) + taskEnergyJ).toFixed(6),
+    );
+    task.processing_energy_j = taskEnergyJ;
 
     // Assign execution metadata
     task.start_time = currentQueueSize === 0 ? Number(this.getTime().toFixed(3)) : null;

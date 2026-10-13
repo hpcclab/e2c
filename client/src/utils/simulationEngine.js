@@ -6,6 +6,15 @@ import "../schedulers/RAND.js";
 import "../schedulers/URI.js";
 import "../schedulers/MEET.js";
 import "../schedulers/MECT.js";
+import {
+  ENERGY_FAILURE_REASONS,
+  batteryCapacityJ,
+  canSpendBattery,
+  isBatteryPowered,
+  networkTransferEnergyJ,
+  sourceGenerationEnergyJ,
+  sourceTaskEnergyJ,
+} from "./energy.js";
 
 const TICK_SECONDS = 0.01;
 
@@ -23,22 +32,51 @@ export class SimulationEngine {
     tasks = [],
     edges = [],
     nodes = [],
+    random = Math.random,
   }) {
     const SchedulerClass = SCHEDULER_REGISTRY[policyAlias];
     if (!SchedulerClass) throw new Error(`Unknown scheduler: ${policyAlias}`);
 
     this.currentTime = 0;
-    this.iot = iot;
+    this.iot = iot.map((source) => {
+      if (!isBatteryPowered(source)) {
+        return {
+          ...source,
+          properties: { ...source.properties, energyConsumedJ: 0 },
+        };
+      }
+      const capacity = batteryCapacityJ(source);
+      return {
+        ...source,
+        properties: {
+          ...source.properties,
+          batteryCapacityJ: capacity,
+          batteryRemainingJ: capacity,
+          energyConsumedJ: 0,
+        },
+      };
+    });
     this.edges = edges;
     this.nodes = nodes;
-    this.machines = machines.map((machine) => ({
-      ...machine,
-      utilization_time: 0,
-      total_cost: 0,
-      total_tasks: 0,
-      queue: [],
-    }));
+    this.machines = machines.map((machine) => {
+      const normalized = {
+        ...machine,
+        utilization_time: 0,
+        total_cost: 0,
+        total_tasks: 0,
+        energyConsumedJ: 0,
+        queue: [],
+      };
+      if (!isBatteryPowered(normalized)) return normalized;
+      const capacity = batteryCapacityJ(normalized);
+      return {
+        ...normalized,
+        batteryCapacityJ: capacity,
+        batteryRemainingJ: capacity,
+      };
+    });
     this.totalTasks = tasks.length;
+    this.sourceFailures = [];
 
     this.scheduler = new SchedulerClass({
       machines: this.machines,
@@ -52,11 +90,103 @@ export class SimulationEngine {
           this.edges,
           this.nodes,
         ),
-      config: { deadlinePolicy },
+      config: { deadlinePolicy, random },
     });
     this.scheduler.setMachines(this.machines);
     this.scheduler.setIot(this.iot);
-    tasks.forEach((task) => this.scheduler.addTask({ ...task }));
+    this.pendingGeneration = tasks
+      .map((task, index) => ({ task: { ...task }, index }))
+      .sort(
+        (a, b) =>
+          numericTime(a.task.generation_time) -
+            numericTime(b.task.generation_time) || a.index - b.index,
+      )
+      .map(({ task, index }) => ({ ...task, id: task.id ?? index + 1 }));
+    this.releaseGeneratedTasks();
+    this.failImpossibleFutureTasks();
+  }
+
+  failSourceTask(task) {
+    task.status = "NOT_GENERATED";
+    task.failure_reason = ENERGY_FAILURE_REASONS.IOT_BATTERY_DEPLETED;
+    task.assigned_machine = null;
+    task.start_time = null;
+    task.end_time = null;
+    task.execution_time = null;
+    this.sourceFailures.push(task);
+  }
+
+  releaseGeneratedTasks() {
+    const futureTasks = [];
+
+    this.pendingGeneration.forEach((task) => {
+      const generationTime = numericTime(task.generation_time);
+      if (generationTime > this.currentTime + Number.EPSILON) {
+        futureTasks.push(task);
+        return;
+      }
+
+      const source = this.iot.find(
+        (candidate) => String(candidate.id) === String(task.source_id),
+      );
+      const energyJ = sourceTaskEnergyJ(source, task);
+      if (
+        source &&
+        isBatteryPowered(source) &&
+        !canSpendBattery(source, energyJ)
+      ) {
+        this.failSourceTask(task);
+        return;
+      }
+
+      if (source) {
+        if (isBatteryPowered(source)) {
+          const remaining = Math.max(
+            0,
+            Number(source.properties.batteryRemainingJ) - energyJ,
+          );
+          source.properties.batteryRemainingJ = Number(remaining.toFixed(6));
+        }
+        source.properties.energyConsumedJ = Number(
+          (
+            (Number(source.properties.energyConsumedJ) || 0) + energyJ
+          ).toFixed(6),
+        );
+        task.generation_energy_j = Number(
+          sourceGenerationEnergyJ(source, task).toFixed(9),
+        );
+        task.network_energy_j = Number(
+          networkTransferEnergyJ(task).toFixed(9),
+        );
+        task.source_energy_j = Number(energyJ.toFixed(9));
+      }
+
+      task.status = "NEW";
+      this.scheduler.addTask(task);
+    });
+
+    this.pendingGeneration = futureTasks;
+  }
+
+  failImpossibleFutureTasks() {
+    this.pendingGeneration = this.pendingGeneration.filter((task) => {
+      const source = this.iot.find(
+        (candidate) => String(candidate.id) === String(task.source_id),
+      );
+      if (
+        !source ||
+        !isBatteryPowered(source) ||
+        canSpendBattery(source, sourceTaskEnergyJ(source, task))
+      ) {
+        return true;
+      }
+      this.failSourceTask(task);
+      return false;
+    });
+
+    this.pendingGeneration = this.scheduler.failBatteryBlockedTasks(
+      this.pendingGeneration,
+    );
   }
 
   enqueue(machineId, task) {
@@ -83,11 +213,13 @@ export class SimulationEngine {
   step() {
     if (this.isComplete()) return this.getSnapshot();
     this.currentTime = Number((this.currentTime + TICK_SECONDS).toFixed(3));
+    this.releaseGeneratedTasks();
     this.scheduler.setTime(this.currentTime);
     this.scheduler.setMachines(this.machines);
     this.scheduler.setIot(this.iot);
     this.scheduler.schedule();
     this.scheduler.processMachines();
+    this.failImpossibleFutureTasks();
     return this.getSnapshot();
   }
 
@@ -102,7 +234,12 @@ export class SimulationEngine {
   isComplete() {
     if (this.totalTasks === 0) return true;
     const stats = this.scheduler.getStats();
-    return stats.completed.length + stats.missed.length >= this.totalTasks;
+    return (
+      stats.completed.length +
+        stats.missed.length +
+        this.sourceFailures.length >=
+      this.totalTasks
+    );
   }
 
   getSnapshot() {
@@ -110,15 +247,22 @@ export class SimulationEngine {
     const unassigned = this.scheduler
       .getBatchQ()
       .filter((task) => task.status === "NEW");
+    const pendingGeneration = this.pendingGeneration.map((task) => ({
+      ...task,
+      status: "PENDING_GENERATION",
+      start_time: null,
+      end_time: null,
+    }));
     const completed = [...stats.completed];
-    const missed = [...stats.missed];
+    const missed = [...stats.missed, ...this.sourceFailures];
     return {
       time: this.currentTime,
       machines: this.machines,
+      iot: this.iot,
       completed,
       missed,
       unassigned,
-      results: [...unassigned, ...completed, ...missed],
+      results: [...pendingGeneration, ...unassigned, ...completed, ...missed],
       totalTasks: this.totalTasks,
       complete: this.isComplete(),
     };

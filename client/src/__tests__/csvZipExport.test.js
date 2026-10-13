@@ -80,7 +80,7 @@ test("builds four separate CSV reports with consistent columns", () => {
   assert.match(files["simulation_tasks.csv"], /"Sensor, indoor"/);
   assert.match(
     files["simulation_tasks.csv"],
-    /2,Sensor,Machine 1,0\.2,10,Bluetooth,0\.1,0\.3,DNR,DNR/,
+    /2,Sensor,Machine 1,0\.2,10,N\/A,N\/A,N\/A,Bluetooth,0\.1,0\.3,DNR,DNR/,
   );
   assert.doesNotMatch(files["machine_stats.csv"], /Machine ID/);
 });

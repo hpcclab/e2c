@@ -54,6 +54,7 @@ import {
   resolveEdgeNetwork,
 } from "./utils/edgeNetwork";
 import { duplicateEdgeProperties } from "./utils/edgeDuplication";
+import { machineProcessingEnergyRateJPerKb } from "./utils/energy";
 import {
   expandSelectionWithDescendants,
   planGraphDuplication,
@@ -1048,6 +1049,9 @@ const SimDashboard = () => {
           name: m.name || "",
           power: Number(m.power) || 0,
           idle_power: Number(m.idle_power) || 0,
+          energySource: m.energySource || "Grid-Powered",
+          batteryCapacityJ: Math.max(0, Number(m.batteryCapacityJ) || 0),
+          processingEnergyPerKbJ: machineProcessingEnergyRateJPerKb(m),
           replicas: Number(m.replicas) || 1,
           price: Number(m.price) || 0,
           cost: Number(m.cost) || 0,
@@ -1320,15 +1324,9 @@ const SimDashboard = () => {
               onSelectionContextMenu={onSelectionContextMenu}
               onNodeContextMenu={onNodeContextMenu}
               onEdgeContextMenu={onEdgeContextMenu}
-              selectionOnDrag
+              selectionKeyCode="Shift"
               selectionMode={SelectionMode.Partial}
-              panOnDrag={[1, 2]}
-              fitView
-              fitViewOptions={{
-                padding: 0.5,
-                duration: 600,
-                interpolate: "smooth",
-              }}
+              panOnDrag={[0, 1]}
             >
               <Controls position="center-left" showInteractive={false}>
                 <ControlButton
@@ -1392,7 +1390,7 @@ const SimDashboard = () => {
               aria-hidden="true"
             />
             <span>
-              {edgeCopyNetwork.networkType} · {formatDataRate(edgeCopyNetwork.dataRateKbps)}
+              {edgeCopyNetwork.networkType} · {formatDataRate(edgeCopyNetwork.dataRateKbps)} · {edgeCopyNetwork.uploadPowerW} W
             </span>
             <span className="font-normal text-gray-500">Click a connection</span>
           </div>

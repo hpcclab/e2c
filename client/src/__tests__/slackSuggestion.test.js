@@ -90,6 +90,85 @@ test("suggested slack uses the network configured on the source edge", () => {
   assert.ok(result.transferTime > 1);
 });
 
+test("suggested slack includes queueing for a ten-task burst", () => {
+  const burstSource = {
+    ...source,
+    properties: {
+      ...source.properties,
+      meanSize: 0,
+      dataSizeStdDev: 0,
+      numTasks: 10,
+      startTime: 0,
+      endTime: 0,
+      distribution: "uniform",
+      arrivalSeed: "burst",
+    },
+  };
+  const result = calculateSuggestedSlack({
+    source: burstSource,
+    sources: [burstSource],
+    machines: [machine(1, 1, 0)],
+    edges: [{ source: "nd_7", target: "1" }],
+    policyAlias: "FCFS",
+  });
+
+  assert.equal(result.queueAware, true);
+  assert.equal(result.predictedTasks, 10);
+  assert.ok(result.slack >= 10);
+});
+
+test("suggested slack accounts for another IoT sharing the machine", () => {
+  const configuredSource = {
+    ...source,
+    properties: {
+      ...source.properties,
+      meanSize: 0,
+      dataSizeStdDev: 0,
+      numTasks: 2,
+      startTime: 0,
+      endTime: 0,
+      distribution: "uniform",
+      arrivalSeed: "shared-queue",
+    },
+  };
+  const competitor = {
+    id: 8,
+    name: "Competitor",
+    properties: {
+      ...configuredSource.properties,
+      task_type: "Competitor task",
+    },
+  };
+  const sharedMachine = {
+    id: 1,
+    eet: {
+      [sourceEetKey(configuredSource.id)]: 1,
+      [sourceEetKey(competitor.id)]: 1,
+    },
+    eetStdDev: {
+      [sourceEetKey(configuredSource.id)]: 0,
+      [sourceEetKey(competitor.id)]: 0,
+    },
+  };
+  const withoutCompetitor = calculateSuggestedSlack({
+    source: configuredSource,
+    sources: [configuredSource],
+    machines: [sharedMachine],
+    edges: [{ source: "nd_7", target: "1" }],
+  });
+  const withCompetitor = calculateSuggestedSlack({
+    source: configuredSource,
+    sources: [configuredSource, competitor],
+    machines: [sharedMachine],
+    edges: [
+      { source: "nd_7", target: "1" },
+      { source: "nd_8", target: "1" },
+    ],
+  });
+
+  assert.ok(withCompetitor.slack > withoutCompetitor.slack);
+});
+
 test("locking Slack prevents automatic suggestions from replacing it", () => {
   assert.equal(
     shouldApplySlackSuggestion({

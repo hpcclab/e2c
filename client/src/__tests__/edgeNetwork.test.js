@@ -15,7 +15,7 @@ test("new edge settings can inherit a legacy IoT connection", () => {
       connectivity: "Bluetooth",
       dataRateKbps: 500,
     }),
-    { networkType: "Bluetooth", dataRateKbps: 500 },
+    { networkType: "Bluetooth", dataRateKbps: 500, uploadPowerW: 0.05 },
   );
 });
 
@@ -29,7 +29,11 @@ test("explicit edge settings override the source fallback", () => {
     { connectivity: "WiFi", dataRateKbps: 54000 },
   );
 
-  assert.deepEqual(network, { networkType: "LTE", dataRateKbps: 4200 });
+  assert.deepEqual(network, {
+    networkType: "LTE",
+    dataRateKbps: 4200,
+    uploadPowerW: 1.8,
+  });
 });
 
 test("an edge type without a saved speed receives that type's default", () => {
@@ -38,7 +42,11 @@ test("an edge type without a saved speed receives that type's default", () => {
     { connectivity: "WiFi", dataRateKbps: 54000 },
   );
 
-  assert.deepEqual(network, { networkType: "Bluetooth", dataRateKbps: 800 });
+  assert.deepEqual(network, {
+    networkType: "Bluetooth",
+    dataRateKbps: 800,
+    uploadPowerW: 0.05,
+  });
 });
 
 test("a source with several routes uses the slowest outgoing edge", () => {
@@ -55,7 +63,11 @@ test("a source with several routes uses the slowest outgoing edge", () => {
     },
   ]);
 
-  assert.deepEqual(network, { networkType: "Bluetooth", dataRateKbps: 800 });
+  assert.deepEqual(network, {
+    networkType: "Bluetooth",
+    dataRateKbps: 800,
+    uploadPowerW: 0.05,
+  });
 });
 
 test("network visuals and speed labels communicate the link type", () => {
