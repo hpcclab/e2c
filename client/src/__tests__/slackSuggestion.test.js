@@ -187,3 +187,35 @@ test("locking Slack prevents automatic suggestions from replacing it", () => {
     true,
   );
 });
+
+test("remounting after a run preserves a manual Slack value", () => {
+  assert.equal(
+    shouldApplySlackSuggestion({
+      locked: false,
+      lastAppliedSuggestion: null,
+      lastStoredSuggestion: 2,
+      suggestedSlack: 2,
+    }),
+    false,
+  );
+});
+
+test("an unlocked Slack refreshes for a changed suggestion or explicit unlock", () => {
+  assert.equal(
+    shouldApplySlackSuggestion({
+      locked: false,
+      lastStoredSuggestion: 2,
+      suggestedSlack: 3,
+    }),
+    true,
+  );
+  assert.equal(
+    shouldApplySlackSuggestion({
+      locked: false,
+      lastStoredSuggestion: 2,
+      suggestedSlack: 2,
+      force: true,
+    }),
+    true,
+  );
+});

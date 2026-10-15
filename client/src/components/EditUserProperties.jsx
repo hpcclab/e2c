@@ -271,6 +271,8 @@ const EditIoTProperties = ({
         urgency: selectedIOT.properties.urgency || "BestEffort",
         slack: nonNegativeSlack(selectedIOT.properties.slack),
         slackLocked: selectedIOT.properties.slackLocked === true,
+        lastSuggestedSlack:
+          selectedIOT.properties.lastSuggestedSlack ?? null,
         numTasks: selectedIOT.properties.numTasks || 0,
         startTime: selectedIOT.properties.startTime || 0,
         endTime: selectedIOT.properties.endTime || 0,
@@ -395,7 +397,8 @@ const EditIoTProperties = ({
     const suggestedSlack = nonNegativeSlack(value);
     if (
       selectedIOT.properties.slackLocked === true ||
-      Number(selectedIOT.properties.slack) === suggestedSlack
+      (Number(selectedIOT.properties.slack) === suggestedSlack &&
+        Number(selectedIOT.properties.lastSuggestedSlack) === suggestedSlack)
     ) {
       return;
     }
@@ -405,6 +408,7 @@ const EditIoTProperties = ({
       properties: {
         ...selectedIOT.properties,
         slack: suggestedSlack,
+        lastSuggestedSlack: suggestedSlack,
       },
     };
     setSelectedIOT(updated);
@@ -434,6 +438,8 @@ const EditIoTProperties = ({
         urgency: selectedIOT.properties.urgency || "BestEffort",
         slack: nonNegativeSlack(selectedIOT.properties.slack),
         slackLocked: selectedIOT.properties.slackLocked === true,
+        lastSuggestedSlack:
+          selectedIOT.properties.lastSuggestedSlack ?? null,
         numTasks: selectedIOT.properties.numTasks || 0,
         startTime: selectedIOT.properties.startTime || 0,
         endTime: selectedIOT.properties.endTime || 0,
@@ -783,7 +789,16 @@ const EditIoTProperties = ({
           <AutoSuggestSlack
             source={editedIOT}
             locked={editedIOT.properties?.slackLocked === true}
-            onSuggest={(value) => handleChange("slack", value)}
+            onSuggest={(value) =>
+              setEditedIOT((current) => ({
+                ...current,
+                properties: {
+                  ...current.properties,
+                  slack: value,
+                  lastSuggestedSlack: value,
+                },
+              }))
+            }
           />
           <div className="mb-1 flex items-center justify-between gap-2">
             <label className="text-sm font-semibold text-gray-700">

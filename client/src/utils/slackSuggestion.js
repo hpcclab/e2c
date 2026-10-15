@@ -299,9 +299,22 @@ function calculateIsolatedSuggestion(source, machines, edges, nodes) {
 export function shouldApplySlackSuggestion({
   locked = false,
   lastAppliedSuggestion = null,
+  lastStoredSuggestion = null,
   suggestedSlack,
+  force = false,
 }) {
-  return !locked && lastAppliedSuggestion !== suggestedSlack;
+  if (locked) return false;
+  if (force) return true;
+  const storedSuggestion = Number(lastStoredSuggestion);
+  const hasStoredSuggestion =
+    lastStoredSuggestion !== null &&
+    lastStoredSuggestion !== undefined &&
+    lastStoredSuggestion !== "" &&
+    Number.isFinite(storedSuggestion);
+  return (
+    lastAppliedSuggestion !== suggestedSlack &&
+    (!hasStoredSuggestion || storedSuggestion !== Number(suggestedSlack))
+  );
 }
 
 export function calculateSuggestedSlack({
