@@ -22,6 +22,7 @@ import {
   DEFAULT_PROCESSING_ENERGY_PER_KB_J,
   machineProcessingEnergyRateJPerKb,
 } from "../utils/energy";
+import { DEFAULT_BATCH_INTERVAL_SECONDS } from "../utils/scheduling";
 
 const GlobalContext = createContext();
 
@@ -136,6 +137,10 @@ export const GlobalProvider = ({ children }) => {
   const schedulerRef = useRef(null);
   const [policyAlias, setPolicyAlias] = useState("FCFS");
   const [deadlinePolicy, setDeadlinePolicy] = useState("drop");
+  const [schedulingMode, setSchedulingMode] = useState("immediate");
+  const [batchIntervalSeconds, setBatchIntervalSeconds] = useState(
+    DEFAULT_BATCH_INTERVAL_SECONDS,
+  );
   const [isAutoFitLocked, setIsAutoFitLocked] = useState(false);
   const [simulationSeed, setSimulationSeed] = useState("");
   const [simulationRunCount, setSimulationRunCount] = useState(1);
@@ -887,6 +892,10 @@ export const GlobalProvider = ({ children }) => {
     setPolicyAlias,
     deadlinePolicy,
     setDeadlinePolicy,
+    schedulingMode,
+    setSchedulingMode,
+    batchIntervalSeconds,
+    setBatchIntervalSeconds,
     simulationSeed,
     setSimulationSeed,
     simulationRunCount,

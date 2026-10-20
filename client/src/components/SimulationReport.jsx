@@ -3,6 +3,7 @@ import { createSimulationReportZipFile } from "../utils/exportCSV";
 import { formatUtilizationTime, formatEnergy } from "../utils/formatTime";
 import TaskLifecycle from "./TaskLifecycle";
 import Collapsible from "./Collapsible";
+import MachineStatisticsTable from "./MachineStatisticsTable";
 import {
   PieChart,
   Pie,
@@ -15,11 +16,16 @@ import {
   ResponsiveContainer,
   Legend,
 } from "recharts";
-import { buildMachineChartData } from "../utils/reportCharts";
+import {
+  buildMachineChartData,
+  buildPercentageChartData,
+} from "../utils/reportCharts";
 import { buildTaskSummary } from "../utils/reportStats";
 import { failureReasonLabel } from "../utils/energy";
+import { schedulingModeLabel } from "../utils/scheduling";
 
 const taskIdNumber = (task) => Number(task.taskId ?? task.id);
+const SHOW_STANDALONE_MACHINE_STATISTICS = false;
 const formatNumber = (value, digits = 3) => {
   const number = Number(value);
   return Number.isFinite(number) ? number.toFixed(digits) : "-";
@@ -58,6 +64,8 @@ const SimulationReport = ({
   machines = [],
   sources = [],
   edges = [],
+  schedulingMode = "immediate",
+  batchIntervalSeconds = null,
 }) => {
   const [reportPosition, setReportPosition] = useState({ x: 100, y: 100 });
   const [isResizing, setIsResizing] = useState(false);
@@ -78,14 +86,36 @@ const SimulationReport = ({
       sources,
       edges,
       simulationTime,
+      schedulingMode,
+      batchIntervalSeconds,
     }),
-    [dataResults, missedTasks, machines, sources, edges, simulationTime],
+    [
+      dataResults,
+      missedTasks,
+      machines,
+      sources,
+      edges,
+      simulationTime,
+      schedulingMode,
+      batchIntervalSeconds,
+    ],
   );
 
   const machineChartData = useMemo(
     () => buildMachineChartData({ machines, tasks: dataResults, sources }),
     [machines, dataResults, sources],
   );
+  const percentageChartData = useMemo(() => {
+    const segmentKeys = machineChartData.segments.map((segment) => segment.key);
+    return {
+      taskCounts: buildPercentageChartData(
+        machineChartData.taskCounts,
+        segmentKeys,
+      ),
+      energy: buildPercentageChartData(machineChartData.energy, segmentKeys),
+      cost: buildPercentageChartData(machineChartData.cost, segmentKeys),
+    };
+  }, [machineChartData]);
 
   useEffect(() => {
     let cancelled = false;
@@ -335,6 +365,12 @@ const SimulationReport = ({
           <h3 className="text-xl font-bold text-gray-800">
             Simulation Time: {simulationTime.toFixed(2)} seconds
           </h3>
+          <p className="mt-1 text-sm font-semibold text-blue-800">
+            Scheduling: {schedulingModeLabel(schedulingMode)}
+            {schedulingMode === "batch"
+              ? ` every ${Number(batchIntervalSeconds).toFixed(2)} seconds`
+              : ""}
+          </p>
           <p className="text-sm text-gray-700 mt-2 flex justify-center items-center space-x-4">
             <span className="flex items-center">
               <span className="w-3 h-3 bg-blue-500 rounded-full mr-1"></span>
@@ -774,6 +810,13 @@ const SimulationReport = ({
                 </tfoot>
               </table>
             </div>
+
+            {machines.some((machine) => machine.id !== -1) && (
+              <MachineStatisticsTable
+                machines={machines}
+                tasksPerMachine={summaryStats.tasksPerMachine}
+              />
+            )}
           </div>
         </Collapsible>
         {/* CHARTS SECTION */}
@@ -830,12 +873,24 @@ const SimulationReport = ({
               </h5>
               <ResponsiveContainer width="100%" height={260}>
                 <BarChart
-                  data={machineChartData.taskCounts}
+                  data={percentageChartData.taskCounts}
                   margin={{ top: 5, right: 10, left: 0, bottom: 5 }}
                 >
                   <XAxis dataKey="name" tick={{ fontSize: 11 }} />
-                  <YAxis allowDecimals={false} tick={{ fontSize: 11 }} />
-                  <Tooltip />
+                  <YAxis
+                    domain={[0, 100]}
+                    tick={{ fontSize: 11 }}
+                    tickFormatter={(value) => `${value}%`}
+                  />
+                  <Tooltip
+                    formatter={(percentage, name, item) => {
+                      const exact = item.payload.__exact?.[item.dataKey] || 0;
+                      return [
+                        `${Number(percentage).toFixed(2)}% (${exact} tasks)`,
+                        name,
+                      ];
+                    }}
+                  />
                   <Legend />
                   {machineChartData.segments.map((segment) => (
                     <Bar
@@ -857,15 +912,23 @@ const SimulationReport = ({
               </h5>
               <ResponsiveContainer width="100%" height={260}>
                 <BarChart
-                  data={machineChartData.energy}
+                  data={percentageChartData.energy}
                   margin={{ top: 5, right: 10, left: 0, bottom: 5 }}
                 >
                   <XAxis dataKey="name" tick={{ fontSize: 11 }} />
-                  <YAxis tick={{ fontSize: 11 }} />
+                  <YAxis
+                    domain={[0, 100]}
+                    tick={{ fontSize: 11 }}
+                    tickFormatter={(value) => `${value}%`}
+                  />
                   <Tooltip
-                    formatter={(val, name) => {
-                      const formatted = formatEnergy(val);
-                      return [`${formatted.value} ${formatted.unit}`, name];
+                    formatter={(percentage, name, item) => {
+                      const exact = item.payload.__exact?.[item.dataKey] || 0;
+                      const formatted = formatEnergy(exact);
+                      return [
+                        `${Number(percentage).toFixed(2)}% (${formatted.value} ${formatted.unit})`,
+                        name,
+                      ];
                     }}
                   />
                   <Legend />
@@ -889,12 +952,24 @@ const SimulationReport = ({
               </h5>
               <ResponsiveContainer width="100%" height={260}>
                 <BarChart
-                  data={machineChartData.cost}
+                  data={percentageChartData.cost}
                   margin={{ top: 5, right: 10, left: 0, bottom: 5 }}
                 >
                   <XAxis dataKey="name" tick={{ fontSize: 11 }} />
-                  <YAxis tick={{ fontSize: 11 }} />
-                  <Tooltip formatter={(val) => `$${val.toFixed(2)}`} />
+                  <YAxis
+                    domain={[0, 100]}
+                    tick={{ fontSize: 11 }}
+                    tickFormatter={(value) => `${value}%`}
+                  />
+                  <Tooltip
+                    formatter={(percentage, name, item) => {
+                      const exact = item.payload.__exact?.[item.dataKey] || 0;
+                      return [
+                        `${Number(percentage).toFixed(2)}% ($${exact.toFixed(4)})`,
+                        name,
+                      ];
+                    }}
+                  />
                   <Legend />
                   {machineChartData.segments.map((segment) => (
                     <Bar
@@ -918,13 +993,29 @@ const SimulationReport = ({
                 <ResponsiveContainer width="100%" height={260}>
                   <BarChart
                     data={Object.entries(summaryStats.missedByType).map(
-                      ([type, count]) => ({ name: type, Missed: count }),
+                      ([type, count]) => ({
+                        name: type,
+                        Missed:
+                          summaryStats.totalMissed > 0
+                            ? (count / summaryStats.totalMissed) * 100
+                            : 0,
+                        __exact: { Missed: count },
+                      }),
                     )}
                     margin={{ top: 5, right: 10, left: 0, bottom: 5 }}
                   >
                     <XAxis dataKey="name" tick={{ fontSize: 11 }} />
-                    <YAxis allowDecimals={false} tick={{ fontSize: 11 }} />
-                    <Tooltip />
+                    <YAxis
+                      domain={[0, 100]}
+                      tick={{ fontSize: 11 }}
+                      tickFormatter={(value) => `${value}%`}
+                    />
+                    <Tooltip
+                      formatter={(percentage, name, item) => [
+                        `${Number(percentage).toFixed(2)}% (${item.payload.__exact?.Missed || 0} tasks)`,
+                        name,
+                      ]}
+                    />
                     <Bar
                       dataKey="Missed"
                       fill="#ef4444"
@@ -937,8 +1028,8 @@ const SimulationReport = ({
           </div>
         </Collapsible>
 
-        {/* MACHINE STATISTICS SECTION */}
-        {machines.length > 0 && (
+        {/* Machine statistics are consolidated into Statistics Summary above. */}
+        {SHOW_STANDALONE_MACHINE_STATISTICS && machines.length > 0 && (
           <Collapsible title="Machine Statistics">
             <div className="mb-6">
               <h4 className="text-lg font-bold text-gray-800 mb-3 flex items-center">
@@ -1170,6 +1261,15 @@ const SimulationReport = ({
                       Machine Arrival
                     </th>
                     <th className="border border-gray-300 px-3 py-2 font-semibold">
+                      Batch
+                    </th>
+                    <th className="border border-gray-300 px-3 py-2 font-semibold">
+                      Batch Dispatch
+                    </th>
+                    <th className="border border-gray-300 px-3 py-2 font-semibold">
+                      Batch Wait
+                    </th>
+                    <th className="border border-gray-300 px-3 py-2 font-semibold">
                       Start
                     </th>
                     <th className="border border-gray-300 px-3 py-2 font-semibold">
@@ -1266,6 +1366,15 @@ const SimulationReport = ({
                           </td>
                           <td className="border border-gray-300 px-3 py-2">
                             {formatNumber(task.arrival_time)}
+                          </td>
+                          <td className="border border-gray-300 px-3 py-2">
+                            {task.batch_number ?? "-"}
+                          </td>
+                          <td className="border border-gray-300 px-3 py-2">
+                            {formatNumber(task.batch_release_time)}
+                          </td>
+                          <td className="border border-gray-300 px-3 py-2">
+                            {formatNumber(task.batch_wait_time)}
                           </td>
                           <td className="border border-gray-300 px-3 py-2">
                             {notGenerated

@@ -6,8 +6,16 @@ import {
 } from "../utils/slackSuggestion";
 
 const AutoSuggestSlack = ({ source, onSuggest, locked = false }) => {
-  const { machines, iot, edges, nodes, policyAlias, simulationSeed } =
-    useGlobalState();
+  const {
+    machines,
+    iot,
+    edges,
+    nodes,
+    policyAlias,
+    simulationSeed,
+    schedulingMode,
+    batchIntervalSeconds,
+  } = useGlobalState();
   const lastAppliedSuggestion = useRef(null);
   const previouslyLocked = useRef(locked);
   const suggestion = useMemo(
@@ -20,8 +28,20 @@ const AutoSuggestSlack = ({ source, onSuggest, locked = false }) => {
         nodes,
         policyAlias,
         simulationSeed,
+        schedulingMode,
+        batchIntervalSeconds,
       }),
-    [source, iot, machines, edges, nodes, policyAlias, simulationSeed],
+    [
+      source,
+      iot,
+      machines,
+      edges,
+      nodes,
+      policyAlias,
+      simulationSeed,
+      schedulingMode,
+      batchIntervalSeconds,
+    ],
   );
 
   useEffect(() => {

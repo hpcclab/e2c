@@ -1,5 +1,9 @@
 import React, { useState } from "react";
 import { createPortal } from "react-dom";
+import {
+  SCHEDULING_MODES,
+  normalizeSchedulingMode,
+} from "../utils/scheduling";
 
 const POLICY_DETAILS = [
   {
@@ -56,10 +60,48 @@ const POLICY_DETAILS = [
     tradeoff:
       "All queued tasks count equally, even when their expected execution times are very different.",
   },
+  {
+    alias: "MM",
+    name: "MinCompletion–MinCompletion",
+    chooses:
+      "For every waiting task, first finds the eligible machine that gives that task its minimum expected completion time. It then assigns the task-machine pair with the smallest completion time in the whole batch and repeats.",
+    usefulFor:
+      "Reducing expected completion times across a batch of tasks.",
+    tradeoff:
+      "It does not directly prioritize deadlines, so a less urgent short task can be selected before an urgent task.",
+  },
+  {
+    alias: "MMU",
+    name: "MinCompletion–MaxUrgency",
+    chooses:
+      "For every waiting task, first finds its minimum-completion machine. It then assigns the task with the smallest predicted slack, meaning the task whose deadline is most at risk.",
+    usefulFor:
+      "Balancing fast machine choices with deadline urgency.",
+    tradeoff:
+      "Prioritizing urgent tasks can delay tasks that would otherwise complete quickly.",
+  },
+  {
+    alias: "MSD",
+    name: "MinCompletion–SoonestDeadline",
+    chooses:
+      "For every waiting task, first finds its minimum-completion machine. It then assigns the task with the earliest absolute deadline; equal deadlines are broken by expected completion time.",
+    usefulFor: "Giving earliest-deadline tasks priority within each batch.",
+    tradeoff:
+      "Deadline order can increase overall completion time compared with MM.",
+  },
 ];
 
-const SchedulingPolicyHelp = ({ selectedPolicy }) => {
+const IMMEDIATE_ALIASES = new Set(["FCFS", "MECT", "MEET", "RAND", "URI", "LC"]);
+const BATCH_ALIASES = new Set(["MM", "MMU", "MSD"]);
+
+const SchedulingPolicyHelp = ({ selectedPolicy, schedulingMode }) => {
   const [open, setOpen] = useState(false);
+  const periodic =
+    normalizeSchedulingMode(schedulingMode) ===
+    SCHEDULING_MODES.PERIODIC_BATCH;
+  const visiblePolicies = POLICY_DETAILS.filter((policy) =>
+    (periodic ? BATCH_ALIASES : IMMEDIATE_ALIASES).has(policy.alias),
+  );
 
   return (
     <span className="ml-1 inline-flex align-middle">
@@ -97,9 +139,9 @@ const SchedulingPolicyHelp = ({ selectedPolicy }) => {
                     Scheduling policies
                   </h2>
                   <p className="mt-1 text-sm font-normal leading-5 text-gray-600">
-                    A scheduling policy tells the load balancer how to choose a
-                    machine for each arrived task. Only machines reachable
-                    through the configured connections are considered.
+                    {periodic
+                      ? "At each batch time, a batch policy considers all waiting tasks together. Only reachable machines with available queue capacity are used."
+                      : "An immediate policy chooses a machine whenever a task arrives. Only machines reachable through the configured connections are considered."}
                   </p>
                 </div>
                 <button
@@ -113,7 +155,7 @@ const SchedulingPolicyHelp = ({ selectedPolicy }) => {
               </div>
 
               <div className="space-y-3">
-                {POLICY_DETAILS.map((policy) => {
+                {visiblePolicies.map((policy) => {
                   const isSelected = policy.alias === selectedPolicy;
 
                   return (

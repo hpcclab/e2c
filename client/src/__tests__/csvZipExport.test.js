@@ -8,6 +8,8 @@ import {
 
 const reportData = {
   simulationTime: 4.25,
+  schedulingMode: "batch",
+  batchIntervalSeconds: 1,
   dataResults: [
     {
       id: 1,
@@ -82,10 +84,12 @@ test("builds four separate CSV reports with consistent columns", () => {
   assert.match(files["simulation_summary.csv"], /Total Machines,1/);
   assert.match(files["simulation_summary.csv"], /Total IoT Devices,2/);
   assert.match(files["simulation_summary.csv"], /Total Edges,3/);
+  assert.match(files["simulation_summary.csv"], /Scheduling Mode,Periodic batch/);
+  assert.match(files["simulation_summary.csv"], /Batch Period \(s\),1/);
   assert.match(files["simulation_tasks.csv"], /"Sensor, indoor"/);
   assert.match(
     files["simulation_tasks.csv"],
-    /2,Sensor,Machine 1,0\.2,10,N\/A,N\/A,N\/A,Bluetooth,0\.1,0\.3,DNR,DNR/,
+    /2,Sensor,Machine 1,0\.2,10,N\/A,N\/A,N\/A,Bluetooth,0\.1,0\.3,N\/A,N\/A,N\/A,DNR,DNR/,
   );
   assert.doesNotMatch(files["machine_stats.csv"], /Machine ID/);
 });

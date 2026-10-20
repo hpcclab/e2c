@@ -24,6 +24,15 @@ function buildStages(task) {
     },
   ];
 
+  if (task.batch_release_time != null) {
+    stages.push({
+      label: `Batch ${task.batch_number}`,
+      time: task.batch_release_time,
+      status: "BATCHED",
+      detail: `Dispatched in batch ${task.batch_number} after waiting ${Number(task.batch_wait_time || 0).toFixed(3)}s at the load balancer`,
+    });
+  }
+
   if (task.start_time != null) {
     stages.push({
       label: "Executing",
@@ -53,6 +62,7 @@ const statusColors = {
   GENERATED: "bg-cyan-100 text-cyan-800",
   NEW: "bg-blue-100 text-blue-800",
   MAPPED: "bg-purple-100 text-purple-800",
+  BATCHED: "bg-indigo-100 text-indigo-800",
   COMPLETED: "bg-green-100 text-green-800",
   DEADLINE_MISSED: "bg-red-100 text-red-800",
   NOT_GENERATED: "bg-orange-100 text-orange-800",
@@ -65,6 +75,7 @@ const pillColors = {
   GENERATED: "bg-cyan-500",
   NEW: "bg-blue-500",
   MAPPED: "bg-purple-500",
+  BATCHED: "bg-indigo-500",
   COMPLETED: "bg-green-500",
   DEADLINE_MISSED: "bg-red-500",
   NOT_GENERATED: "bg-orange-500",

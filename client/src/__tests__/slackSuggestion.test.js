@@ -117,6 +117,58 @@ test("suggested slack includes queueing for a ten-task burst", () => {
   assert.ok(result.slack >= 10);
 });
 
+test("suggested slack includes periodic batch waiting", () => {
+  const immediate = calculateSuggestedSlack({
+    source,
+    machines: [machine(1, 1, 0)],
+    edges: [{ source: "nd_7", target: "1" }],
+  });
+  const periodic = calculateSuggestedSlack({
+    source,
+    machines: [machine(1, 1, 0)],
+    edges: [{ source: "nd_7", target: "1" }],
+    schedulingMode: "batch",
+    batchIntervalSeconds: 5,
+  });
+
+  assert.equal(periodic.batchWaitTime, 5);
+  assert.equal(periodic.slack, immediate.slack + 5);
+});
+
+test("queue-aware slack reserves a full periodic batch interval", () => {
+  const boundarySource = {
+    ...source,
+    properties: {
+      ...source.properties,
+      meanSize: 0,
+      dataSizeStdDev: 0,
+      numTasks: 1,
+      startTime: 5,
+      endTime: 5,
+      distribution: "uniform",
+    },
+  };
+  const immediate = calculateSuggestedSlack({
+    source: boundarySource,
+    sources: [boundarySource],
+    machines: [machine(1, 1, 0)],
+    edges: [{ source: "nd_7", target: "1" }],
+  });
+  const periodic = calculateSuggestedSlack({
+    source: boundarySource,
+    sources: [boundarySource],
+    machines: [machine(1, 1, 0)],
+    edges: [{ source: "nd_7", target: "1" }],
+    schedulingMode: "batch",
+    batchIntervalSeconds: 5,
+  });
+
+  assert.equal(immediate.queueAware, true);
+  assert.equal(periodic.queueAware, true);
+  assert.equal(periodic.batchWaitTime, 5);
+  assert.equal(periodic.slack, immediate.slack + 5);
+});
+
 test("suggested slack accounts for another IoT sharing the machine", () => {
   const configuredSource = {
     ...source,

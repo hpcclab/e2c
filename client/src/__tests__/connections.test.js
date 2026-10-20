@@ -10,6 +10,9 @@ import { RAND } from "../schedulers/RAND.js";
 import { URI } from "../schedulers/URI.js";
 import { MEET } from "../schedulers/MEET.js";
 import { MECT } from "../schedulers/MECT.js";
+import { MM } from "../schedulers/MM.js";
+import { MMU } from "../schedulers/MMU.js";
+import { MSD } from "../schedulers/MSD.js";
 
 test("machine EET rows include only connected task sources", () => {
   const sources = [{ id: 1 }, { id: 2 }, { id: 3 }];
@@ -40,7 +43,7 @@ test("a source connected through a load balancer can show its EET", () => {
   assert.equal(isConnectedToMachine("nd_1", 10, edges, []), false);
 });
 
-for (const Scheduler of [FCFS, LC, RAND, URI, MEET, MECT]) {
+for (const Scheduler of [FCFS, LC, RAND, URI, MEET, MECT, MM, MMU, MSD]) {
   test(`${Scheduler.name} assigns only to a reachable machine`, () => {
     const disconnected = {
       id: "off",

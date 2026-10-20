@@ -76,6 +76,127 @@ test("pause-compatible snapshots preserve unfinished work", () => {
   assert.equal(snapshot.time, 1);
 });
 
+test("periodic batching holds arrived tasks until the configured boundary", () => {
+  const engine = buildEngine({
+    schedulingMode: "batch",
+    batchIntervalSeconds: 1,
+    tasks: [{
+      task_type: "Task A",
+      source_id: 7,
+      generation_time: 0,
+      arrival_time: 0.2,
+      deadline: 5,
+      status: "NEW",
+    }],
+  });
+
+  const waiting = engine.advanceTo(0.99);
+  assert.equal(waiting.completed.length, 0);
+  assert.equal(waiting.machines[0].queue.length, 0);
+  assert.equal(waiting.unassigned[0].status, "WAITING_FOR_BATCH");
+
+  const dispatched = engine.advanceTo(1);
+  assert.equal(dispatched.machines[0].queue.length, 1);
+  assert.equal(dispatched.machines[0].queue[0].batch_number, 1);
+  assert.equal(dispatched.machines[0].queue[0].batch_release_time, 1);
+  assert.equal(dispatched.machines[0].queue[0].batch_wait_time, 0.8);
+});
+
+test("a periodic boundary fills available machine queue slots", () => {
+  const engine = buildEngine({
+    schedulingMode: "batch",
+    batchIntervalSeconds: 1,
+    tasks: Array.from({ length: 4 }, (_, index) => ({
+      id: index + 1,
+      task_type: "Task A",
+      source_id: 7,
+      generation_time: 0,
+      arrival_time: index * 0.1,
+      deadline: 10,
+      status: "NEW",
+    })),
+  });
+
+  const snapshot = engine.advanceTo(1);
+  assert.equal(snapshot.machines[0].queue.length, 2);
+  assert.equal(snapshot.unassigned.length, 2);
+  assert.deepEqual(
+    snapshot.machines[0].queue.map((task) => task.batch_number),
+    [1, 1],
+  );
+  assert.deepEqual(
+    snapshot.machines[0].queue.map((task) => task.batch_release_time),
+    [1, 1],
+  );
+});
+
+test("a task arriving after a boundary waits for the next periodic batch", () => {
+  const engine = buildEngine({
+    schedulingMode: "batch",
+    batchIntervalSeconds: 1,
+    tasks: [{
+      task_type: "Task A",
+      source_id: 7,
+      generation_time: 0,
+      arrival_time: 1.01,
+      deadline: 5,
+      status: "NEW",
+    }],
+  });
+
+  assert.equal(engine.advanceTo(1).machines[0].queue.length, 0);
+  const dispatched = engine.advanceTo(2);
+  assert.equal(dispatched.machines[0].queue[0].batch_number, 2);
+  assert.equal(dispatched.machines[0].queue[0].batch_wait_time, 0.99);
+});
+
+test("drop policy reports a deadline that expires while waiting for a batch", () => {
+  const engine = buildEngine({
+    schedulingMode: "batch",
+    batchIntervalSeconds: 1,
+    tasks: [{
+      task_type: "Task A",
+      source_id: 7,
+      generation_time: 0,
+      arrival_time: 0,
+      deadline: 0.5,
+      status: "NEW",
+    }],
+  });
+
+  const snapshot = engine.advanceTo(1);
+  assert.equal(snapshot.complete, true);
+  assert.equal(snapshot.missed[0].status, "DNR");
+  assert.equal(
+    snapshot.missed[0].failure_reason,
+    "DEADLINE_EXPIRED_WAITING_FOR_BATCH",
+  );
+  assert.equal(snapshot.machines[0].queue.length, 0);
+});
+
+test("continue policy dispatches an expired batch task and reports it as missed", () => {
+  const engine = buildEngine({
+    schedulingMode: "batch",
+    batchIntervalSeconds: 1,
+    deadlinePolicy: "continue",
+    tasks: [{
+      task_type: "Task A",
+      source_id: 7,
+      generation_time: 0,
+      arrival_time: 0,
+      deadline: 0.5,
+      status: "NEW",
+    }],
+  });
+
+  const snapshot = engine.advanceTo(2);
+  assert.equal(snapshot.complete, true);
+  assert.equal(snapshot.missed.length, 1);
+  assert.equal(snapshot.missed[0].status, "MISSED");
+  assert.equal(snapshot.missed[0].batch_release_time, 1);
+  assert.equal(snapshot.missed[0].end_time, 1.1);
+});
+
 test("the simulation seed reproduces execution-time randomness", () => {
   const tasks = Array.from({ length: 6 }, (_, index) => ({
     task_type: "Task A",

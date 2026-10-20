@@ -11,6 +11,11 @@ import {
   machineTaskEnergyJ,
   remainingBatteryJ,
 } from "../utils/energy.js";
+import {
+  SCHEDULING_FAILURE_REASONS,
+  SCHEDULING_MODES,
+  normalizeSchedulingMode,
+} from "../utils/scheduling.js";
 
 export class BaseScheduler {
   constructor({ machines, iot, enqueue, dequeue, isNeighbors, config }) {
@@ -21,10 +26,12 @@ export class BaseScheduler {
     this.isNeighbors = isNeighbors;
 
     this.config = config;
-    this.maxQueueSize = config?.maxQueueSize ?? 2; // cap max Q at  per machine
+    this.maxQueueSize = config?.maxQueueSize ?? 2;
     this.random = config?.random ?? Math.random;
     this.deadlinePolicy =
       config?.deadlinePolicy === "continue" ? "continue" : "drop";
+    this.schedulingMode = normalizeSchedulingMode(config?.schedulingMode);
+    this.batchDispatch = null;
     this.task_counter = 0;
     this.totalTasks = 0;
 
@@ -50,6 +57,10 @@ export class BaseScheduler {
   }
   setIot(iot) {
     this.iot = iot;
+  }
+
+  setBatchDispatch(batchDispatch) {
+    this.batchDispatch = batchDispatch;
   }
 
   addTask(task) {
@@ -225,6 +236,15 @@ export class BaseScheduler {
     );
     task.processing_energy_j = taskEnergyJ;
 
+    if (this.batchDispatch) {
+      const releaseTime = Number(this.batchDispatch.releaseTime);
+      task.batch_number = this.batchDispatch.batchNumber;
+      task.batch_release_time = releaseTime;
+      task.batch_wait_time = Number(
+        Math.max(0, releaseTime - Number(task.arrival_time || 0)).toFixed(3),
+      );
+    }
+
     // Assign execution metadata
     task.start_time = currentQueueSize === 0 ? Number(this.getTime().toFixed(3)) : null;
     task.assigned_machine = machine.name;
@@ -242,16 +262,32 @@ export class BaseScheduler {
     this.stats.mapped.push(task);
   }
 
+  expireWaitingTasks() {
+    if (this.deadlinePolicy === "continue") return;
+    const now = this.getTime();
+    const expire = (task) => {
+      const deadline = Number(task.deadline);
+      if (!Number.isFinite(deadline) || now < deadline) return false;
+      task.status = "DNR";
+      task.failure_reason =
+        this.schedulingMode === SCHEDULING_MODES.PERIODIC_BATCH &&
+        Number(task.arrival_time) <= now
+          ? SCHEDULING_FAILURE_REASONS.DEADLINE_EXPIRED_WAITING_FOR_BATCH
+          : SCHEDULING_FAILURE_REASONS.DEADLINE_EXPIRED_BEFORE_ASSIGNMENT;
+      task.assigned_machine = null;
+      task.start_time = null;
+      task.end_time = null;
+      this.stats.missed.push(task);
+      return true;
+    };
+
+    this.batchQueue = this.batchQueue.filter((task) => !expire(task));
+    this.unmappedTask = this.unmappedTask.filter((task) => !expire(task));
+  }
+
   processMachines() {
     const now = this.getTime();
-    this.unmappedTask = this.unmappedTask.filter((task) => {
-      if (this.deadlinePolicy === "continue") return true;
-      const deadline = Number(task.deadline);
-      if (!Number.isFinite(deadline) || now < deadline) return true;
-      task.status = "DNR";
-      this.stats.missed.push(task);
-      return false;
-    });
+    this.expireWaitingTasks();
 
     for (let m of this.machines) {
       if (!m.queue?.length) continue;

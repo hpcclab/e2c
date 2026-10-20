@@ -4,6 +4,7 @@ import {
   failureReasonLabel,
   machineProcessingEnergyRateJPerKb,
 } from "./energy.js";
+import { schedulingModeLabel } from "./scheduling.js";
 
 const ZIP_MIME_TYPE = "application/zip";
 
@@ -43,6 +44,8 @@ export const buildCsvReportFiles = ({
   sources = [],
   edges = [],
   simulationTime = 0,
+  schedulingMode = "immediate",
+  batchIntervalSeconds = null,
 } = {}) => {
   const machineList = machines.filter((machine) => machine.id !== -1);
   const sourceList = sources.filter((source) => source.id !== -3);
@@ -62,6 +65,13 @@ export const buildCsvReportFiles = ({
     "simulation_summary.csv": [
       ["Metric", "Value"],
       ["Simulation Time (s)", Number(simulationTime) || 0],
+      ["Scheduling Mode", schedulingModeLabel(schedulingMode)],
+      [
+        "Batch Period (s)",
+        schedulingMode === "batch"
+          ? Number(batchIntervalSeconds) || 0
+          : "N/A",
+      ],
       ["Total Tasks", dataResults.length],
       ["Completed Tasks", completedTasks],
       ["Missed Tasks", missedTasks.length],
@@ -93,6 +103,9 @@ export const buildCsvReportFiles = ({
         "Connectivity",
         "Travel Time",
         "Arrival Time",
+        "Batch Number",
+        "Batch Dispatch Time",
+        "Batch Wait Time",
         "Start Time",
         "Completion Time",
         "Exec Time",
@@ -112,6 +125,9 @@ export const buildCsvReportFiles = ({
         task.connectivity ?? "N/A",
         task.travel_time ?? 0,
         task.arrival_time ?? "N/A",
+        task.batch_number ?? "N/A",
+        task.batch_release_time ?? "N/A",
+        task.batch_wait_time ?? "N/A",
         getTaskTime(task, "start_time"),
         getTaskTime(task, "end_time"),
         task.execution_time ?? "N/A",
@@ -133,6 +149,9 @@ export const buildCsvReportFiles = ({
         "Connectivity",
         "Travel Time",
         "Arrival Time",
+        "Batch Number",
+        "Batch Dispatch Time",
+        "Batch Wait Time",
         "Deadline",
         "Status",
         "Failure Reason",
@@ -149,6 +168,9 @@ export const buildCsvReportFiles = ({
         task.connectivity ?? "N/A",
         task.travel_time ?? 0,
         task.arrival_time ?? "N/A",
+        task.batch_number ?? "N/A",
+        task.batch_release_time ?? "N/A",
+        task.batch_wait_time ?? "N/A",
         task.deadline ?? "N/A",
         task.status || "MISSED",
         failureReasonLabel(task.failure_reason),

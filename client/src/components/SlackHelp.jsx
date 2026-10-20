@@ -78,7 +78,9 @@ const SlackHelp = ({ value, onApply }) => {
                   The automatic suggestion performs a fast internal dry run of
                   the configured workload and scheduling policy. It includes
                   conservative travel and execution times, time waiting behind
-                  other tasks, and competition from other connected IoTs. E2C
+                  other tasks, and competition from other connected IoTs. In
+                  periodic batch mode, it also includes the time a task can
+                  spend waiting for the next batch. E2C
                   chooses the 95th-percentile required completion window and
                   rounds it upward slightly. For ten predicted tasks, this uses
                   the longest predicted window so approximately nine or ten

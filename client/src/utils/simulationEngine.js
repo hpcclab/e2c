@@ -6,6 +6,9 @@ import "../schedulers/RAND.js";
 import "../schedulers/URI.js";
 import "../schedulers/MEET.js";
 import "../schedulers/MECT.js";
+import "../schedulers/MM.js";
+import "../schedulers/MMU.js";
+import "../schedulers/MSD.js";
 import {
   ENERGY_FAILURE_REASONS,
   batteryCapacityJ,
@@ -17,6 +20,13 @@ import {
   sourceTaskEnergyJ,
 } from "./energy.js";
 import { createRandomGenerator } from "./randomSeed.js";
+import {
+  DEFAULT_MACHINE_QUEUE_LIMIT,
+  SCHEDULING_MODES,
+  normalizeBatchIntervalSeconds,
+  normalizeSchedulingPolicyAlias,
+  normalizeSchedulingMode,
+} from "./scheduling.js";
 
 const TICK_SECONDS = 0.01;
 
@@ -36,11 +46,22 @@ export class SimulationEngine {
     nodes = [],
     random,
     simulationSeed = "",
+    schedulingMode = SCHEDULING_MODES.IMMEDIATE,
+    batchIntervalSeconds,
   }) {
-    const SchedulerClass = SCHEDULER_REGISTRY[policyAlias];
-    if (!SchedulerClass) throw new Error(`Unknown scheduler: ${policyAlias}`);
-
     this.currentTime = 0;
+    this.schedulingMode = normalizeSchedulingMode(schedulingMode);
+    this.policyAlias = normalizeSchedulingPolicyAlias(
+      policyAlias,
+      this.schedulingMode,
+    );
+    const SchedulerClass = SCHEDULER_REGISTRY[this.policyAlias];
+    if (!SchedulerClass) throw new Error(`Unknown scheduler: ${this.policyAlias}`);
+    this.batchIntervalSeconds = normalizeBatchIntervalSeconds(
+      batchIntervalSeconds,
+    );
+    this.batchNumber = 0;
+    this.nextBatchTime = this.batchIntervalSeconds;
     this.iot = iot.map((source) => {
       if (!isBatteryPowered(source)) {
         return {
@@ -95,7 +116,12 @@ export class SimulationEngine {
           this.edges,
           this.nodes,
         ),
-      config: { deadlinePolicy, random: simulationRandom },
+      config: {
+        deadlinePolicy,
+        random: simulationRandom,
+        schedulingMode: this.schedulingMode,
+        maxQueueSize: DEFAULT_MACHINE_QUEUE_LIMIT,
+      },
     });
     this.scheduler.setMachines(this.machines);
     this.scheduler.setIot(this.iot);
@@ -217,6 +243,34 @@ export class SimulationEngine {
     machine.queue.shift();
   }
 
+  sortWaitingTasks() {
+    this.scheduler.batchQueue.sort(
+      (first, second) =>
+        numericTime(first.arrival_time) - numericTime(second.arrival_time) ||
+        numericTime(first.generation_time) - numericTime(second.generation_time) ||
+        Number(first.id || 0) - Number(second.id || 0),
+    );
+  }
+
+  dispatchPeriodicBatch() {
+    if (this.currentTime + Number.EPSILON < this.nextBatchTime) return;
+
+    this.batchNumber += 1;
+    const releaseTime = Number(this.currentTime.toFixed(3));
+    this.scheduler.setBatchDispatch({
+      batchNumber: this.batchNumber,
+      releaseTime,
+    });
+    this.sortWaitingTasks();
+
+    this.scheduler.scheduleBatch();
+
+    this.scheduler.setBatchDispatch(null);
+    this.nextBatchTime = Number(
+      ((this.batchNumber + 1) * this.batchIntervalSeconds).toFixed(3),
+    );
+  }
+
   step() {
     if (this.isComplete()) return this.getSnapshot();
     this.currentTime = Number((this.currentTime + TICK_SECONDS).toFixed(3));
@@ -224,7 +278,13 @@ export class SimulationEngine {
     this.scheduler.setTime(this.currentTime);
     this.scheduler.setMachines(this.machines);
     this.scheduler.setIot(this.iot);
-    this.scheduler.schedule();
+    this.scheduler.expireWaitingTasks();
+    if (this.schedulingMode === SCHEDULING_MODES.PERIODIC_BATCH) {
+      this.dispatchPeriodicBatch();
+    } else {
+      this.sortWaitingTasks();
+      this.scheduler.schedule();
+    }
     this.scheduler.processMachines();
     this.failImpossibleFutureTasks();
     return this.getSnapshot();
@@ -251,9 +311,21 @@ export class SimulationEngine {
 
   getSnapshot() {
     const stats = this.scheduler.getStats();
-    const unassigned = this.scheduler
-      .getBatchQ()
-      .filter((task) => task.status === "NEW");
+    const waitingTasks = [
+      ...this.scheduler.getBatchQ(),
+      ...this.scheduler.unmappedTask,
+    ];
+    const unassigned = waitingTasks.map((task) => ({
+      ...task,
+      status:
+        numericTime(task.arrival_time) > this.currentTime
+          ? "IN_TRANSIT"
+          : this.schedulingMode === SCHEDULING_MODES.PERIODIC_BATCH
+            ? "WAITING_FOR_BATCH"
+            : "NEW",
+      start_time: null,
+      end_time: null,
+    }));
     const pendingGeneration = this.pendingGeneration.map((task) => ({
       ...task,
       status: "PENDING_GENERATION",
@@ -272,6 +344,15 @@ export class SimulationEngine {
       unassigned,
       results: [...pendingGeneration, ...unassigned, ...completed, ...missed],
       totalTasks: this.totalTasks,
+      schedulingMode: this.schedulingMode,
+      batchIntervalSeconds:
+        this.schedulingMode === SCHEDULING_MODES.PERIODIC_BATCH
+          ? this.batchIntervalSeconds
+          : null,
+      nextBatchTime:
+        this.schedulingMode === SCHEDULING_MODES.PERIODIC_BATCH
+          ? this.nextBatchTime
+          : null,
       complete: this.isComplete(),
     };
   }

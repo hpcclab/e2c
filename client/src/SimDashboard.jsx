@@ -11,8 +11,7 @@ import EditMachineProperties from "./components/EditMachineProperties";
 import EditIoTProperties from "./components/EditIoTProperties";
 import EditUserProperties from "./components/EditUserProperties";
 import EditEdgeProperties from "./components/EditEdgeProperties";
-import DeadlinePolicyHelp from "./components/DeadlinePolicyHelp";
-import SchedulingPolicyHelp from "./components/SchedulingPolicyHelp";
+import EditLoadBalancerProperties from "./components/EditLoadBalancerProperties";
 import SimulationSeedSettings from "./components/SimulationSeedSettings";
 
 // Drag and drop imports and requirements
@@ -66,6 +65,12 @@ import {
   normalizeSimulationRunCount,
   normalizeSimulationSeeds,
 } from "./utils/simulationBatch";
+import {
+  DEFAULT_BATCH_INTERVAL_SECONDS,
+  SCHEDULING_MODES,
+  normalizeBatchIntervalSeconds,
+  normalizeSchedulingPolicyAlias,
+} from "./utils/scheduling";
 const edgeTypes = {
   packet: AnimatedEdge,
 };
@@ -110,8 +115,6 @@ const SimDashboard = () => {
     nodes,
     setNodes,
     onNodesChange,
-    submissionStatus,
-    setSubmissionStatus,
     workloadSubmissionStatus,
     setWorkloadSubmissionStatus,
     machinesRef,
@@ -162,6 +165,10 @@ const SimDashboard = () => {
     setPolicyAlias,
     deadlinePolicy,
     setDeadlinePolicy,
+    schedulingMode,
+    setSchedulingMode,
+    batchIntervalSeconds,
+    setBatchIntervalSeconds,
     simulationSeed,
     setSimulationSeed,
     simulationRunCount,
@@ -180,6 +187,12 @@ const SimDashboard = () => {
     stopSimulationWorker,
   } = useGlobalState();
   // End Global States
+
+  useEffect(() => {
+    setPolicyAlias((current) =>
+      normalizeSchedulingPolicyAlias(current, schedulingMode),
+    );
+  }, [schedulingMode, setPolicyAlias]);
 
   const applySimulationSettings = useCallback(
     ({ runCount, seeds }) => {
@@ -229,8 +242,7 @@ const SimDashboard = () => {
     setSelectedMachine(getMachineSelection(node.data.machine));
     setSidebarMode("machine");
     setShowSidebar(true);
-    setSubmissionStatus("");
-  }, [setSelectedMachine, setSidebarMode, setShowSidebar, setSubmissionStatus]);
+  }, [setSelectedMachine, setSidebarMode, setShowSidebar]);
 
   const handleEdgeClick = useCallback(
     (event, edge) => {
@@ -255,7 +267,6 @@ const SimDashboard = () => {
       setSelectedEdge(edge);
       setSidebarMode("edgeProps");
       setShowSidebar(true);
-      setSubmissionStatus("");
       setMenu(null);
     },
     [
@@ -266,7 +277,6 @@ const SimDashboard = () => {
       setSelectedEdge,
       setShowSidebar,
       setSidebarMode,
-      setSubmissionStatus,
     ],
   );
 
@@ -813,35 +823,6 @@ const SimDashboard = () => {
   // END DND
 
   // State assignments and functions
-  // - Load balancer handlers
-  const [scheduling, setScheduling] = useState("immediate");
-  const [policy, setPolicy] = useState("FirstCome-FirstServe");
-  const [policyUpdated, setPolicyUpdated] = useState(false);
-  const [queueSize, setQueueSize] = useState("unlimited");
-  const policyNames = [
-    "FirstCome-FirstServe",
-    "Min-Expected-Completion-Time",
-    "Min-Expected-Execution-Time",
-    // "Weighted-Round-Robin",
-    "Random",
-    "Uniform-Resender-Identifier",
-    "Least-Connection",
-  ];
-  function generateAlias(name) {
-    const specialCases = {
-      Random: "RAND",
-      "FirstCome-FirstServe": "FCFS",
-    };
-
-    if (specialCases[name]) return specialCases[name];
-    return name
-      .split("-")
-      .map((w) => w[0])
-      .join("")
-      .toUpperCase();
-  }
-  // End EET Parse
-
   // - Data parameter handlers
   const [runtimeModel, setRuntimeModel] = useState("Constant");
   const [performanceParams, setPerformanceParams] = useState({
@@ -978,15 +959,6 @@ const SimDashboard = () => {
       status: selectedTask.status,
     }));
   }, [selectedTask]);
-
-  const handleSchedulingChange = (type) => {
-    setScheduling(type);
-    if (type === "immediate") {
-      setQueueSize("unlimited"); // Set queue size to "unlimited" for immediate scheduling
-    } else if (type === "batch") {
-      setQueueSize(""); // Set queue size to "0" for batch scheduling
-    }
-  };
 
   const handleSubmitWorkloadAndProfiling = async () => {
     try {
@@ -1204,6 +1176,10 @@ const SimDashboard = () => {
       const commonPayload = {
         policyAlias,
         deadlinePolicy,
+        schedulingMode,
+        batchIntervalSeconds: normalizeBatchIntervalSeconds(
+          batchIntervalSeconds,
+        ),
         machines: clearedMachines,
         iot,
         edges: edges.map(({ source, target }) => ({ source, target })),
@@ -1332,17 +1308,6 @@ const SimDashboard = () => {
     });
   }, [iot, setNodes]);
 
-  const handleSubmitLoadBalancer = async () => {
-    try {
-      // Simulate submission logic
-      setSubmissionStatus("Submitting...");
-      setPolicyUpdated(true);
-      setSubmissionStatus("Submission successful!");
-    } catch (error) {
-      setSubmissionStatus("Submission failed.");
-    }
-  };
-
   const handleClearWorkspace = () => {
     if (
       !window.confirm(
@@ -1386,8 +1351,9 @@ const SimDashboard = () => {
     setAnimatedTaskIds([]);
     setMenu(null);
     setShowSidebar(false);
-    setPolicyUpdated(true);
     setDeadlinePolicy("drop");
+    setSchedulingMode(SCHEDULING_MODES.IMMEDIATE);
+    setBatchIntervalSeconds(DEFAULT_BATCH_INTERVAL_SECONDS);
     Object.keys(colorMemory).forEach((key) => delete colorMemory[key]);
     window.dispatchEvent(new Event("taskColorChanged"));
   };
@@ -1659,61 +1625,23 @@ const SimDashboard = () => {
             </div>
 
             {sidebarMode === "loadBalancer" && (
-              <form className="space-y-6">
-                {/* Load Balancer Sidebar Content */}
-                <div className="space-y-2">
-                  <label className="flex items-center text-sm font-medium text-gray-700">
-                    Load Balancing Policy
-                    <SchedulingPolicyHelp selectedPolicy={policyAlias} />
-                  </label>
-                  <div className="space-y-1">
-                    <select
-                      value={policyAlias}
-                      onChange={(e) => {
-                        setPolicyAlias(e.target.value);
-                      }}
-                      className="w-full border px-3 py-2 text-sm rounded"
-                    >
-                      {policyNames.map((name) => {
-                        const alias = generateAlias(name);
-                        return (
-                          <option key={name} value={alias}>
-                            {name} ({alias})
-                          </option>
-                        );
-                      })}
-                    </select>
-                  </div>
-                </div>
-
-                <div className="space-y-2">
-                  <label className="flex items-center text-sm font-medium text-gray-700">
-                    Upon missing deadline <DeadlinePolicyHelp />
-                  </label>
-                  <select
-                    value={deadlinePolicy}
-                    onChange={(e) => setDeadlinePolicy(e.target.value)}
-                    className="w-full border px-3 py-2 text-sm rounded bg-white"
-                  >
-                    <option value="drop">Drop task at deadline</option>
-                    <option value="continue">Finish all tasks</option>
-                  </select>
-                </div>
-
-                <button
-                  type="button"
-                  onClick={handleSubmitLoadBalancer}
-                  className="w-full bg-blue-600 text-white rounded px-4 py-2 hover:bg-blue-700"
-                >
-                  Submit
-                </button>
-
-                {submissionStatus && (
-                  <p className="text-sm text-center text-green-600 mt-2">
-                    {submissionStatus}
-                  </p>
-                )}
-              </form>
+              <EditLoadBalancerProperties
+                policyAlias={policyAlias}
+                deadlinePolicy={deadlinePolicy}
+                schedulingMode={schedulingMode}
+                batchIntervalSeconds={batchIntervalSeconds}
+                onSave={(settings) => {
+                  setPolicyAlias(
+                    normalizeSchedulingPolicyAlias(
+                      settings.policyAlias,
+                      settings.schedulingMode,
+                    ),
+                  );
+                  setDeadlinePolicy(settings.deadlinePolicy);
+                  setSchedulingMode(settings.schedulingMode);
+                  setBatchIntervalSeconds(settings.batchIntervalSeconds);
+                }}
+              />
             )}
 
             {sidebarMode === "machine" && (

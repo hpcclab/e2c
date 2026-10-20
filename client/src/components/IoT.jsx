@@ -2,11 +2,13 @@ import React from "react";
 import { IOT_ICON_MAP } from "../utils/iotIcons";
 import BatteryIndicator from "./BatteryIndicator";
 import { isBatteryDepleted } from "../utils/energy";
+import { getTaskColor } from "../utils/taskColors";
 
 export default function IoT({ iot, setSelectedIOT, onClicked }) {
   const isHumanUser = Boolean(iot.properties?.user);
   const displayIconKey = isHumanUser ? "MdPerson" : iot.icon;
   const depleted = isBatteryDepleted(iot);
+  const taskColor = getTaskColor(iot.properties?.taskColor);
 
   function handleChildClick(event) {
     event.stopPropagation();
@@ -34,14 +36,17 @@ export default function IoT({ iot, setSelectedIOT, onClicked }) {
         <>
           {(() => {
             const Icon = IOT_ICON_MAP[displayIconKey];
-            return <Icon size={28} className="text-blue-600" />;
+            return <Icon size={28} style={{ color: taskColor.bg }} />;
           })()}
           <span className="text-xs text-gray-700 font-semibold mt-1 text-center max-w-[80px] truncate">
             {iot.name}
           </span>
         </>
       ) : (
-        <div className="text-white bg-blue-600 font-semibold w-16 h-10 rounded-full flex items-center justify-center">
+        <div
+          className="font-semibold w-16 h-10 rounded-full flex items-center justify-center"
+          style={{ backgroundColor: taskColor.bg, color: taskColor.text }}
+        >
           {iot.name}
         </div>
       )}

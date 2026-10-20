@@ -72,6 +72,13 @@ export function buildSimulationRunMetrics(snapshot) {
       (task) =>
         task.failure_reason === ENERGY_FAILURE_REASONS.MACHINE_BATTERY_DEPLETED,
     ).length,
+    totalMachines: (snapshot.machines || []).filter(
+      (machine) => machine.id !== -1,
+    ).length,
+    totalIotDevices: (snapshot.iot || []).filter(
+      (source) => source.id !== -3,
+    ).length,
+    totalEdges: (snapshot.edges || []).length,
     simulationTime: Number(snapshot.time) || 0,
     totalEnergyJ: sumEnergyJ(snapshot),
     totalCost: sumCost(snapshot),
@@ -81,6 +88,16 @@ export function buildSimulationRunMetrics(snapshot) {
 function average(values, key) {
   if (!values.length) return 0;
   return values.reduce((sum, value) => sum + value[key], 0) / values.length;
+}
+
+function sampleStandardDeviation(values, key) {
+  if (values.length < 2) return 0;
+  const mean = average(values, key);
+  const squaredDifferences = values.reduce(
+    (sum, value) => sum + (value[key] - mean) ** 2,
+    0,
+  );
+  return Math.sqrt(squaredDifferences / (values.length - 1));
 }
 
 export function buildSimulationBatchSummary(entries = []) {
@@ -102,12 +119,18 @@ export function buildSimulationBatchSummary(entries = []) {
     "completionRate",
     "sourceBatteryFailures",
     "machineBatteryFailures",
+    "totalMachines",
+    "totalIotDevices",
+    "totalEdges",
     "simulationTime",
     "totalEnergyJ",
     "totalCost",
   ];
   const averages = Object.fromEntries(
     keys.map((key) => [key, average(metrics, key)]),
+  );
+  const standardDeviations = Object.fromEntries(
+    keys.map((key) => [key, sampleStandardDeviation(metrics, key)]),
   );
 
   return {
@@ -119,5 +142,6 @@ export function buildSimulationBatchSummary(entries = []) {
     ).length,
     metrics,
     averages,
+    standardDeviations,
   };
 }

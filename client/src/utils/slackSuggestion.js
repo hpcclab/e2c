@@ -9,6 +9,11 @@ import { calculateTravelTime } from "./networkDelay.js";
 import { createRandomGenerator } from "./randomSeed.js";
 import { sampleGenerationTimes } from "./workloadGeneration.js";
 import { SimulationEngine } from "./simulationEngine.js";
+import {
+  SCHEDULING_MODES,
+  normalizeBatchIntervalSeconds,
+  normalizeSchedulingMode,
+} from "./scheduling.js";
 
 // A one-sided 95th percentile gives the task a 95% chance of fitting within
 // the suggested slack when data size and EET follow their configured normals.
@@ -169,6 +174,8 @@ function calculateQueueAwareSuggestion({
   nodes,
   policyAlias,
   simulationSeed,
+  schedulingMode,
+  batchIntervalSeconds,
 }) {
   const allSources = mergeCurrentSource(source, sources);
   const tasks = buildConservativeTasks(
@@ -199,6 +206,8 @@ function calculateQueueAwareSuggestion({
     tasks,
     edges,
     nodes,
+    schedulingMode,
+    batchIntervalSeconds,
     random: createRandomGenerator(
       simulationSeed || SUGGESTION_SEED,
       "slack-scheduler",
@@ -225,7 +234,17 @@ function calculateQueueAwareSuggestion({
   );
   const maximumSteps = Math.max(
     10_000,
-    Math.ceil((latestGeneration + tasks.length * longestExecution + 10) * 100),
+    Math.ceil(
+      (
+        latestGeneration +
+        tasks.length * longestExecution +
+        (normalizeSchedulingMode(schedulingMode) ===
+        SCHEDULING_MODES.PERIODIC_BATCH
+          ? normalizeBatchIntervalSeconds(batchIntervalSeconds)
+          : 0) +
+        10
+      ) * 100,
+    ),
   );
   let steps = 0;
   while (!engine.isComplete() && steps < maximumSteps) {
@@ -243,16 +262,39 @@ function calculateQueueAwareSuggestion({
     );
   if (ownResults.length !== ownTaskCount) return null;
 
-  const requiredWindows = ownResults.map(
-    (task) => Number(task.end_time) - Number(task.generation_time),
-  );
+  const periodicBatchTime =
+    normalizeSchedulingMode(schedulingMode) ===
+    SCHEDULING_MODES.PERIODIC_BATCH
+      ? normalizeBatchIntervalSeconds(batchIntervalSeconds)
+      : 0;
+  const requiredWindows = ownResults.map((task) => {
+    const simulatedWindow =
+      Number(task.end_time) - Number(task.generation_time);
+    if (!periodicBatchTime) return simulatedWindow;
+
+    // The dry run already contains the task's sampled wait until its batch.
+    // Replace that sampled wait with one complete batch period so the
+    // suggestion remains safe even when a task happens to arrive exactly on a
+    // batch boundary during the prediction.
+    const simulatedBatchWait = nonNegativeNumber(task.batch_wait_time);
+    return (
+      simulatedWindow + Math.max(0, periodicBatchTime - simulatedBatchWait)
+    );
+  });
   const requiredSlack = percentile(
     requiredWindows,
     SUGGESTED_SLACK_TARGET,
   );
   if (!Number.isFinite(requiredSlack)) return null;
 
-  const isolated = calculateIsolatedSuggestion(source, machines, edges, nodes);
+  const isolated = calculateIsolatedSuggestion(
+    source,
+    machines,
+    edges,
+    nodes,
+    schedulingMode,
+    batchIntervalSeconds,
+  );
   return {
     ...isolated,
     slack: roundUpHundredth(
@@ -264,7 +306,14 @@ function calculateQueueAwareSuggestion({
   };
 }
 
-function calculateIsolatedSuggestion(source, machines, edges, nodes) {
+function calculateIsolatedSuggestion(
+  source,
+  machines,
+  edges,
+  nodes,
+  schedulingMode,
+  batchIntervalSeconds,
+) {
   const sourceId = sourceNodeId(source.id);
   const connectedMachines = machines.filter((machine) =>
     isConnectedToMachine(sourceId, machine.id, edges, nodes),
@@ -285,12 +334,18 @@ function calculateIsolatedSuggestion(source, machines, edges, nodes) {
     conservativeDuration(machine, source),
   );
   const executionTime = Math.max(...executionTimes);
-  const exactSlack = transferTime + executionTime;
+  const batchWaitTime =
+    normalizeSchedulingMode(schedulingMode) ===
+    SCHEDULING_MODES.PERIODIC_BATCH
+      ? normalizeBatchIntervalSeconds(batchIntervalSeconds)
+      : 0;
+  const exactSlack = transferTime + batchWaitTime + executionTime;
 
   return {
     slack: roundUpHundredth(exactSlack),
     transferTime,
     executionTime,
+    batchWaitTime,
     connectedMachineCount: connectedMachines.length,
     queueAware: false,
   };
@@ -325,12 +380,21 @@ export function calculateSuggestedSlack({
   nodes = [],
   policyAlias = "FCFS",
   simulationSeed = "",
+  schedulingMode = SCHEDULING_MODES.IMMEDIATE,
+  batchIntervalSeconds,
 }) {
   if (!source?.properties || source.id === undefined || source.id === null) {
     return null;
   }
 
-  const isolated = calculateIsolatedSuggestion(source, machines, edges, nodes);
+  const isolated = calculateIsolatedSuggestion(
+    source,
+    machines,
+    edges,
+    nodes,
+    schedulingMode,
+    batchIntervalSeconds,
+  );
   if (!isolated) return null;
 
   // Older/imported sources may not contain generation settings. Preserve the
@@ -346,6 +410,8 @@ export function calculateSuggestedSlack({
       nodes,
       policyAlias,
       simulationSeed,
+      schedulingMode,
+      batchIntervalSeconds,
     }) ?? isolated
   );
 }

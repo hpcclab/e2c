@@ -4,6 +4,7 @@ import {
   failureReasonLabel,
   machineProcessingEnergyRateJPerKb,
 } from "./energy.js";
+import { schedulingModeLabel } from "./scheduling.js";
 
 const EXCEL_MIME_TYPE =
   "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
@@ -34,6 +35,8 @@ export const buildExcelReportData = ({
   sources = [],
   edges = [],
   simulationTime = 0,
+  schedulingMode = "immediate",
+  batchIntervalSeconds = null,
 } = {}) => {
   const machineList = machines.filter((machine) => machine.id !== -1);
   const sourceList = sources.filter((source) => source.id !== -3);
@@ -53,6 +56,13 @@ export const buildExcelReportData = ({
     Summary: [
       ["Metric", "Value"],
       ["Simulation Time (s)", Number(simulationTime) || 0],
+      ["Scheduling Mode", schedulingModeLabel(schedulingMode)],
+      [
+        "Batch Period (s)",
+        schedulingMode === "batch"
+          ? Number(batchIntervalSeconds) || 0
+          : "N/A",
+      ],
       ["Total Tasks", dataResults.length],
       ["Completed Tasks", completedTasks],
       ["Missed Tasks", missedTasks.length],
@@ -84,6 +94,9 @@ export const buildExcelReportData = ({
         "Connectivity",
         "Travel Time",
         "Arrival Time",
+        "Batch Number",
+        "Batch Dispatch Time",
+        "Batch Wait Time",
         "Start Time",
         "Completion Time",
         "Exec Time",
@@ -103,6 +116,9 @@ export const buildExcelReportData = ({
         task.connectivity ?? "N/A",
         task.travel_time ?? 0,
         task.arrival_time ?? "N/A",
+        task.batch_number ?? "N/A",
+        task.batch_release_time ?? "N/A",
+        task.batch_wait_time ?? "N/A",
         getTaskTime(task, "start_time"),
         getTaskTime(task, "end_time"),
         task.execution_time ?? "N/A",
@@ -124,6 +140,9 @@ export const buildExcelReportData = ({
         "Connectivity",
         "Travel Time",
         "Arrival Time",
+        "Batch Number",
+        "Batch Dispatch Time",
+        "Batch Wait Time",
         "Deadline",
         "Status",
         "Failure Reason",
@@ -140,6 +159,9 @@ export const buildExcelReportData = ({
         task.connectivity ?? "N/A",
         task.travel_time ?? 0,
         task.arrival_time ?? "N/A",
+        task.batch_number ?? "N/A",
+        task.batch_release_time ?? "N/A",
+        task.batch_wait_time ?? "N/A",
         task.deadline ?? "N/A",
         task.status || "MISSED",
         failureReasonLabel(task.failure_reason),
@@ -212,9 +234,24 @@ const columnStyles = {
     12: 2,
     13: 2,
     14: 2,
+    15: 2,
+    16: 2,
     17: 2,
+    20: 2,
   },
-  "Missed Tasks": { 4: 2, 5: 2, 6: 2, 7: 2, 8: 2, 10: 2, 11: 2, 12: 2 },
+  "Missed Tasks": {
+    4: 2,
+    5: 2,
+    6: 2,
+    7: 2,
+    8: 2,
+    10: 2,
+    11: 2,
+    12: 2,
+    13: 2,
+    14: 2,
+    15: 2,
+  },
   Machines: { 5: 3, 6: 4, 7: 5 },
 };
 
@@ -222,7 +259,7 @@ const getStyleId = (sheetName, rowNumber, columnNumber) => {
   if (rowNumber === 1) return 1;
   if (sheetName === "Summary" && columnNumber === 2) {
     if (rowNumber === 2) return 2;
-    if (rowNumber === 11) return 5;
+    if (rowNumber === 13) return 5;
   }
   return columnStyles[sheetName]?.[columnNumber];
 };

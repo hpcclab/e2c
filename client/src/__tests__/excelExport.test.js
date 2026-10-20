@@ -8,6 +8,8 @@ import {
 
 const reportData = {
   simulationTime: 4.25,
+  schedulingMode: "batch",
+  batchIntervalSeconds: 1,
   dataResults: [
     {
       id: 1,
@@ -18,6 +20,9 @@ const reportData = {
       connectivity: "Bluetooth",
       travel_time: 0.1,
       arrival_time: 0.1,
+      batch_number: 1,
+      batch_release_time: 1,
+      batch_wait_time: 0.9,
       start_time: 0.2,
       end_time: 1.2,
       execution_time: 1,
@@ -81,7 +86,7 @@ test("builds one worksheet dataset for each existing report CSV", () => {
   assert.equal(sheets.Tasks.length, 3);
   assert.equal(sheets["Missed Tasks"].length, 2);
   assert.equal(sheets.Machines.length, 2);
-  assert.deepEqual(sheets.Summary.slice(7, 10), [
+  assert.deepEqual(sheets.Summary.slice(9, 12), [
     ["Total Machines", 1],
     ["Total IoT Devices", 2],
     ["Total Edges", 3],
@@ -100,10 +105,13 @@ test("builds one worksheet dataset for each existing report CSV", () => {
     "Battery Remaining (J)",
     "Processing Energy Rate (J/KB)",
   ]);
-  assert.equal(sheets.Tasks[1][11], 0.2);
-  assert.equal(sheets.Tasks[1][12], 1.2);
-  assert.equal(sheets.Tasks[2][11], "DNR");
-  assert.equal(sheets.Tasks[2][12], "DNR");
+  assert.equal(sheets.Tasks[1][11], 1);
+  assert.equal(sheets.Tasks[1][12], 1);
+  assert.equal(sheets.Tasks[1][13], 0.9);
+  assert.equal(sheets.Tasks[1][14], 0.2);
+  assert.equal(sheets.Tasks[1][15], 1.2);
+  assert.equal(sheets.Tasks[2][14], "DNR");
+  assert.equal(sheets.Tasks[2][15], "DNR");
 });
 
 test("creates a valid multi-sheet xlsx workbook", async () => {
@@ -121,10 +129,10 @@ test("creates a valid multi-sheet xlsx workbook", async () => {
   ["Summary", "Tasks", "Missed Tasks", "Machines"].forEach((sheetName) => {
     assert.match(workbookXml, new RegExp(`name="${sheetName}"`));
   });
-  assert.match(taskSheetXml, /<c r="L2" s="2"><v>0\.2<\/v><\/c>/);
+  assert.match(taskSheetXml, /<c r="O2" s="2"><v>0\.2<\/v><\/c>/);
   assert.match(
     taskSheetXml,
-    /<c r="M3" t="inlineStr" s="2"><is><t xml:space="preserve">DNR<\/t><\/is><\/c>/,
+    /<c r="P3" t="inlineStr" s="2"><is><t xml:space="preserve">DNR<\/t><\/is><\/c>/,
   );
   assert.doesNotMatch(machineSheetXml, /Machine ID/);
   assert.match(machineSheetXml, /<c r="H2"><v>2<\/v><\/c>/);

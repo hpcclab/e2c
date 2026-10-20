@@ -1,7 +1,11 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { buildMachineChartData } from "../utils/reportCharts.js";
+import {
+  buildAggregateChartData,
+  buildMachineChartData,
+  buildPercentageChartData,
+} from "../utils/reportCharts.js";
 
 const machines = [
   {
@@ -116,4 +120,61 @@ test("uses each task's data-sized processing energy when it is available", () =>
 
   assert.equal(result.energy[0].source_1, 2 / 3_600_000);
   assert.equal(result.energy[0].source_2, 8 / 3_600_000);
+});
+
+test("converts histogram values to percentages while retaining exact values", () => {
+  const rows = buildPercentageChartData(
+    [
+      { name: "Machine A", camera: 2, sensor: 1 },
+      { name: "Machine B", camera: 1, sensor: 0 },
+    ],
+    ["camera", "sensor"],
+  );
+
+  assert.equal(rows[0].camera, 50);
+  assert.equal(rows[0].sensor, 25);
+  assert.equal(rows[1].camera, 25);
+  assert.deepEqual(rows[0].__exact, { camera: 2, sensor: 1 });
+});
+
+test("aggregate histograms report mean percentages and 95 percent confidence intervals", () => {
+  const makeEntry = (runNumber, firstMachineTasks, secondMachineTasks) => {
+    const tasks = [
+      ...Array.from({ length: firstMachineTasks }, (_, index) => ({
+        id: `${runNumber}-a-${index}`,
+        status: "COMPLETED",
+        task_type: "image",
+        assigned_machine: "Machine A",
+        processing_energy_j: 2,
+      })),
+      ...Array.from({ length: secondMachineTasks }, (_, index) => ({
+        id: `${runNumber}-b-${index}`,
+        status: "MISSED",
+        task_type: "image",
+        assigned_machine: "Machine B",
+        processing_energy_j: 2,
+      })),
+    ];
+    return {
+      runNumber,
+      status: "complete",
+      snapshot: {
+        totalTasks: tasks.length,
+        results: tasks,
+        machines,
+        iot: sources,
+      },
+    };
+  };
+  const charts = buildAggregateChartData([
+    makeEntry(1, 3, 1),
+    makeEntry(2, 1, 3),
+  ]);
+
+  assert.equal(charts.runCount, 2);
+  assert.equal(charts.taskCounts[0].name, "Machine A");
+  assert.equal(charts.taskCounts[0].percentage, 50);
+  assert.equal(charts.taskCounts[0].exactMean, 2);
+  assert.ok(charts.taskCounts[0].confidenceInterval95 > 0);
+  assert.equal(charts.missedByType[0].percentage, 100);
 });

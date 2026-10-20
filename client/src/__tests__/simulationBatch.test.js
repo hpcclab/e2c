@@ -79,4 +79,37 @@ test("batch reports retain per-run metrics and average completed runs only", () 
   assert.equal(summary.averages.simulationTime, 11);
   assert.equal(summary.averages.totalEnergyJ, 25);
   assert.equal(summary.averages.totalCost, 3);
+  assert.equal(summary.averages.totalMachines, 1);
+  assert.equal(summary.averages.totalIotDevices, 0);
+  assert.equal(summary.averages.totalEdges, 0);
+  assert.ok(
+    Math.abs(summary.standardDeviations.completed - Math.sqrt(2)) < 1e-12,
+  );
+  assert.ok(
+    Math.abs(summary.standardDeviations.completionRate - Math.sqrt(200)) <
+      1e-12,
+  );
+  assert.equal(summary.standardDeviations.totalTasks, 0);
+  assert.equal(summary.standardDeviations.totalMachines, 0);
+});
+
+test("one completed run reports zero aggregate standard deviation", () => {
+  const summary = buildSimulationBatchSummary([
+    {
+      runNumber: 1,
+      seed: "one",
+      status: "complete",
+      snapshot: snapshot({
+        completed: 9,
+        missed: 1,
+        time: 12,
+        energyJ: 20,
+        cost: 2,
+      }),
+    },
+  ]);
+
+  assert.equal(summary.standardDeviations.completed, 0);
+  assert.equal(summary.standardDeviations.simulationTime, 0);
+  assert.equal(summary.standardDeviations.totalEnergyJ, 0);
 });

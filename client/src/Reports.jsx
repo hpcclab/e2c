@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { useGlobalState } from "./context/GlobalStates";
 import SimulationReport from "./components/SimulationReport";
+import AggregateSimulationReport from "./components/AggregateSimulationReport";
 
 const Reports = () => {
   const {
@@ -13,6 +14,8 @@ const Reports = () => {
     machines,
     iot,
     edges,
+    schedulingMode,
+    batchIntervalSeconds,
     setIsPaused,
     batchRunResults,
   } = useGlobalState();
@@ -55,22 +58,21 @@ const Reports = () => {
     machines,
     iot,
     edges,
+    schedulingMode,
+    batchIntervalSeconds:
+      schedulingMode === "batch" ? Number(batchIntervalSeconds) : null,
   };
 
   const reportSnapshot =
     selectedRunNumber === 1
-      ? liveSnapshot
+      ? selectedRun?.status === "complete" && selectedRun.snapshot
+        ? selectedRun.snapshot
+        : liveSnapshot
       : selectedRun?.snapshot;
 
   const renderSelectedReport = () => {
     if (selectedReport === "average") {
-      return (
-        <section className="flex min-h-[420px] items-center justify-center rounded-xl border border-dashed border-blue-300 bg-blue-50 p-8 text-center">
-          <h2 className="text-2xl font-bold text-blue-700">
-            Under construction
-          </h2>
-        </section>
-      );
+      return <AggregateSimulationReport entries={batchRunResults} />;
     }
 
     if (!reportSnapshot) {
@@ -104,6 +106,8 @@ const Reports = () => {
         machines={reportSnapshot.machines || []}
         sources={reportSnapshot.iot || []}
         edges={reportSnapshot.edges || []}
+        schedulingMode={reportSnapshot.schedulingMode || "immediate"}
+        batchIntervalSeconds={reportSnapshot.batchIntervalSeconds}
       />
     );
   };
@@ -132,7 +136,7 @@ const Reports = () => {
                     {entry.status !== "complete" ? ` (${entry.status})` : ""}
                   </option>
                 ))}
-                <option value="average">Average</option>
+                <option value="average">Aggregate Simulation Results</option>
               </select>
               {selectedRun && (
                 <span className="text-sm text-gray-600">

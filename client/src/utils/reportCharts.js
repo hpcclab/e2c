@@ -1,4 +1,5 @@
 import { getTaskColor } from "./taskColors.js";
+import { buildTaskSummary } from "./reportStats.js";
 
 const machineMatchesTask = (machine, task) => {
   const assignedMachine = String(task?.assigned_machine ?? "");
@@ -140,4 +141,172 @@ export function buildMachineChartData({
   });
 
   return { segments, taskCounts, energy, cost };
+}
+
+export function buildPercentageChartData(rows = [], keys = []) {
+  const total = rows.reduce(
+    (chartSum, row) =>
+      chartSum +
+      keys.reduce((rowSum, key) => rowSum + (Number(row[key]) || 0), 0),
+    0,
+  );
+
+  return rows.map((row) => {
+    const percentages = { name: row.name, __exact: {} };
+    keys.forEach((key) => {
+      const exact = Number(row[key]) || 0;
+      percentages[key] = total > 0 ? (exact / total) * 100 : 0;
+      percentages.__exact[key] = exact;
+    });
+    return percentages;
+  });
+}
+
+const T_CRITICAL_95 = [
+  0,
+  12.706,
+  4.303,
+  3.182,
+  2.776,
+  2.571,
+  2.447,
+  2.365,
+  2.306,
+  2.262,
+  2.228,
+  2.201,
+  2.179,
+  2.16,
+  2.145,
+  2.131,
+  2.12,
+  2.11,
+  2.101,
+  2.093,
+  2.086,
+  2.08,
+  2.074,
+  2.069,
+  2.064,
+  2.06,
+  2.056,
+  2.052,
+  2.048,
+  2.045,
+  2.042,
+];
+
+const sampleStats = (values) => {
+  if (!values.length) return { mean: 0, standardDeviation: 0, ci95: 0 };
+  const mean = values.reduce((sum, value) => sum + value, 0) / values.length;
+  if (values.length === 1) return { mean, standardDeviation: 0, ci95: 0 };
+
+  const squaredDifferences = values.reduce(
+    (sum, value) => sum + (value - mean) ** 2,
+    0,
+  );
+  const standardDeviation = Math.sqrt(
+    squaredDifferences / (values.length - 1),
+  );
+  const degreesOfFreedom = values.length - 1;
+  const criticalValue =
+    T_CRITICAL_95[degreesOfFreedom] ?? (degreesOfFreedom < 60 ? 2 : 1.96);
+
+  return {
+    mean,
+    standardDeviation,
+    ci95: criticalValue * (standardDeviation / Math.sqrt(values.length)),
+  };
+};
+
+const aggregateCategoryValues = (runs, valueKey) => {
+  const names = [
+    ...new Set(runs.flatMap((run) => [...run[valueKey].keys()])),
+  ];
+
+  return names.map((name) => {
+    const exactValues = runs.map((run) => run[valueKey].get(name) || 0);
+    const percentageValues = runs.map((run) => {
+      const total = [...run[valueKey].values()].reduce(
+        (sum, value) => sum + value,
+        0,
+      );
+      return total > 0 ? ((run[valueKey].get(name) || 0) / total) * 100 : 0;
+    });
+    const exact = sampleStats(exactValues);
+    const percentage = sampleStats(percentageValues);
+
+    return {
+      name,
+      percentage: percentage.mean,
+      standardDeviation: percentage.standardDeviation,
+      confidenceInterval95: percentage.ci95,
+      confidenceInterval95Error: [
+        Math.min(percentage.ci95, percentage.mean),
+        Math.min(percentage.ci95, 100 - percentage.mean),
+      ],
+      exactMean: exact.mean,
+      exactStandardDeviation: exact.standardDeviation,
+      exactConfidenceInterval95: exact.ci95,
+    };
+  });
+};
+
+const valuesByMachine = (chartData, key) =>
+  new Map(
+    chartData[key].map((row) => [
+      row.name,
+      chartData.segments.reduce(
+        (sum, segment) => sum + (Number(row[segment.key]) || 0),
+        0,
+      ),
+    ]),
+  );
+
+export function buildAggregateChartData(entries = []) {
+  const completed = entries.filter(
+    (entry) => entry.status === "complete" && entry.snapshot,
+  );
+  const runs = completed.map((entry) => {
+    const snapshot = entry.snapshot;
+    const tasks = snapshot.results || [];
+    const chartData = buildMachineChartData({
+      machines: snapshot.machines || [],
+      tasks,
+      sources: snapshot.iot || [],
+    });
+    const taskSummary = buildTaskSummary(tasks, snapshot.totalTasks);
+    const missedByType = new Map();
+    taskSummary.missed.forEach((task) => {
+      const type = task.task_type || "Unknown";
+      missedByType.set(type, (missedByType.get(type) || 0) + 1);
+    });
+
+    return {
+      taskCounts: valuesByMachine(chartData, "taskCounts"),
+      energy: valuesByMachine(chartData, "energy"),
+      cost: valuesByMachine(chartData, "cost"),
+      missedByType,
+      taskStatus: new Map([
+        ["Completed", taskSummary.completed.length],
+        ["Missed", taskSummary.missed.length],
+        ["Cancelled", taskSummary.cancelled.length],
+        ["Unassigned", taskSummary.unassigned.length],
+        ["In Progress", taskSummary.inProgress],
+      ]),
+    };
+  });
+
+  return {
+    runCount: runs.length,
+    taskStatus: aggregateCategoryValues(runs, "taskStatus").filter(
+      (row) => row.percentage > 0,
+    ),
+    taskCounts: aggregateCategoryValues(runs, "taskCounts"),
+    energy: aggregateCategoryValues(runs, "energy"),
+    cost: aggregateCategoryValues(runs, "cost"),
+    missedByType: aggregateCategoryValues(runs, "missedByType").filter(
+      (row) => row.percentage > 0,
+    ),
+  };
 }

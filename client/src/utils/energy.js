@@ -126,5 +126,11 @@ export const failureReasonLabel = (reason) => {
   if (reason === ENERGY_FAILURE_REASONS.MACHINE_BATTERY_DEPLETED) {
     return "Machine battery depleted before processing";
   }
+  if (reason === "DEADLINE_EXPIRED_WAITING_FOR_BATCH") {
+    return "Deadline expired while waiting for the next batch";
+  }
+  if (reason === "DEADLINE_EXPIRED_BEFORE_ASSIGNMENT") {
+    return "Deadline expired before the task could be assigned";
+  }
   return reason || "";
 };
