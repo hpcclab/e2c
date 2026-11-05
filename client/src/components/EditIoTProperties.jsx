@@ -1,3 +1,4 @@
+import NumberInput from "./NumberInput";
 import React, { useState, useEffect, useRef } from "react";
 import { IOT_ICON_MAP } from "../utils/iotIcons";
 import { colorMemory } from "./Task";
@@ -698,7 +699,7 @@ const EditIoTProperties = ({
             <label className="block text-sm font-semibold text-gray-700 mb-1">
               Battery Capacity (J)
             </label>
-            <input
+            <NumberInput
               type="number"
               min="0"
               step="any"
@@ -717,7 +718,7 @@ const EditIoTProperties = ({
           <label className="block text-sm font-semibold text-gray-700 mb-1">
             Generation Energy Rate (J/KB)
           </label>
-          <input
+          <NumberInput
             type="number"
             min="0"
             step="any"
@@ -784,7 +785,7 @@ const EditIoTProperties = ({
           <label className="block text-sm font-semibold text-gray-700 mb-1">
             Mean Size (KB)
           </label>
-          <input
+          <NumberInput
             type="number"
             min="0"
             value={editedIOT.properties?.meanSize}
@@ -796,7 +797,7 @@ const EditIoTProperties = ({
           <label className="block text-sm font-semibold text-gray-700 mb-1">
             Data Size Standard Deviation (KB)
           </label>
-          <input
+          <NumberInput
             type="number"
             min="0"
             step="any"
@@ -855,7 +856,7 @@ const EditIoTProperties = ({
               }
             />
           </div>
-          <input
+          <NumberInput
             type="number"
             min="0"
             step="any"
@@ -876,7 +877,7 @@ const EditIoTProperties = ({
           <label className="block text-sm font-semibold text-gray-700 mb-1">
             Number of Tasks
           </label>
-          <input
+          <NumberInput
             type="number"
             min="0"
             value={editedIOT.properties?.numTasks}
@@ -888,7 +889,7 @@ const EditIoTProperties = ({
           <label className="block text-sm font-semibold text-gray-700 mb-1">
             Generation Start Time
           </label>
-          <input
+          <NumberInput
             type="number"
             min="0"
             value={editedIOT.properties?.startTime}
@@ -900,7 +901,7 @@ const EditIoTProperties = ({
           <label className="block text-sm font-semibold text-gray-700 mb-1">
             Generation End Time
           </label>
-          <input
+          <NumberInput
             type="number"
             min="0"
             value={editedIOT.properties?.endTime}

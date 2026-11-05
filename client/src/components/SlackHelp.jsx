@@ -1,3 +1,4 @@
+import NumberInput from "./NumberInput";
 import React, { useState } from "react";
 import { createPortal } from "react-dom";
 
@@ -123,7 +124,7 @@ const SlackHelp = ({ value, onApply }) => {
               >
                 Suggested Slack (seconds)
               </label>
-              <input
+              <NumberInput
                 id="suggested-slack-value"
                 type="number"
                 min="0"

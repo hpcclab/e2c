@@ -1,3 +1,4 @@
+import { syncDeviceNodes } from "./utils/syncDeviceNodes";
 import React, {
   useEffect,
   useState,
@@ -1335,55 +1336,11 @@ const SimDashboard = () => {
 
   // /* -------------------- WORKSPACE, EDGE, MACHINE, and IOT NODES -------------------- */
   useEffect(() => {
-    setNodes((prev) => {
-      const nodesMap = Object.fromEntries(prev.map((n) => [n.id, n]));
-
-      const machineNodes = machines.map((m, index) => {
-        const parentExists = m.parentId ? nodesMap[m.parentId] : true;
-
-        return {
-          id: `${m.id}`,
-          type: "machineNode",
-          data: { machine: m },
-          position: m.position ?? { x: 600, y: 80 + index * 150 },
-          parentId: parentExists ? m.parentId : undefined,
-          extent: parentExists && m.parentId ? "parent" : undefined,
-          draggable: true,
-          expandParent: true,
-        };
-      });
-
-      const otherNodes = prev.filter((n) => n.type !== "machineNode");
-
-      return [...otherNodes, ...machineNodes];
-    });
+    setNodes((prev) => syncDeviceNodes(prev, machines));
   }, [machines, setNodes]);
 
   useEffect(() => {
-    setNodes((prev) => {
-      const nodesMap = Object.fromEntries(prev.map((n) => [n.id, n]));
-
-      const iotNodes = iot.map((i, index) => {
-        const parentExists = i.parentId ? nodesMap[i.parentId] : true;
-
-        return {
-          id: `nd_${i.id}`,
-          type: i.properties?.user ? "userNode" : "iotNode",
-          data: { iot: i },
-          position: i.position ?? { x: 0, y: 80 + index * 150 },
-          parentId: parentExists ? i.parentId : undefined,
-          extent: parentExists && i.parentId ? "parent" : undefined,
-          draggable: true,
-          expandParent: true,
-        };
-      });
-
-      const otherNodes = prev.filter(
-        (n) => n.type !== "iotNode" && n.type !== "userNode",
-      );
-
-      return [...otherNodes, ...iotNodes];
-    });
+    setNodes((prev) => syncDeviceNodes(prev, iot, true));
   }, [iot, setNodes]);
 
   const handleClearWorkspace = () => {

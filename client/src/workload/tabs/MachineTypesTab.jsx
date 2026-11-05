@@ -1,3 +1,4 @@
+import NumberInput from "../../components/NumberInput";
 import React, { useState } from "react";
 import { useGlobalState } from "../../context/GlobalStates";
 import {
@@ -220,7 +221,7 @@ const MachineTypesTab = ({
                         />
                       </td>
                       <td className="border px-2 py-1">
-                        <input
+                        <NumberInput
                           type="number"
                           value={editRow.power || ""}
                           onChange={(e) =>
@@ -230,7 +231,7 @@ const MachineTypesTab = ({
                         />
                       </td>
                       <td className="border px-2 py-1">
-                        <input
+                        <NumberInput
                           type="number"
                           value={editRow.idlePower || ""}
                           onChange={(e) =>
@@ -240,7 +241,7 @@ const MachineTypesTab = ({
                         />
                       </td>
                       <td className="border px-2 py-1">
-                        <input
+                        <NumberInput
                           type="number"
                           value={editRow.replicas || ""}
                           onChange={(e) =>
@@ -250,7 +251,7 @@ const MachineTypesTab = ({
                         />
                       </td>
                       <td className="border px-2 py-1">
-                        <input
+                        <NumberInput
                           type="number"
                           value={editRow.price || ""}
                           onChange={(e) =>
@@ -318,28 +319,28 @@ const MachineTypesTab = ({
             onChange={(e) => setNewName(e.target.value)}
             className="border rounded px-3 py-2"
           />
-          <input
+          <NumberInput
             type="number"
             placeholder="Power"
             value={newPower}
             onChange={(e) => setNewPower(e.target.value)}
             className="border rounded px-3 py-2"
           />
-          <input
+          <NumberInput
             type="number"
             placeholder="Idle Power"
             value={newIdlePower}
             onChange={(e) => setNewIdlePower(e.target.value)}
             className="border rounded px-3 py-2"
           />
-          <input
+          <NumberInput
             type="number"
             placeholder="# of Replicas"
             value={newReplicas}
             onChange={(e) => setNewReplicas(e.target.value)}
             className="border rounded px-3 py-2"
           />
-          <input
+          <NumberInput
             type="number"
             placeholder="($) Price / hr" // NEW PRICE
             value={newPrice}

@@ -1,3 +1,4 @@
+import NumberInput from "./NumberInput";
 import React, { useEffect, useState } from "react";
 import { useGlobalState } from "../context/GlobalStates";
 import {
@@ -138,7 +139,7 @@ const EditEdgeProperties = ({ selectedEdge }) => {
         >
           Upload Power (W)
         </label>
-        <input
+        <NumberInput
           id="edge-upload-power"
           type="number"
           min="0"
@@ -174,7 +175,7 @@ const EditEdgeProperties = ({ selectedEdge }) => {
         >
           Link speed (Kbps)
         </label>
-        <input
+        <NumberInput
           id="edge-data-rate"
           type="number"
           min="0.001"

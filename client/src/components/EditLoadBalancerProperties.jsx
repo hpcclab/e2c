@@ -1,3 +1,4 @@
+import NumberInput from "./NumberInput";
 import React, { useEffect, useMemo, useState } from "react";
 import BatchSchedulingHelp from "./BatchSchedulingHelp";
 import DeadlinePolicyHelp from "./DeadlinePolicyHelp";
@@ -177,7 +178,7 @@ const EditLoadBalancerProperties = ({
               >
                 Batch period (seconds)
               </label>
-              <input
+              <NumberInput
                 id="batch-period-seconds"
                 type="number"
                 min={MIN_BATCH_INTERVAL_SECONDS}
@@ -228,7 +229,7 @@ const EditLoadBalancerProperties = ({
                             ID: {machineId}
                           </span>
                         </label>
-                        <input
+                        <NumberInput
                           id={`machine-queue-limit-${machineId}`}
                           type="number"
                           min="1"

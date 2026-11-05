@@ -1,3 +1,4 @@
+import NumberInput from "../../components/NumberInput";
 import React, { useState } from "react";
 import {
   TrashIcon,
@@ -158,7 +159,7 @@ const ScenarioTab = ({
                         </select>
                       </td>
                       <td className="border px-2 py-1">
-                        <input
+                        <NumberInput
                           type="number"
                           value={editRow.numTasks}
                           onChange={(e) =>
@@ -169,7 +170,7 @@ const ScenarioTab = ({
                         />
                       </td>
                       <td className="border px-2 py-1">
-                        <input
+                        <NumberInput
                           type="number"
                           value={editRow.startTime}
                           onChange={(e) =>
@@ -180,7 +181,7 @@ const ScenarioTab = ({
                         />
                       </td>
                       <td className="border px-2 py-1">
-                        <input
+                        <NumberInput
                           type="number"
                           value={editRow.endTime}
                           onChange={(e) =>
@@ -261,7 +262,7 @@ const ScenarioTab = ({
               </option>
             ))}
           </select>
-          <input
+          <NumberInput
             type="number"
             placeholder="# Tasks"
             value={newNumTasks}
@@ -269,7 +270,7 @@ const ScenarioTab = ({
             className="border rounded px-3 py-2"
             min={1}
           />
-          <input
+          <NumberInput
             type="number"
             placeholder="Generation Start Time"
             value={newStartTime}
@@ -277,7 +278,7 @@ const ScenarioTab = ({
             className="border rounded px-3 py-2"
             min={0}
           />
-          <input
+          <NumberInput
             type="number"
             placeholder="Generation End Time"
             value={newEndTime}
@@ -303,7 +304,7 @@ const ScenarioTab = ({
             Add Scenario Row
           </button>
           <div className="flex items-center gap-2 mt-2">
-            <input
+            <NumberInput
               type="number"
               min={1}
               value={numWorkloads}

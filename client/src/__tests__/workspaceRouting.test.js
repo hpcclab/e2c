@@ -10,6 +10,7 @@ import {
 import { SimulationEngine } from "../utils/simulationEngine.js";
 import { generateWorkload } from "../utils/workloadGeneration.js";
 import { attachDevicesToSpaces, applyDeviceMembership } from "../utils/workspaceMembership.js";
+import { findTopologyPath } from "../utils/topologyRouting.js";
 
 const routedWorkspace = () => {
   const nodes = [
@@ -24,6 +25,7 @@ const routedWorkspace = () => {
     { id: "10", type: "machineNode", parentId: "cloud-space" },
   ];
   const edges = [
+    { source: "LBNode_0", target: "10" },
     {
       source: "edge-space",
       target: "cloud-space",
@@ -96,6 +98,22 @@ test("an IoT inherits its workspace route to cloud resources", () => {
     ),
     true,
   );
+});
+
+test("traffic entering a space must use its load balancer and connected machines", () => {
+  const { nodes, edges } = routedWorkspace();
+  nodes.push({ id: "11", type: "machineNode", parentId: "cloud-space" });
+  edges.push({ source: "nd_1", target: "cloud-space" });
+  assert.deepEqual(findTopologyPath("nd_1", "10", edges, nodes), ["nd_1", "cloud-space", "LBNode_0", "10"]);
+  assert.equal(isConnectedToMachine("nd_1", "11", edges, nodes), false);
+  assert.equal(isConnectedThroughLoadBalancer("nd_1", "11", "LBNode_0", edges, nodes), false);
+  edges.push({ source: "LBNode_0", target: "11" });
+  assert.equal(isConnectedThroughLoadBalancer("nd_1", "11", "LBNode_0", edges, nodes), true);
+});
+
+test("spaces without a load balancer still route directly to their machines", () => {
+  const nodes = [{ id: "space", type: "group" }, { id: "nd_1", type: "iotNode" }, { id: "10", type: "machineNode", parentId: "space" }];
+  assert.deepEqual(findTopologyPath("nd_1", "10", [{ source: "nd_1", target: "space" }], nodes), ["nd_1", "space", "10"]);
 });
 
 test("the simulation processes a task through workspace gateways", () => {

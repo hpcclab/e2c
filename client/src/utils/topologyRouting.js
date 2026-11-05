@@ -31,11 +31,18 @@ function canReceiveWorkspaceTraffic(node) {
  * Explicit connections remain directional. Workspace membership is an
  * implicit, zero-delay connection in both directions so a child can leave
  * through its workspace gateway and a workspace can deliver traffic to its
- * contained load balancers or machines.
+ * contained load balancers or machines. When a space contains a load balancer,
+ * incoming traffic must enter it first; its outgoing wires select machines.
  */
 export function getTopologyNeighbors(id, edges = [], nodes = []) {
   const normalizedId = nodeId(id);
   const currentNode = findNode(normalizedId, nodes);
+  if (isWorkspaceNode(currentNode)) {
+    const loadBalancers = nodes.filter((node) =>
+      nodeId(node?.parentId) === normalizedId && node.type === "LBNode",
+    );
+    if (loadBalancers.length) return loadBalancers.map((node) => nodeId(node.id));
+  }
   const neighbors = directTargets(normalizedId, edges);
 
   if (currentNode?.parentId !== undefined && currentNode?.parentId !== null) {

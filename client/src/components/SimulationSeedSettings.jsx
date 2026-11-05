@@ -1,3 +1,4 @@
+import NumberInput from "./NumberInput";
 import React, { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import { MdSettings } from "react-icons/md";
@@ -155,7 +156,7 @@ const SimulationSeedSettings = ({
               <label htmlFor="simulation-run-count" className="mt-4 block text-sm font-semibold text-gray-800">
                 Number of simulations
               </label>
-              <input
+              <NumberInput
                 id="simulation-run-count"
                 type="number"
                 min="1"

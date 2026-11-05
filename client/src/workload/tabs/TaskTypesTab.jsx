@@ -1,3 +1,4 @@
+import NumberInput from "../../components/NumberInput";
 import React, { useState } from "react";
 import {
   TrashIcon,
@@ -167,7 +168,7 @@ const TaskTypesTab = ({ taskTypes, setTaskTypes, setActiveTab }) => {
                         </select>
                       </td>
                       <td className="border px-2 py-1">
-                        <input
+                        <NumberInput
                           type="number"
                           value={editRow.meanSize}
                           onChange={(e) =>
@@ -177,7 +178,7 @@ const TaskTypesTab = ({ taskTypes, setTaskTypes, setActiveTab }) => {
                         />
                       </td>
                       <td className="border px-2 py-1">
-                        <input
+                        <NumberInput
                           type="number"
                           min="0"
                           step="any"
@@ -204,7 +205,7 @@ const TaskTypesTab = ({ taskTypes, setTaskTypes, setActiveTab }) => {
                         </select>
                       </td>
                       <td className="border px-2 py-1">
-                        <input
+                        <NumberInput
                           type="number"
                           min="0"
                           step="any"
@@ -333,7 +334,7 @@ const TaskTypesTab = ({ taskTypes, setTaskTypes, setActiveTab }) => {
               </button>
             </div>
           )}
-          <input
+          <NumberInput
             type="number"
             min="0"
             step="any"
@@ -342,7 +343,7 @@ const TaskTypesTab = ({ taskTypes, setTaskTypes, setActiveTab }) => {
             onChange={(e) => setNewMeanSize(e.target.value)}
             className="border rounded px-3 py-2"
           />
-          <input
+          <NumberInput
             type="number"
             min="0"
             step="any"
@@ -363,7 +364,7 @@ const TaskTypesTab = ({ taskTypes, setTaskTypes, setActiveTab }) => {
             <option value="BestEffort">BestEffort</option>
             {/* Add more urgency options here if needed */}
           </select>
-          <input
+          <NumberInput
             type="number"
             min="0"
             step="any"

@@ -1,3 +1,4 @@
+import NumberInput from "./NumberInput";
 import React, { useState, useEffect } from "react";
 import { useGlobalState } from "../context/GlobalStates";
 import { MACHINE_ICON_MAP } from "../utils/machineIcons";
@@ -221,7 +222,7 @@ const EditMachineProperties = ({
           <label className="block text-sm font-semibold text-gray-700 mb-1">
             Power (W)
           </label>
-          <input
+          <NumberInput
             type="number"
             value={editedMachine.power}
             onChange={(e) => handleChange("power", Number(e.target.value))}
@@ -233,7 +234,7 @@ const EditMachineProperties = ({
           <label className="block text-sm font-semibold text-gray-700 mb-1">
             Idle Power (W)
           </label>
-          <input
+          <NumberInput
             type="number"
             value={editedMachine.idle_power}
             onChange={(e) => handleChange("idle_power", Number(e.target.value))}
@@ -262,7 +263,7 @@ const EditMachineProperties = ({
             <label className="block text-sm font-semibold text-gray-700 mb-1">
               Battery Capacity (J)
             </label>
-            <input
+            <NumberInput
               type="number"
               min="0"
               step="any"
@@ -282,7 +283,7 @@ const EditMachineProperties = ({
           <label className="block text-sm font-semibold text-gray-700 mb-1">
             Processing Energy Rate (J/KB)
           </label>
-          <input
+          <NumberInput
             type="number"
             min="0"
             step="any"
@@ -304,7 +305,7 @@ const EditMachineProperties = ({
           <label className="block text-sm font-semibold text-gray-700 mb-1">
             Replicas
           </label>
-          <input
+          <NumberInput
             type="number"
             min="1"
             value={editedMachine.replicas}
@@ -317,7 +318,7 @@ const EditMachineProperties = ({
           <label className="block text-sm font-semibold text-gray-700 mb-1">
             ($) Price / s
           </label>
-          <input
+          <NumberInput
             type="number"
             step="0.01"
             value={editedMachine.price}
@@ -357,7 +358,7 @@ const EditMachineProperties = ({
                       {iotNode.properties.task_type}
                     </td>
                     <td className="border px-2 py-1">
-                      <input
+                      <NumberInput
                         type="number"
                         min="0.001"
                         step="any"
@@ -374,7 +375,7 @@ const EditMachineProperties = ({
                       />
                     </td>
                     <td className="border px-2 py-1">
-                      <input
+                      <NumberInput
                         type="number"
                         min="0"
                         step="any"
