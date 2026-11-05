@@ -14,6 +14,8 @@ import {
 import {
   SCHEDULING_FAILURE_REASONS,
   SCHEDULING_MODES,
+  normalizeMachineQueueLimit,
+  normalizeMachineQueueLimits,
   normalizeSchedulingMode,
 } from "../utils/scheduling.js";
 
@@ -26,11 +28,20 @@ export class BaseScheduler {
     this.isNeighbors = isNeighbors;
 
     this.config = config;
-    this.maxQueueSize = config?.maxQueueSize ?? 2;
+    this.machineQueueLimits = new Map(
+      Object.entries(
+        normalizeMachineQueueLimits(config?.machineQueueLimits),
+      ),
+    );
+    // maxQueueSize remains as a fallback for scenarios saved before queue
+    // limits became configurable per machine.
+    this.maxQueueSize =
+      normalizeMachineQueueLimit(config?.maxQueueSize) ?? Infinity;
     this.random = config?.random ?? Math.random;
     this.deadlinePolicy =
       config?.deadlinePolicy === "continue" ? "continue" : "drop";
     this.schedulingMode = normalizeSchedulingMode(config?.schedulingMode);
+    this.schedulerId = config?.schedulerId ?? null;
     this.batchDispatch = null;
     this.task_counter = 0;
     this.totalTasks = 0;
@@ -96,6 +107,19 @@ export class BaseScheduler {
   }
   getStats() {
     return this.stats;
+  }
+
+  getMachineQueueLimit(machineId) {
+    return (
+      this.machineQueueLimits.get(String(machineId)) ?? this.maxQueueSize
+    );
+  }
+
+  ownsTask(task) {
+    const taskLoadBalancer = task?.load_balancer_id ?? null;
+    return this.schedulerId === null
+      ? taskLoadBalancer === null
+      : String(taskLoadBalancer) === String(this.schedulerId);
   }
 
   recordMachineRuntime(machineId, runtimeSeconds) {
@@ -203,7 +227,7 @@ export class BaseScheduler {
     // Queue capacity enforcement
     const currentQueueSize = machine.queue?.length || 0;
 
-    if (currentQueueSize >= this.maxQueueSize) {
+    if (currentQueueSize >= this.getMachineQueueLimit(machine.id)) {
       // Put task back since machine is full
       this.unmappedTask.push(task);
       return null;
@@ -293,6 +317,7 @@ export class BaseScheduler {
       if (!m.queue?.length) continue;
 
       let task = m.queue[0];
+      if (!this.ownsTask(task)) continue;
       if (task.start_time === null || task.start_time === undefined) {
         if (this.deadlinePolicy === "drop" && now >= task.deadline) {
           task.status = "DNR";

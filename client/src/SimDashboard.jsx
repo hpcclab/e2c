@@ -59,6 +59,9 @@ import {
   expandSelectionWithDescendants,
   planGraphDuplication,
 } from "./utils/graphDuplication";
+import { createLoadBalancerIdentity } from "./utils/loadBalancers";
+import { isTopologyReachable } from "./utils/topologyRouting";
+import { attachDevicesToSpaces, applyDeviceMembership, updateWorkspaceMembers } from "./utils/workspaceMembership";
 import {
   MAX_BACKGROUND_WORKERS,
   MAX_BATCH_TASKS,
@@ -69,6 +72,8 @@ import {
   DEFAULT_BATCH_INTERVAL_SECONDS,
   SCHEDULING_MODES,
   normalizeBatchIntervalSeconds,
+  normalizeMachineQueueLimit,
+  normalizeMachineQueueLimits,
   normalizeSchedulingPolicyAlias,
 } from "./utils/scheduling";
 const edgeTypes = {
@@ -194,6 +199,38 @@ const SimDashboard = () => {
     );
   }, [schedulingMode, setPolicyAlias]);
 
+  const selectedLoadBalancer = useMemo(
+    () => nodes.find((node) => node.type === "LBNode" && node.selected),
+    [nodes],
+  );
+  const selectedLoadBalancerMachines = useMemo(
+    () =>
+      selectedLoadBalancer
+        ? machines.filter((machine) =>
+            isTopologyReachable(
+              selectedLoadBalancer.id,
+              machine.id,
+              edges,
+              nodes,
+            ),
+          )
+        : [],
+    [edges, machines, nodes, selectedLoadBalancer],
+  );
+  const selectedLoadBalancerSettings = {
+    policyAlias: selectedLoadBalancer?.data?.policyAlias ?? policyAlias,
+    deadlinePolicy:
+      selectedLoadBalancer?.data?.deadlinePolicy ?? deadlinePolicy,
+    schedulingMode:
+      selectedLoadBalancer?.data?.schedulingMode ?? schedulingMode,
+    batchIntervalSeconds:
+      selectedLoadBalancer?.data?.batchIntervalSeconds ?? batchIntervalSeconds,
+    machineQueueLimits:
+      selectedLoadBalancer?.data?.machineQueueLimits ?? {},
+    machineQueueLimit:
+      selectedLoadBalancer?.data?.machineQueueLimit ?? null,
+  };
+
   const applySimulationSettings = useCallback(
     ({ runCount, seeds }) => {
       const normalizedRunCount = normalizeSimulationRunCount(runCount);
@@ -308,6 +345,9 @@ const SimDashboard = () => {
       return allocated;
     };
     const copyToken = Date.now();
+    let nextLoadBalancerTimestamp = copyToken;
+    const reservedLoadBalancerNodes = [];
+    const loadBalancerIdentityById = new Map();
 
     const plan = planGraphDuplication({
       nodes,
@@ -318,6 +358,20 @@ const SimDashboard = () => {
         if (node.type === "machineNode") return String(allocateNumericId());
         if (node.type === "iotNode" || node.type === "userNode") {
           return `nd_${allocateNumericId()}`;
+        }
+        if (node.type === "LBNode") {
+          const identity = createLoadBalancerIdentity(
+            [...nodes, ...reservedLoadBalancerNodes],
+            nextLoadBalancerTimestamp,
+          );
+          nextLoadBalancerTimestamp += 1;
+          reservedLoadBalancerNodes.push({
+            id: identity.id,
+            type: "LBNode",
+            data: { name: identity.name },
+          });
+          loadBalancerIdentityById.set(identity.id, identity);
+          return identity.id;
         }
         if (
           node.type === "group" ||
@@ -510,6 +564,17 @@ const SimDashboard = () => {
           node.type !== "userNode",
       )
       .map((node) => {
+        if (node.type === "LBNode") {
+          const identity = loadBalancerIdentityById.get(node.id);
+          return {
+            ...node,
+            selected: false,
+            data: {
+              ...node.data,
+              name: identity?.name ?? node.data?.name,
+            },
+          };
+        }
         if (!workspaceNodeTypes.has(node.type)) {
           return { ...node, selected: false };
         }
@@ -1123,6 +1188,12 @@ const SimDashboard = () => {
       }
 
       const runCount = normalizeSimulationRunCount(simulationRunCount);
+      const simulationNodes = attachDevicesToSpaces(nodes);
+      const simulationMachines = applyDeviceMembership(machines, simulationNodes);
+      const simulationSources = applyDeviceMembership(iot, simulationNodes, true);
+      setNodes(simulationNodes);
+      setIot(simulationSources);
+      setWorkspaces((current) => updateWorkspaceMembers(current, simulationNodes, simulationMachines, simulationSources));
       const runSeeds = normalizeSimulationSeeds(
         runCount,
         simulationSeeds,
@@ -1134,6 +1205,7 @@ const SimDashboard = () => {
         0,
         edges,
         runSeeds[0],
+        simulationNodes,
       );
       if (!workload.length) {
         alert("Failed to run simulation. No tasks were generated.");
@@ -1148,7 +1220,7 @@ const SimDashboard = () => {
         return;
       }
 
-      const clearedMachines = machines.map((m) => ({
+      const clearedMachines = simulationMachines.map((m) => ({
         ...m,
         utilization_time: 0,
         total_cost: 0,
@@ -1181,9 +1253,14 @@ const SimDashboard = () => {
           batchIntervalSeconds,
         ),
         machines: clearedMachines,
-        iot,
+        iot: simulationSources,
         edges: edges.map(({ source, target }) => ({ source, target })),
-        nodes: nodes.map(({ id, type }) => ({ id, type })),
+        nodes: simulationNodes.map(({ id, type, data, parentId }) => ({
+          id,
+          type,
+          data,
+          parentId,
+        })),
       };
       const backgroundRuns = runSeeds.slice(1).map((seed, index) => ({
         runNumber: index + 2,
@@ -1196,6 +1273,7 @@ const SimDashboard = () => {
             0,
             edges,
             seed,
+            simulationNodes,
           ),
           simulationSeed: seed,
         },
@@ -1446,7 +1524,7 @@ const SimDashboard = () => {
               aria-hidden="true"
             />
             <span>
-              {edgeCopyNetwork.networkType} · {formatDataRate(edgeCopyNetwork.dataRateKbps)} · {edgeCopyNetwork.uploadPowerW} W
+              {edgeCopyNetwork.networkType} · {formatDataRate(edgeCopyNetwork.dataRateKbps)}
             </span>
             <span className="font-normal text-gray-500">Click a connection</span>
           </div>
@@ -1539,30 +1617,41 @@ const SimDashboard = () => {
                   disabled={isRunning}
                 />
                 <button
-                  onClick={runDataSimulation}
-                  className={` bg-green-600 hover:bg-green-700 text-white rounded-full w-12 h-12 flex items-center justify-center transition shadow-md`}
+                  type="button"
+                  onClick={
+                    !isRunning
+                      ? runDataSimulation
+                      : isPaused
+                        ? handleResumeSim
+                        : handlePauseSim
+                  }
+                  aria-label={
+                    !isRunning
+                      ? "Start simulation"
+                      : isPaused
+                        ? "Resume simulation"
+                        : "Pause simulation"
+                  }
+                  title={
+                    !isRunning
+                      ? "Start simulation"
+                      : isPaused
+                        ? "Resume simulation"
+                        : "Pause simulation"
+                  }
+                  className={`${isRunning && !isPaused ? "bg-red-500 hover:bg-red-600" : "bg-green-600 hover:bg-green-700"} text-white rounded-full w-12 h-12 flex items-center justify-center transition shadow-md`}
                 >
-                  ▶
+                  {isRunning && !isPaused ? "⏸" : "▶"}
                 </button>
                 <button
+                  type="button"
+                  aria-label="Restart simulation"
+                  title="Restart simulation"
                   className={`${isRunning ? "bg-blue-500 hover:bg-blue-600" : "bg-gray-300 cursor-not-allowed"} text-white rounded-full w-12 h-12 flex items-center justify-center transition`}
                   onClick={isRunning ? handleRestartSim : undefined}
                   disabled={!isRunning}
                 >
                   ↺
-                </button>
-                <button
-                  className={`${isRunning ? (isPaused ? "bg-yellow-500 hover:bg-yellow-600" : "bg-red-500 hover:bg-red-600") : "bg-gray-300 cursor-not-allowed"} text-white rounded-full w-12 h-12 flex items-center justify-center transition`}
-                  onClick={
-                    isRunning
-                      ? isPaused
-                        ? handleResumeSim
-                        : handlePauseSim
-                      : undefined
-                  }
-                  disabled={!isRunning}
-                >
-                  {isPaused ? "▶" : "⏸"}
                 </button>
               </>
             </div>
@@ -1595,7 +1684,7 @@ const SimDashboard = () => {
                 {sidebarMode === "workload"
                   ? "Workload & Profiling Table"
                   : sidebarMode === "loadBalancer"
-                    ? "Load Balancer"
+                    ? selectedLoadBalancer?.data?.name ?? "Load Balancer"
                     : sidebarMode === "task"
                       ? "Task Properties"
                       : sidebarMode === "edgeProps"
@@ -1626,20 +1715,56 @@ const SimDashboard = () => {
 
             {sidebarMode === "loadBalancer" && (
               <EditLoadBalancerProperties
-                policyAlias={policyAlias}
-                deadlinePolicy={deadlinePolicy}
-                schedulingMode={schedulingMode}
-                batchIntervalSeconds={batchIntervalSeconds}
+                policyAlias={selectedLoadBalancerSettings.policyAlias}
+                deadlinePolicy={selectedLoadBalancerSettings.deadlinePolicy}
+                schedulingMode={selectedLoadBalancerSettings.schedulingMode}
+                batchIntervalSeconds={
+                  selectedLoadBalancerSettings.batchIntervalSeconds
+                }
+                connectedMachines={selectedLoadBalancerMachines}
+                machineQueueLimits={
+                  selectedLoadBalancerSettings.machineQueueLimits
+                }
+                machineQueueLimit={
+                  selectedLoadBalancerSettings.machineQueueLimit
+                }
                 onSave={(settings) => {
-                  setPolicyAlias(
-                    normalizeSchedulingPolicyAlias(
-                      settings.policyAlias,
-                      settings.schedulingMode,
-                    ),
+                  const normalizedPolicy = normalizeSchedulingPolicyAlias(
+                    settings.policyAlias,
+                    settings.schedulingMode,
                   );
-                  setDeadlinePolicy(settings.deadlinePolicy);
-                  setSchedulingMode(settings.schedulingMode);
-                  setBatchIntervalSeconds(settings.batchIntervalSeconds);
+                  if (selectedLoadBalancer) {
+                    setNodes((currentNodes) =>
+                      currentNodes.map((node) =>
+                        node.id === selectedLoadBalancer.id
+                          ? {
+                              ...node,
+                              data: {
+                                ...node.data,
+                                ...settings,
+                                policyAlias: normalizedPolicy,
+                                batchIntervalSeconds:
+                                  normalizeBatchIntervalSeconds(
+                                    settings.batchIntervalSeconds,
+                                  ),
+                                machineQueueLimits:
+                                  normalizeMachineQueueLimits(
+                                    settings.machineQueueLimits,
+                                  ),
+                                machineQueueLimit: normalizeMachineQueueLimit(
+                                  settings.machineQueueLimit,
+                                ),
+                              },
+                            }
+                          : node,
+                      ),
+                    );
+                  } else {
+                    setPolicyAlias(normalizedPolicy);
+                    setDeadlinePolicy(settings.deadlinePolicy);
+                    setSchedulingMode(settings.schedulingMode);
+                    setBatchIntervalSeconds(settings.batchIntervalSeconds);
+                  }
                 }}
               />
             )}

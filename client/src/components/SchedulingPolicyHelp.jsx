@@ -5,6 +5,9 @@ import {
   normalizeSchedulingMode,
 } from "../utils/scheduling";
 
+const BATCH_POLICY_PAPER_URL =
+  "https://hpcclab.org/paperPdf/jpdc16-srm/SRM.pdf";
+
 const POLICY_DETAILS = [
   {
     alias: "FCFS",
@@ -69,6 +72,7 @@ const POLICY_DETAILS = [
       "Reducing expected completion times across a batch of tasks.",
     tradeoff:
       "It does not directly prioritize deadlines, so a less urgent short task can be selected before an urgent task.",
+    sourceUrl: BATCH_POLICY_PAPER_URL,
   },
   {
     alias: "MMU",
@@ -79,6 +83,7 @@ const POLICY_DETAILS = [
       "Balancing fast machine choices with deadline urgency.",
     tradeoff:
       "Prioritizing urgent tasks can delay tasks that would otherwise complete quickly.",
+    sourceUrl: BATCH_POLICY_PAPER_URL,
   },
   {
     alias: "MSD",
@@ -88,6 +93,7 @@ const POLICY_DETAILS = [
     usefulFor: "Giving earliest-deadline tasks priority within each batch.",
     tradeoff:
       "Deadline order can increase overall completion time compared with MM.",
+    sourceUrl: BATCH_POLICY_PAPER_URL,
   },
 ];
 
@@ -186,6 +192,20 @@ const SchedulingPolicyHelp = ({ selectedPolicy, schedulingMode }) => {
                       <p className="mt-1 text-gray-700">
                         <strong>Main tradeoff:</strong> {policy.tradeoff}
                       </p>
+                      {policy.sourceUrl && (
+                        <p className="mt-2 text-gray-700">
+                          If you want more information, go{" "}
+                          <a
+                            href={policy.sourceUrl}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="font-semibold text-blue-700 underline hover:text-blue-900"
+                          >
+                            here
+                          </a>
+                          .
+                        </p>
+                      )}
                     </section>
                   );
                 })}

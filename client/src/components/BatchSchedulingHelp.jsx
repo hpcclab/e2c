@@ -67,8 +67,13 @@ const BatchSchedulingHelp = () => {
                   <p>
                     Arrived tasks wait at the load balancer until the next batch
                     time. At that instant, the selected policy assigns every
-                    waiting task it can to machine queues. Machines continue
-                    processing previously assigned work between batch times.
+                    waiting task it can to machine queues. Machine queues are
+                    unlimited by default. A different optional queue limit can
+                    be set for each connected machine in the load balancer
+                    properties; tasks beyond a machine's limit remain at the
+                    load balancer for a later batch.
+                    Machines continue processing previously assigned work
+                    between batch times.
                   </p>
                 </section>
 

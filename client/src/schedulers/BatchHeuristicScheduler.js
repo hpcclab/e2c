@@ -99,7 +99,7 @@ export class BatchHeuristicScheduler extends BaseScheduler {
           (machine) =>
             (machine.queue?.length || 0) +
               (provisionalCounts.get(machine.id) || 0) <
-            this.maxQueueSize,
+            this.getMachineQueueLimit(machine.id),
         );
         if (!eligibleMachines.length) return [];
 

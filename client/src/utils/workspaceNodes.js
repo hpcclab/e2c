@@ -16,7 +16,7 @@ export function getWorkspaceKind(nodeType) {
 }
 
 export function getWorkspaceName(nodeType) {
-  if (nodeType === "cloudSpace") return "Cloud";
-  if (nodeType === "edgeSpace") return "Edge";
+  if (nodeType === "cloudSpace") return "Cloud Space";
+  if (nodeType === "edgeSpace") return "Edge Space";
   return "Workspace";
 }

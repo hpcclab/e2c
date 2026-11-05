@@ -23,6 +23,7 @@ import {
   machineProcessingEnergyRateJPerKb,
 } from "../utils/energy";
 import { DEFAULT_BATCH_INTERVAL_SECONDS } from "../utils/scheduling";
+import { attachDevicesToSpaces, applyDeviceMembership, updateWorkspaceMembers } from "../utils/workspaceMembership";
 
 const GlobalContext = createContext();
 
@@ -189,6 +190,18 @@ export const GlobalProvider = ({ children }) => {
   const onDragStop = (event, node) => {
     // Adjust viewport nicely after drag
     fitWorkspace();
+
+    const currentNodes = getNodes().map((candidate) => candidate.id === node.id ? node : candidate);
+    const attached = attachDevicesToSpaces(currentNodes);
+    if (attached.some((candidate, index) => candidate !== currentNodes[index])) {
+      const nextMachines = applyDeviceMembership(machines, attached);
+      const nextSources = applyDeviceMembership(iot, attached, true);
+      setNodes(attached);
+      setMachines(nextMachines);
+      setIot(nextSources);
+      setWorkspaces((current) => updateWorkspaceMembers(current, attached, nextMachines, nextSources));
+      return;
+    }
 
     // Only handle machine, IoT, and human-user source nodes
     if (
@@ -503,6 +516,7 @@ export const GlobalProvider = ({ children }) => {
       0,
       edges,
       simulationSeed,
+      nodes,
     );
     setBatchQ({ id: -2, name: "Batch Queue", queue: [...stuff] });
     setWorkloadTableData([...stuff]);
@@ -519,7 +533,6 @@ export const GlobalProvider = ({ children }) => {
   const machinesRef = useRef([]);
   const batchSlotsRef = useRef([]);
   const machineSlotsRef = useRef({});
-  const loadBalancerRef = useRef(null);
   const simulationIntervalRef = useRef(null);
   const simCurrentRef = useRef(0);
   const totalSimTimeRef = useRef(Infinity);
@@ -820,7 +833,6 @@ export const GlobalProvider = ({ children }) => {
     machinesRef,
     machineSlotsRef,
     batchSlotsRef,
-    loadBalancerRef,
     profilingFileName,
     setProfilingFileName,
     profilingFileUploaded,

@@ -52,5 +52,5 @@ test("legacy edge settings are resolved before being copied", () => {
 
   assert.equal(copied.data.properties.networkType, "WiFi");
   assert.equal(copied.data.properties.dataRateKbps, 12345);
-  assert.equal(copied.data.properties.uploadPowerW, 0.8);
+  assert.equal(copied.data.properties.uploadPowerW, 0.9603);
 });

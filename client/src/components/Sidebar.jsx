@@ -14,11 +14,16 @@ import {
   DEFAULT_GENERATION_ENERGY_PER_KB_J,
   DEFAULT_PROCESSING_ENERGY_PER_KB_J,
 } from "../utils/energy";
+import {
+  createLoadBalancerIdentity,
+  createUniqueNodeId,
+} from "../utils/loadBalancers";
+import {
+  normalizeBatchIntervalSeconds,
+  normalizeSchedulingPolicyAlias,
+} from "../utils/scheduling";
 
 // Contains node spawners through drag and drop
-// Simple ID generator for nodes
-let id = 0;
-const getId = (type) => `${type}_${id++}`;
 const machine = { id: -1, name: "empty machine", queue: [] };
 const iot = { id: -2, name: "empty iot", queue: [] };
 
@@ -361,6 +366,10 @@ export default function Sidebar() {
     loadBalancers,
     setLoadBalancers,
     fitWorkspace,
+    policyAlias,
+    deadlinePolicy,
+    schedulingMode,
+    batchIntervalSeconds,
   } = useGlobalState();
 
   const {
@@ -649,14 +658,27 @@ export default function Sidebar() {
           }),
         );
       } else if (nodeType === "LBNode") {
-        let lbID = getId(nodeType);
+        const currentNodes = getNodes();
+        const { id: lbID, name } = createLoadBalancerIdentity(currentNodes);
         setLoadBalancers((prev) => prev.concat(lbID));
         setNodes((nds) =>
           nds.concat({
             id: lbID,
             type: nodeType,
             position,
-            data: {},
+            data: {
+              name,
+              policyAlias: normalizeSchedulingPolicyAlias(
+                policyAlias,
+                schedulingMode,
+              ),
+              deadlinePolicy,
+              schedulingMode,
+              batchIntervalSeconds: normalizeBatchIntervalSeconds(
+                batchIntervalSeconds,
+              ),
+              machineQueueLimits: {},
+            },
             parentId,
             extent: parentId ? "parent" : undefined,
           }),
@@ -664,7 +686,7 @@ export default function Sidebar() {
       } else {
         setNodes((nds) =>
           nds.concat({
-            id: getId(nodeType),
+            id: createUniqueNodeId(nodeType, getNodes()),
             type: nodeType,
             position,
             data: {},
@@ -685,6 +707,10 @@ export default function Sidebar() {
       setScenarioRows,
       screenToFlowPosition,
       fitWorkspace,
+      policyAlias,
+      deadlinePolicy,
+      schedulingMode,
+      batchIntervalSeconds,
     ],
   );
 

@@ -17,6 +17,6 @@ test("Edge Space and Cloud Space are both recognized as workspace containers", (
 test("workspace metadata preserves whether a container is edge or cloud", () => {
   assert.equal(getWorkspaceKind("edgeSpace"), "edge");
   assert.equal(getWorkspaceKind("cloudSpace"), "cloud");
-  assert.equal(getWorkspaceName("edgeSpace"), "Edge");
-  assert.equal(getWorkspaceName("cloudSpace"), "Cloud");
+  assert.equal(getWorkspaceName("edgeSpace"), "Edge Space");
+  assert.equal(getWorkspaceName("cloudSpace"), "Cloud Space");
 });

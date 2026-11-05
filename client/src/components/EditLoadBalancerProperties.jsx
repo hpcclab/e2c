@@ -8,6 +8,8 @@ import {
   SCHEDULING_MODES,
   getSchedulingPolicyOptions,
   normalizeBatchIntervalSeconds,
+  normalizeMachineQueueLimit,
+  normalizeMachineQueueLimits,
   normalizeSchedulingPolicyAlias,
 } from "../utils/scheduling";
 
@@ -16,12 +18,35 @@ const makeDraft = ({
   deadlinePolicy,
   schedulingMode,
   batchIntervalSeconds,
-}) => ({
-  policyAlias,
-  deadlinePolicy,
-  schedulingMode,
-  batchIntervalSeconds,
-});
+  connectedMachines,
+  machineQueueLimits,
+  machineQueueLimit,
+}) => {
+  const legacyLimit = normalizeMachineQueueLimit(machineQueueLimit);
+  const queueLimits = Object.fromEntries(
+    Object.entries(machineQueueLimits ?? {}).map(([machineId, value]) => [
+      String(machineId),
+      value ?? "",
+    ]),
+  );
+  connectedMachines.forEach((machine) => {
+    const machineId = String(machine.id);
+    if (!Object.prototype.hasOwnProperty.call(queueLimits, machineId)) {
+      queueLimits[machineId] = legacyLimit ?? "";
+    }
+  });
+
+  return {
+    policyAlias,
+    deadlinePolicy,
+    schedulingMode,
+    batchIntervalSeconds,
+    machineQueueLimits: queueLimits,
+  };
+};
+
+const machineName = (machine) =>
+  machine?.name || machine?.data?.machine?.name || `Machine ${machine?.id}`;
 
 const ReadOnlyValue = ({ children }) => (
   <div className="w-full rounded border bg-gray-100 px-3 py-2 text-sm text-gray-800">
@@ -39,6 +64,9 @@ const EditLoadBalancerProperties = ({
   deadlinePolicy,
   schedulingMode,
   batchIntervalSeconds,
+  connectedMachines = [],
+  machineQueueLimits = {},
+  machineQueueLimit,
   onSave,
 }) => {
   const settings = useMemo(
@@ -47,10 +75,16 @@ const EditLoadBalancerProperties = ({
       deadlinePolicy,
       schedulingMode,
       batchIntervalSeconds,
+      connectedMachines,
+      machineQueueLimits,
+      machineQueueLimit,
     }),
     [
       batchIntervalSeconds,
+      connectedMachines,
       deadlinePolicy,
+      machineQueueLimits,
+      machineQueueLimit,
       policyAlias,
       schedulingMode,
     ],
@@ -78,6 +112,10 @@ const EditLoadBalancerProperties = ({
       batchIntervalSeconds: normalizeBatchIntervalSeconds(
         draft.batchIntervalSeconds,
       ),
+      machineQueueLimits: normalizeMachineQueueLimits(
+        draft.machineQueueLimits,
+      ),
+      machineQueueLimit: null,
     };
     onSave(normalized);
     setDraft(normalized);
@@ -131,32 +169,94 @@ const EditLoadBalancerProperties = ({
         </div>
 
         {draft.schedulingMode === SCHEDULING_MODES.PERIODIC_BATCH && (
-          <div className="space-y-2">
-            <label
-              htmlFor="batch-period-seconds"
-              className="block text-sm font-medium text-gray-700"
-            >
-              Batch period (seconds)
-            </label>
-            <input
-              id="batch-period-seconds"
-              type="number"
-              min={MIN_BATCH_INTERVAL_SECONDS}
-              max={MAX_BATCH_INTERVAL_SECONDS}
-              step="0.01"
-              value={draft.batchIntervalSeconds}
-              onChange={(event) =>
-                setDraft((current) => ({
-                  ...current,
-                  batchIntervalSeconds: event.target.value,
-                }))
-              }
-              className="w-full rounded border px-3 py-2 text-sm"
-            />
-            <p className="text-xs leading-5 text-gray-500">
-              Arrived tasks wait for batch times at this interval. The first
-              batch occurs after one complete period.
-            </p>
+          <div className="space-y-5">
+            <div className="space-y-2">
+              <label
+                htmlFor="batch-period-seconds"
+                className="block text-sm font-medium text-gray-700"
+              >
+                Batch period (seconds)
+              </label>
+              <input
+                id="batch-period-seconds"
+                type="number"
+                min={MIN_BATCH_INTERVAL_SECONDS}
+                max={MAX_BATCH_INTERVAL_SECONDS}
+                step="0.01"
+                value={draft.batchIntervalSeconds}
+                onChange={(event) =>
+                  setDraft((current) => ({
+                    ...current,
+                    batchIntervalSeconds: event.target.value,
+                  }))
+                }
+                className="w-full rounded border px-3 py-2 text-sm"
+              />
+              <p className="text-xs leading-5 text-gray-500">
+                Arrived tasks wait for batch times at this interval. The first
+                batch occurs after one complete period.
+              </p>
+            </div>
+
+            <div className="space-y-3">
+              <div>
+                <label className="block text-sm font-medium text-gray-700">
+                  Machine queue limits
+                </label>
+                <p className="mt-1 text-xs leading-5 text-gray-500">
+                  Set a separate limit for each connected machine. Leave a
+                  field blank to give that machine an unlimited queue.
+                </p>
+              </div>
+              {connectedMachines.length ? (
+                <div className="divide-y rounded border bg-gray-50">
+                  {connectedMachines.map((machine) => {
+                    const machineId = String(machine.id);
+                    return (
+                      <div
+                        key={machineId}
+                        className="grid grid-cols-[minmax(0,1fr)_8rem] items-center gap-3 p-3"
+                      >
+                        <label
+                          htmlFor={`machine-queue-limit-${machineId}`}
+                          className="min-w-0 text-sm font-medium text-gray-700"
+                        >
+                          <span className="block truncate">
+                            {machineName(machine)}
+                          </span>
+                          <span className="block truncate text-xs font-normal text-gray-500">
+                            ID: {machineId}
+                          </span>
+                        </label>
+                        <input
+                          id={`machine-queue-limit-${machineId}`}
+                          type="number"
+                          min="1"
+                          step="1"
+                          placeholder="Unlimited"
+                          value={draft.machineQueueLimits[machineId] ?? ""}
+                          onChange={(event) =>
+                            setDraft((current) => ({
+                              ...current,
+                              machineQueueLimits: {
+                                ...current.machineQueueLimits,
+                                [machineId]: event.target.value,
+                              },
+                            }))
+                          }
+                          className="w-full rounded border bg-white px-3 py-2 text-sm"
+                        />
+                      </div>
+                    );
+                  })}
+                </div>
+              ) : (
+                <p className="rounded border border-dashed bg-gray-50 p-3 text-sm text-gray-500">
+                  Connect a machine to this load balancer to configure its
+                  queue limit.
+                </p>
+              )}
+            </div>
           </div>
         )}
 
@@ -256,13 +356,48 @@ const EditLoadBalancerProperties = ({
       </div>
 
       {schedulingMode === SCHEDULING_MODES.PERIODIC_BATCH && (
-        <div className="space-y-2">
-          <label className="block text-sm font-medium text-gray-700">
-            Batch period (seconds)
-          </label>
-          <ReadOnlyValue>
-            {normalizeBatchIntervalSeconds(batchIntervalSeconds)}
-          </ReadOnlyValue>
+        <div className="space-y-5">
+          <div className="space-y-2">
+            <label className="block text-sm font-medium text-gray-700">
+              Batch period (seconds)
+            </label>
+            <ReadOnlyValue>
+              {normalizeBatchIntervalSeconds(batchIntervalSeconds)}
+            </ReadOnlyValue>
+          </div>
+          <div className="space-y-2">
+            <label className="block text-sm font-medium text-gray-700">
+              Machine queue limits
+            </label>
+            {connectedMachines.length ? (
+              <div className="divide-y rounded border bg-gray-100">
+                {connectedMachines.map((machine) => {
+                  const machineId = String(machine.id);
+                  const explicitLimit = normalizeMachineQueueLimit(
+                    machineQueueLimits?.[machineId],
+                  );
+                  const legacyLimit = normalizeMachineQueueLimit(
+                    machineQueueLimit,
+                  );
+                  return (
+                    <div
+                      key={machineId}
+                      className="flex items-center justify-between gap-3 px-3 py-2 text-sm"
+                    >
+                      <span className="min-w-0 truncate text-gray-800">
+                        {machineName(machine)}
+                      </span>
+                      <span className="shrink-0 font-medium text-gray-700">
+                        {explicitLimit ?? legacyLimit ?? "Unlimited"}
+                      </span>
+                    </div>
+                  );
+                })}
+              </div>
+            ) : (
+              <ReadOnlyValue>No connected machines</ReadOnlyValue>
+            )}
+          </div>
         </div>
       )}
 

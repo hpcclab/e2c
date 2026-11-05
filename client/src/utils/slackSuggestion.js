@@ -109,7 +109,7 @@ function buildConservativeTasks(
       nonNegativeNumber(properties.meanSize) +
       SUGGESTED_SLACK_Z_SCORE *
         nonNegativeNumber(properties.dataSizeStdDev ?? properties.stdv);
-    const network = getSourceEdgeNetwork(source.id, edges, properties);
+    const network = getSourceEdgeNetwork(source.id, edges, properties, nodes);
     const travelTime = calculateTravelTime(
       conservativeSize,
       network.networkType,
@@ -327,7 +327,12 @@ function calculateIsolatedSuggestion(
   );
   const conservativeDataSize =
     dataSizeMean + SUGGESTED_SLACK_Z_SCORE * dataSizeStdDev;
-  const { dataRateKbps } = getSourceEdgeNetwork(source.id, edges, properties);
+  const { dataRateKbps } = getSourceEdgeNetwork(
+    source.id,
+    edges,
+    properties,
+    nodes,
+  );
   const transferTime = (conservativeDataSize * 8) / dataRateKbps;
 
   const executionTimes = connectedMachines.map((machine) =>

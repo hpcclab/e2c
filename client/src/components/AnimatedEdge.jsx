@@ -57,8 +57,7 @@ export default function AnimatedEdge({
             borderColor: `${visual.color}66`,
           }}
         >
-          {network.networkType} · {formatDataRate(network.dataRateKbps)} ·{" "}
-          {network.uploadPowerW} W
+          {network.networkType} · {formatDataRate(network.dataRateKbps)}
         </div>
       </EdgeLabelRenderer>
     </>

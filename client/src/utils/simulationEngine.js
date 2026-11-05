@@ -21,12 +21,17 @@ import {
 } from "./energy.js";
 import { createRandomGenerator } from "./randomSeed.js";
 import {
-  DEFAULT_MACHINE_QUEUE_LIMIT,
   SCHEDULING_MODES,
   normalizeBatchIntervalSeconds,
+  normalizeMachineQueueLimit,
+  normalizeMachineQueueLimits,
   normalizeSchedulingPolicyAlias,
   normalizeSchedulingMode,
 } from "./scheduling.js";
+import {
+  getSourceLoadBalancerId,
+  isConnectedThroughLoadBalancer,
+} from "./loadBalancers.js";
 
 const TICK_SECONDS = 0.01;
 
@@ -55,13 +60,9 @@ export class SimulationEngine {
       policyAlias,
       this.schedulingMode,
     );
-    const SchedulerClass = SCHEDULER_REGISTRY[this.policyAlias];
-    if (!SchedulerClass) throw new Error(`Unknown scheduler: ${this.policyAlias}`);
     this.batchIntervalSeconds = normalizeBatchIntervalSeconds(
       batchIntervalSeconds,
     );
-    this.batchNumber = 0;
-    this.nextBatchTime = this.batchIntervalSeconds;
     this.iot = iot.map((source) => {
       if (!isBatteryPowered(source)) {
         return {
@@ -104,29 +105,52 @@ export class SimulationEngine {
 
     const simulationRandom =
       random ?? createRandomGenerator(simulationSeed, "runtime-and-scheduling");
-    this.scheduler = new SchedulerClass({
-      machines: this.machines,
-      iot: this.iot,
-      enqueue: (machineId, task) => this.enqueue(machineId, task),
-      dequeue: (machineId) => this.dequeue(machineId),
-      isNeighbors: (sourceId, machineId) =>
-        isConnectedToMachine(
-          sourceId,
-          machineId,
-          this.edges,
-          this.nodes,
-        ),
-      config: {
-        deadlinePolicy,
+    const loadBalancerNodes = this.nodes.filter(
+      (node) => node.type === "LBNode",
+    );
+    this.schedulerContexts = loadBalancerNodes.map((node) =>
+      this.createSchedulerContext({
+        id: String(node.id),
+        policyAlias: node.data?.policyAlias ?? this.policyAlias,
+        deadlinePolicy: node.data?.deadlinePolicy ?? deadlinePolicy,
+        schedulingMode: node.data?.schedulingMode ?? this.schedulingMode,
+        batchIntervalSeconds:
+          node.data?.batchIntervalSeconds ?? this.batchIntervalSeconds,
+        machineQueueLimits: node.data?.machineQueueLimits,
+        machineQueueLimit: node.data?.machineQueueLimit,
         random: simulationRandom,
-        schedulingMode: this.schedulingMode,
-        maxQueueSize: DEFAULT_MACHINE_QUEUE_LIMIT,
-      },
+      }),
+    );
+    this.defaultSchedulerContext = this.createSchedulerContext({
+      id: null,
+      policyAlias: this.policyAlias,
+      deadlinePolicy,
+      schedulingMode: this.schedulingMode,
+      batchIntervalSeconds: this.batchIntervalSeconds,
+      machineQueueLimits: {},
+      machineQueueLimit: null,
+      random: simulationRandom,
     });
-    this.scheduler.setMachines(this.machines);
-    this.scheduler.setIot(this.iot);
+    this.schedulerContexts.push(this.defaultSchedulerContext);
+    this.scheduler =
+      (loadBalancerNodes.length
+        ? this.schedulerContexts[0]
+        : this.defaultSchedulerContext
+      ).scheduler;
     this.pendingGeneration = tasks
-      .map((task, index) => ({ task: { ...task }, index }))
+      .map((task, index) => ({
+        task: {
+          ...task,
+          load_balancer_id:
+            task.load_balancer_id ??
+            getSourceLoadBalancerId(
+              `nd_${task.source_id}`,
+              this.edges,
+              this.nodes,
+            ),
+        },
+        index,
+      }))
       .sort(
         (a, b) =>
           numericTime(a.task.generation_time) -
@@ -135,6 +159,122 @@ export class SimulationEngine {
       .map(({ task, index }) => ({ ...task, id: task.id ?? index + 1 }));
     this.releaseGeneratedTasks();
     this.failImpossibleFutureTasks();
+  }
+
+  createSchedulerContext({
+    id,
+    policyAlias,
+    deadlinePolicy,
+    schedulingMode,
+    batchIntervalSeconds,
+    machineQueueLimits,
+    machineQueueLimit,
+    random,
+  }) {
+    const normalizedMode = normalizeSchedulingMode(schedulingMode);
+    const normalizedPolicy = normalizeSchedulingPolicyAlias(
+      policyAlias,
+      normalizedMode,
+    );
+    const SchedulerClass = SCHEDULER_REGISTRY[normalizedPolicy];
+    if (!SchedulerClass) throw new Error(`Unknown scheduler: ${normalizedPolicy}`);
+    const interval = normalizeBatchIntervalSeconds(batchIntervalSeconds);
+    const normalizedMachineQueueLimits =
+      normalizedMode === SCHEDULING_MODES.PERIODIC_BATCH
+        ? normalizeMachineQueueLimits(machineQueueLimits)
+        : {};
+    const scheduler = new SchedulerClass({
+      machines: this.machines,
+      iot: this.iot,
+      enqueue: (machineId, task) => this.enqueue(machineId, task),
+      dequeue: (machineId) => this.dequeue(machineId),
+      isNeighbors: (sourceId, machineId) =>
+        id === null
+          ? isConnectedToMachine(
+              sourceId,
+              machineId,
+              this.edges,
+              this.nodes,
+            )
+          : isConnectedThroughLoadBalancer(
+              sourceId,
+              machineId,
+              id,
+              this.edges,
+              this.nodes,
+            ),
+      config: {
+        deadlinePolicy,
+        random,
+        schedulingMode: normalizedMode,
+        schedulerId: id,
+        machineQueueLimits: normalizedMachineQueueLimits,
+        maxQueueSize:
+          normalizedMode === SCHEDULING_MODES.PERIODIC_BATCH
+            ? normalizeMachineQueueLimit(machineQueueLimit)
+            : null,
+      },
+    });
+    scheduler.setMachines(this.machines);
+    scheduler.setIot(this.iot);
+    return {
+      id,
+      scheduler,
+      policyAlias: normalizedPolicy,
+      deadlinePolicy: deadlinePolicy === "continue" ? "continue" : "drop",
+      schedulingMode: normalizedMode,
+      batchIntervalSeconds: interval,
+      machineQueueLimits: normalizedMachineQueueLimits,
+      machineQueueLimit:
+        normalizedMode === SCHEDULING_MODES.PERIODIC_BATCH
+          ? normalizeMachineQueueLimit(machineQueueLimit)
+          : null,
+      batchNumber: 0,
+      nextBatchTime: interval,
+    };
+  }
+
+  getSchedulerContext(task) {
+    const loadBalancerId = task?.load_balancer_id ?? null;
+    if (loadBalancerId === null) return this.defaultSchedulerContext;
+    return (
+      this.schedulerContexts.find(
+        (context) =>
+          context.id !== null &&
+          String(context.id) === String(loadBalancerId),
+      ) ?? this.defaultSchedulerContext
+    );
+  }
+
+  getCombinedStats() {
+    return this.schedulerContexts.reduce(
+      (combined, { scheduler }) => {
+        const stats = scheduler.getStats();
+        combined.mapped.push(...stats.mapped);
+        combined.missed.push(...stats.missed);
+        combined.completed.push(...stats.completed);
+        return combined;
+      },
+      { mapped: [], missed: [], completed: [] },
+    );
+  }
+
+  syncMachineStats() {
+    this.machines.forEach((machine) => {
+      const aggregate = this.schedulerContexts.reduce(
+        (stats, { scheduler }) => {
+          const current = scheduler.getMachineStats().get(machine.id);
+          stats.utilization_time += current?.utilization_time || 0;
+          stats.total_tasks += current?.total_tasks || 0;
+          return stats;
+        },
+        { utilization_time: 0, total_tasks: 0 },
+      );
+      machine.utilization_time = aggregate.utilization_time;
+      machine.total_tasks = aggregate.total_tasks;
+      machine.total_cost =
+        (Number(machine.price) || 0) * aggregate.utilization_time * 3600;
+    });
   }
 
   failSourceTask(task) {
@@ -194,7 +334,7 @@ export class SimulationEngine {
       }
 
       task.status = "NEW";
-      this.scheduler.addTask(task);
+      this.getSchedulerContext(task).scheduler.addTask(task);
     });
 
     this.pendingGeneration = futureTasks;
@@ -217,8 +357,21 @@ export class SimulationEngine {
       return false;
     });
 
-    this.pendingGeneration = this.scheduler.failBatteryBlockedTasks(
-      this.pendingGeneration,
+    const pendingByContext = new Map(
+      this.schedulerContexts.map((context) => [context, []]),
+    );
+    this.pendingGeneration.forEach((task) => {
+      pendingByContext.get(this.getSchedulerContext(task)).push(task);
+    });
+    this.pendingGeneration = this.schedulerContexts.flatMap((context) =>
+      context.scheduler.failBatteryBlockedTasks(
+        pendingByContext.get(context) || [],
+      ),
+    );
+    this.pendingGeneration.sort(
+      (first, second) =>
+        numericTime(first.generation_time) - numericTime(second.generation_time) ||
+        Number(first.id || 0) - Number(second.id || 0),
     );
   }
 
@@ -235,16 +388,11 @@ export class SimulationEngine {
     );
     if (!machine) return;
 
-    const stats = this.scheduler.getMachineStats().get(machine.id);
-    machine.utilization_time = stats?.utilization_time || 0;
-    machine.total_tasks = stats?.total_tasks || 0;
-    machine.total_cost =
-      (Number(machine.price) || 0) * machine.utilization_time * 3600;
     machine.queue.shift();
   }
 
-  sortWaitingTasks() {
-    this.scheduler.batchQueue.sort(
+  sortWaitingTasks(context) {
+    context.scheduler.batchQueue.sort(
       (first, second) =>
         numericTime(first.arrival_time) - numericTime(second.arrival_time) ||
         numericTime(first.generation_time) - numericTime(second.generation_time) ||
@@ -252,22 +400,24 @@ export class SimulationEngine {
     );
   }
 
-  dispatchPeriodicBatch() {
-    if (this.currentTime + Number.EPSILON < this.nextBatchTime) return;
+  dispatchPeriodicBatch(context) {
+    if (this.currentTime + Number.EPSILON < context.nextBatchTime) return;
 
-    this.batchNumber += 1;
+    context.batchNumber += 1;
     const releaseTime = Number(this.currentTime.toFixed(3));
-    this.scheduler.setBatchDispatch({
-      batchNumber: this.batchNumber,
+    context.scheduler.setBatchDispatch({
+      batchNumber: context.batchNumber,
       releaseTime,
     });
-    this.sortWaitingTasks();
+    this.sortWaitingTasks(context);
 
-    this.scheduler.scheduleBatch();
+    context.scheduler.scheduleBatch();
 
-    this.scheduler.setBatchDispatch(null);
-    this.nextBatchTime = Number(
-      ((this.batchNumber + 1) * this.batchIntervalSeconds).toFixed(3),
+    context.scheduler.setBatchDispatch(null);
+    context.nextBatchTime = Number(
+      (
+        (context.batchNumber + 1) * context.batchIntervalSeconds
+      ).toFixed(3),
     );
   }
 
@@ -275,17 +425,22 @@ export class SimulationEngine {
     if (this.isComplete()) return this.getSnapshot();
     this.currentTime = Number((this.currentTime + TICK_SECONDS).toFixed(3));
     this.releaseGeneratedTasks();
-    this.scheduler.setTime(this.currentTime);
-    this.scheduler.setMachines(this.machines);
-    this.scheduler.setIot(this.iot);
-    this.scheduler.expireWaitingTasks();
-    if (this.schedulingMode === SCHEDULING_MODES.PERIODIC_BATCH) {
-      this.dispatchPeriodicBatch();
-    } else {
-      this.sortWaitingTasks();
-      this.scheduler.schedule();
-    }
-    this.scheduler.processMachines();
+    this.schedulerContexts.forEach((context) => {
+      context.scheduler.setTime(this.currentTime);
+      context.scheduler.setMachines(this.machines);
+      context.scheduler.setIot(this.iot);
+      context.scheduler.expireWaitingTasks();
+      if (context.schedulingMode === SCHEDULING_MODES.PERIODIC_BATCH) {
+        this.dispatchPeriodicBatch(context);
+      } else {
+        this.sortWaitingTasks(context);
+        context.scheduler.schedule();
+      }
+    });
+    this.schedulerContexts.forEach((context) =>
+      context.scheduler.processMachines(),
+    );
+    this.syncMachineStats();
     this.failImpossibleFutureTasks();
     return this.getSnapshot();
   }
@@ -300,7 +455,7 @@ export class SimulationEngine {
 
   isComplete() {
     if (this.totalTasks === 0) return true;
-    const stats = this.scheduler.getStats();
+    const stats = this.getCombinedStats();
     return (
       stats.completed.length +
         stats.missed.length +
@@ -310,17 +465,18 @@ export class SimulationEngine {
   }
 
   getSnapshot() {
-    const stats = this.scheduler.getStats();
-    const waitingTasks = [
-      ...this.scheduler.getBatchQ(),
-      ...this.scheduler.unmappedTask,
-    ];
+    const stats = this.getCombinedStats();
+    const waitingTasks = this.schedulerContexts.flatMap(({ scheduler }) => [
+      ...scheduler.getBatchQ(),
+      ...scheduler.unmappedTask,
+    ]);
     const unassigned = waitingTasks.map((task) => ({
       ...task,
       status:
         numericTime(task.arrival_time) > this.currentTime
           ? "IN_TRANSIT"
-          : this.schedulingMode === SCHEDULING_MODES.PERIODIC_BATCH
+          : this.getSchedulerContext(task).schedulingMode ===
+                SCHEDULING_MODES.PERIODIC_BATCH
             ? "WAITING_FOR_BATCH"
             : "NEW",
       start_time: null,
@@ -351,8 +507,18 @@ export class SimulationEngine {
           : null,
       nextBatchTime:
         this.schedulingMode === SCHEDULING_MODES.PERIODIC_BATCH
-          ? this.nextBatchTime
+          ? this.defaultSchedulerContext.nextBatchTime
           : null,
+      loadBalancerSettings: this.schedulerContexts
+        .filter((context) => context.id !== null)
+        .map((context) => ({
+          id: context.id,
+          policyAlias: context.policyAlias,
+          deadlinePolicy: context.deadlinePolicy,
+          schedulingMode: context.schedulingMode,
+          batchIntervalSeconds: context.batchIntervalSeconds,
+          nextBatchTime: context.nextBatchTime,
+        })),
       complete: this.isComplete(),
     };
   }

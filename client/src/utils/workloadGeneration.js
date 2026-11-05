@@ -87,6 +87,7 @@ export function generateWorkload(
   seedOffset = 0,
   edges = [],
   simulationSeed = "",
+  nodes = [],
 ) {
   const workload = [];
   scenarioRows.forEach((row, idx) => {
@@ -117,7 +118,7 @@ export function generateWorkload(
     const parsedStdv = Number(typeObj?.dataSizeStdDev ?? typeObj?.stdv ?? 1);
     const meanSize = Number.isFinite(parsedMeanSize) ? parsedMeanSize : 100;
     const stdv = Number.isFinite(parsedStdv) ? Math.max(0, parsedStdv) : 1;
-    const edgeNetwork = getSourceEdgeNetwork(row.srcID, edges, typeObj);
+    const edgeNetwork = getSourceEdgeNetwork(row.srcID, edges, typeObj, nodes);
     const connectivity = edgeNetwork.networkType;
     const dataRateKbps = edgeNetwork.dataRateKbps;
     const uploadPowerW = edgeNetwork.uploadPowerW;

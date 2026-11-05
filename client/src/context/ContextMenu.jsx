@@ -1,13 +1,16 @@
-import React, { useCallback } from "react";
+import React, { useCallback, useState } from "react";
 import { useReactFlow } from "@xyflow/react";
 import { useGlobalState } from "./GlobalStates";
-import { FiCopy, FiTrash2 } from "react-icons/fi";
+import { FiCopy, FiTrash2, FiFolder, FiLogOut } from "react-icons/fi";
+import { isWorkspaceNode } from "../utils/workspaceNodes";
+import { planMachineMove } from "../utils/moveMachine";
 import { colorMemory } from "../components/Task";
 import {
   getNextTaskColor,
   sourceTaskColorKey,
   TASK_COLOR_NAMES,
 } from "../utils/taskColors";
+import { createLoadBalancerIdentity } from "../utils/loadBalancers";
 import "../assets/ContextMenu.css";
 
 export default function ContextMenu({
@@ -22,7 +25,8 @@ export default function ContextMenu({
   bottom,
   ...props
 }) {
-  const { getNode, setNodes, setEdges, addNodes } = useReactFlow();
+  const [showSpaces, setShowSpaces] = useState(false);
+  const { getNode, getNodes, setNodes, setEdges, addNodes } = useReactFlow();
   const {
     machines,
     setMachines,
@@ -165,13 +169,25 @@ export default function ContextMenu({
       return;
     }
 
-    const newNodeId = `${id}-copy-${Date.now()}`;
+    const loadBalancerIdentity =
+      node.type === "LBNode"
+        ? createLoadBalancerIdentity(getNodes())
+        : null;
+    const newNodeId =
+      loadBalancerIdentity?.id ?? `${id}-copy-${Date.now()}`;
     addNodes({
       ...node,
       id: newNodeId,
       selected: false,
       dragging: false,
       position,
+      data:
+        node.type === "LBNode"
+          ? {
+              ...node.data,
+              name: loadBalancerIdentity.name,
+            }
+          : node.data,
     });
 
     if (node.type === "LBNode") {
@@ -180,6 +196,7 @@ export default function ContextMenu({
   }, [
     id,
     getNode,
+    getNodes,
     machines,
     iot,
     addNodes,
@@ -233,8 +250,49 @@ export default function ContextMenu({
   ]);
   // Edge functions
 
+  const moveMachine = (destinationId) => {
+    const currentNodes = getNodes();
+    const node = getNode(id);
+    const plan = planMachineMove(currentNodes, id, destinationId);
+    if (!plan) return;
+    const machineId = node.data.machine.id;
+    const { workspaceSize, ...placement } = plan;
+    const destination = currentNodes.find((candidate) => candidate.id === destinationId);
+
+    setMachines((current) => current.map((machine) =>
+      String(machine.id) === String(machineId)
+        ? { ...machine, ...placement }
+        : machine,
+    ));
+    setNodes((current) => current.map((candidate) => {
+      if (candidate.id === id) {
+        return {
+          ...candidate,
+          ...placement,
+          data: { ...candidate.data, machine: { ...candidate.data.machine, ...placement } },
+        };
+      }
+      if (candidate.id === destinationId && workspaceSize) {
+        return {
+          ...candidate,
+          ...workspaceSize,
+          style: { ...candidate.style, ...workspaceSize },
+        };
+      }
+      return candidate;
+    }));
+    setWorkspaces((current) => current.map((workspace) => {
+      const members = (workspace.machines ?? []).filter((member) => String(member) !== String(machineId));
+      const isDestination = destination &&
+        String(workspace.id) === String(destination.data?.workspaceId ?? destination.id.replace("nd-", ""));
+      return { ...workspace, machines: isDestination ? [...members, machineId] : members };
+    }));
+  };
+
   const isEdgeMenu = kind === "edge" || (kind === undefined && id[0] === "e");
   const isSelectionMenu = kind === "selection";
+  const contextNode = !isEdgeMenu && !isSelectionMenu ? getNode(id) : null;
+  const spaces = getNodes().filter((node) => isWorkspaceNode(node) && node.id !== contextNode?.parentId);
   const duplicatesSelection =
     !isEdgeMenu &&
     selectedNodeIds.length > 1 &&
@@ -252,6 +310,41 @@ export default function ContextMenu({
       <div className="menu-sub">
         {isSelectionMenu ? `${selectedNodeIds.length} objects` : id}
       </div>
+          {contextNode?.type === "machineNode" && (
+            <>
+              <button
+                className="menu-item"
+                aria-expanded={showSpaces}
+                onClick={(event) => {
+                  event.stopPropagation();
+                  setShowSpaces((visible) => !visible);
+                }}
+              >
+                <FiFolder className="icon" />
+                Move into a space…
+              </button>
+              {showSpaces && (
+                <div className="max-h-48 overflow-y-auto pl-3">
+                  {spaces.length ? spaces.map((space) => (
+                    <button key={space.id} className="menu-item" onClick={() => moveMachine(space.id)}>
+                      <span className="min-w-0">
+                        <span className="block">{space.data?.name || "Space"}</span>
+                        <span className="block text-xs opacity-60">{space.id}</span>
+                      </span>
+                    </button>
+                  )) : (
+                    <p className="px-3 py-2 text-xs opacity-70">No other spaces available. Add an Edge or Cloud Space first.</p>
+                  )}
+                </div>
+              )}
+              {contextNode.parentId && (
+                <button className="menu-item" onClick={() => moveMachine(null)}>
+                  <FiLogOut className="icon" />
+                  Move out to canvas
+                </button>
+              )}
+            </>
+          )}
       {isEdgeMenu ? (
         <>
           <button

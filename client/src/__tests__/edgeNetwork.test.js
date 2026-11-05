@@ -6,6 +6,7 @@ import {
   formatDataRate,
   getEdgeNetworkVisual,
   getSourceEdgeNetwork,
+  getUploadPowerReference,
   resolveEdgeNetwork,
 } from "../utils/edgeNetwork.js";
 
@@ -15,7 +16,7 @@ test("new edge settings can inherit a legacy IoT connection", () => {
       connectivity: "Bluetooth",
       dataRateKbps: 500,
     }),
-    { networkType: "Bluetooth", dataRateKbps: 500, uploadPowerW: 0.05 },
+    { networkType: "Bluetooth", dataRateKbps: 500, uploadPowerW: 0.0144 },
   );
 });
 
@@ -32,7 +33,7 @@ test("explicit edge settings override the source fallback", () => {
   assert.deepEqual(network, {
     networkType: "LTE",
     dataRateKbps: 4200,
-    uploadPowerW: 1.8,
+    uploadPowerW: 0.8672,
   });
 });
 
@@ -45,7 +46,7 @@ test("an edge type without a saved speed receives that type's default", () => {
   assert.deepEqual(network, {
     networkType: "Bluetooth",
     dataRateKbps: 800,
-    uploadPowerW: 0.05,
+    uploadPowerW: 0.0144,
   });
 });
 
@@ -66,8 +67,18 @@ test("a source with several routes uses the slowest outgoing edge", () => {
   assert.deepEqual(network, {
     networkType: "Bluetooth",
     dataRateKbps: 800,
-    uploadPowerW: 0.05,
+    uploadPowerW: 0.0144,
   });
+});
+
+test("upload-power defaults retain their manufacturer provenance", () => {
+  assert.deepEqual(getUploadPowerReference("WiFi"), {
+    device: "Espressif ESP32-S3",
+    condition: "802.11g transmission at 54 Mbps and 19 dBm",
+    calculation: "3.3 V × 291 mA = 0.9603 W",
+    source: "https://documentation.espressif.com/esp32-s3_datasheet_en.pdf",
+  });
+  assert.equal(getUploadPowerReference("Custom"), null);
 });
 
 test("network visuals and speed labels communicate the link type", () => {

@@ -5,6 +5,7 @@ import {
   formatDataRate,
   getDefaultUploadPowerW,
   getEdgeNetworkVisual,
+  getUploadPowerReference,
   resolveEdgeNetwork,
 } from "../utils/edgeNetwork";
 import { getDefaultDataRateKbps } from "../utils/networkDelay";
@@ -38,6 +39,7 @@ const EditEdgeProperties = ({ selectedEdge }) => {
   }
 
   const visual = getEdgeNetworkVisual(networkType);
+  const uploadPowerReference = getUploadPowerReference(networkType);
 
   const handleTypeChange = (nextType) => {
     setNetworkType(nextType);
@@ -149,6 +151,20 @@ const EditEdgeProperties = ({ selectedEdge }) => {
           Energy used to upload a task is this power multiplied by the task&apos;s
           transfer time. A slower link therefore consumes more energy.
         </p>
+        {uploadPowerReference && (
+          <p className="mt-2 rounded border border-blue-100 bg-blue-50 p-2 text-xs leading-5 text-gray-600">
+            Default reference: {uploadPowerReference.device},{" "}
+            {uploadPowerReference.condition}. {uploadPowerReference.calculation}.{" "}
+            <a
+              href={uploadPowerReference.source}
+              target="_blank"
+              rel="noreferrer"
+              className="font-semibold text-blue-700 underline"
+            >
+              Manufacturer datasheet
+            </a>
+          </p>
+        )}
       </div>
 
       <div>

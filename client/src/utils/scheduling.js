@@ -6,7 +6,6 @@ export const SCHEDULING_MODES = Object.freeze({
 export const DEFAULT_BATCH_INTERVAL_SECONDS = 5;
 export const MIN_BATCH_INTERVAL_SECONDS = 0.01;
 export const MAX_BATCH_INTERVAL_SECONDS = 3600;
-export const DEFAULT_MACHINE_QUEUE_LIMIT = 2;
 
 export const IMMEDIATE_POLICY_OPTIONS = Object.freeze([
   { alias: "FCFS", name: "First Come, First Serve" },
@@ -65,6 +64,23 @@ export const normalizeBatchIntervalSeconds = (
   // never fires earlier than the period the user requested.
   return Math.ceil((bounded - Number.EPSILON) * 100) / 100;
 };
+
+export const normalizeMachineQueueLimit = (value) => {
+  if (value === null || value === undefined || value === "") return null;
+  const parsed = Number(value);
+  if (!Number.isFinite(parsed) || parsed < 1) return null;
+  return Math.floor(parsed);
+};
+
+export const normalizeMachineQueueLimits = (limits = {}) =>
+  Object.fromEntries(
+    Object.entries(limits ?? {})
+      .map(([machineId, value]) => [
+        String(machineId),
+        normalizeMachineQueueLimit(value),
+      ])
+      .filter(([, value]) => value !== null),
+  );
 
 export const schedulingModeLabel = (mode) =>
   normalizeSchedulingMode(mode) === SCHEDULING_MODES.PERIODIC_BATCH

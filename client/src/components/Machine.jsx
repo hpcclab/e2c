@@ -73,6 +73,7 @@ export const Machine = ({
   const totalCost = calculateCost(machine);
   const utilDisplay = formatUtilizationTime(machine.utilization_time || 0);
   const totalTasks = machine.total_tasks || 0;
+  const queuedTaskCount = machine.queue?.length || 0;
   const depleted = isBatteryDepleted(machine);
 
   return (
@@ -113,33 +114,42 @@ export const Machine = ({
         </div>
 
         <div className="flex flex-col items-end space-y-1">
-          {machine.icon && MACHINE_ICON_MAP[machine.icon] ? (
+          <div className="flex items-center gap-2">
             <div
-              onClick={handleChildClick}
-              className="flex flex-col items-center cursor-pointer hover:scale-105 transition"
-              title={`${totalTasks} tasks, ${utilDisplay.value}${utilDisplay.unit} × $${machine.price}/h = $${totalCost}`}
+              className="flex h-5 min-w-5 items-center justify-center rounded-full bg-blue-600 px-1 text-[10px] font-bold leading-none text-white shadow-sm"
+              aria-label={`${queuedTaskCount} task${queuedTaskCount === 1 ? "" : "s"} currently assigned to ${machine.name}`}
+              title={`${queuedTaskCount} task${queuedTaskCount === 1 ? "" : "s"} currently in this machine's queue`}
             >
-              {(() => {
-                const Icon = MACHINE_ICON_MAP[machine.icon];
-                return <Icon size={28} className="text-blue-600" />;
-              })()}
-              <span className="text-xs text-gray-700 font-semibold mt-0.5 max-w-[72px] truncate text-center">
+              {queuedTaskCount}
+            </div>
+            {machine.icon && MACHINE_ICON_MAP[machine.icon] ? (
+              <div
+                onClick={handleChildClick}
+                className="flex flex-col items-center cursor-pointer hover:scale-105 transition"
+                title={`${totalTasks} tasks, ${utilDisplay.value}${utilDisplay.unit} × $${machine.price}/h = $${totalCost}`}
+              >
+                {(() => {
+                  const Icon = MACHINE_ICON_MAP[machine.icon];
+                  return <Icon size={28} className="text-blue-600" />;
+                })()}
+                <span className="text-xs text-gray-700 font-semibold mt-0.5 max-w-[72px] truncate text-center">
+                  {machine.name}
+                  {hasReplicas && ` (${machine.replicas})`}
+                </span>
+              </div>
+            ) : (
+              <div
+                onClick={handleChildClick}
+                className={`text-white ${getMachineColor()} font-semibold w-20 h-10 rounded-full flex items-center justify-center cursor-pointer hover:scale-105 transition text-xs`}
+                title={`${totalTasks} tasks, ${utilDisplay.value}${utilDisplay.unit} × $${machine.price}/h = $${totalCost}`}
+              >
                 {machine.name}
-                {hasReplicas && ` (${machine.replicas})`}
-              </span>
-            </div>
-          ) : (
-            <div
-              onClick={handleChildClick}
-              className={`text-white ${getMachineColor()} font-semibold w-20 h-10 rounded-full flex items-center justify-center cursor-pointer hover:scale-105 transition text-xs`}
-              title={`${totalTasks} tasks, ${utilDisplay.value}${utilDisplay.unit} × $${machine.price}/h = $${totalCost}`}
-            >
-              {machine.name}
-              {hasReplicas && (
-                <span className="ml-1 text-xs">({machine.replicas})</span>
-              )}
-            </div>
-          )}
+                {hasReplicas && (
+                  <span className="ml-1 text-xs">({machine.replicas})</span>
+                )}
+              </div>
+            )}
+          </div>
           <BatteryIndicator device={machine} />
         </div>
       </div>

@@ -102,7 +102,7 @@ test("periodic batching holds arrived tasks until the configured boundary", () =
   assert.equal(dispatched.machines[0].queue[0].batch_wait_time, 0.8);
 });
 
-test("a periodic boundary fills available machine queue slots", () => {
+test("a periodic boundary sends the full batch to an unlimited machine queue", () => {
   const engine = buildEngine({
     schedulingMode: "batch",
     batchIntervalSeconds: 1,
@@ -118,15 +118,15 @@ test("a periodic boundary fills available machine queue slots", () => {
   });
 
   const snapshot = engine.advanceTo(1);
-  assert.equal(snapshot.machines[0].queue.length, 2);
-  assert.equal(snapshot.unassigned.length, 2);
+  assert.equal(snapshot.machines[0].queue.length, 4);
+  assert.equal(snapshot.unassigned.length, 0);
   assert.deepEqual(
     snapshot.machines[0].queue.map((task) => task.batch_number),
-    [1, 1],
+    [1, 1, 1, 1],
   );
   assert.deepEqual(
     snapshot.machines[0].queue.map((task) => task.batch_release_time),
-    [1, 1],
+    [1, 1, 1, 1],
   );
 });
 

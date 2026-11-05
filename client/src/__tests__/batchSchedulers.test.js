@@ -3,6 +3,8 @@ import test from "node:test";
 import { SimulationEngine } from "../utils/simulationEngine.js";
 import {
   getSchedulingPolicyOptions,
+  normalizeMachineQueueLimit,
+  normalizeMachineQueueLimits,
   normalizeSchedulingPolicyAlias,
 } from "../utils/scheduling.js";
 
@@ -31,7 +33,15 @@ const machine = (id, name, eet) => ({
   ),
 });
 
-function batchEngine({ policyAlias, machines, iot, tasks }) {
+function batchEngine({
+  policyAlias,
+  machines,
+  iot,
+  tasks,
+  machineQueueLimits = {},
+  machineQueueLimit = null,
+}) {
+  const loadBalancerId = "LBNode_test";
   return new SimulationEngine({
     policyAlias,
     schedulingMode: "batch",
@@ -40,12 +50,29 @@ function batchEngine({ policyAlias, machines, iot, tasks }) {
     machines,
     iot,
     tasks,
-    edges: iot.flatMap((taskSource) =>
-      machines.map((candidate) => ({
+    nodes: [
+      {
+        id: loadBalancerId,
+        type: "LBNode",
+        data: {
+          policyAlias,
+          schedulingMode: "batch",
+          batchIntervalSeconds: 1,
+          machineQueueLimits,
+          machineQueueLimit,
+        },
+      },
+    ],
+    edges: [
+      ...iot.map((taskSource) => ({
         source: `nd_${taskSource.id}`,
+        target: loadBalancerId,
+      })),
+      ...machines.map((candidate) => ({
+        source: loadBalancerId,
         target: String(candidate.id),
       })),
-    ),
+    ],
   });
 }
 
@@ -56,6 +83,17 @@ test("periodic mode exposes only MM, MMU, and MSD", () => {
   );
   assert.equal(normalizeSchedulingPolicyAlias("FCFS", "batch"), "MM");
   assert.equal(normalizeSchedulingPolicyAlias("MMU", "immediate"), "FCFS");
+});
+
+test("a blank machine queue limit is unlimited and explicit limits are integers", () => {
+  assert.equal(normalizeMachineQueueLimit(""), null);
+  assert.equal(normalizeMachineQueueLimit(null), null);
+  assert.equal(normalizeMachineQueueLimit("3.9"), 3);
+  assert.equal(normalizeMachineQueueLimit("0"), null);
+  assert.deepEqual(
+    normalizeMachineQueueLimits({ 1: "2.9", 2: "", 3: "0", 4: 5 }),
+    { 1: 2, 4: 5 },
+  );
 });
 
 test("MM assigns the globally minimum-completion pair first", () => {
@@ -105,7 +143,7 @@ test("MSD prioritizes the soonest deadline and uses completion time as a tie-bre
   assert.deepEqual(snapshot.machines[0].queue.map(({ id }) => id), [1, 2]);
 });
 
-test("batch policies keep excess tasks at the load balancer when queues reach L", () => {
+test("batch policies use unlimited machine queues by default", () => {
   const tasks = [1, 2, 3].map((id) => task(id, 7, "A", 100));
   const snapshot = batchEngine({
     policyAlias: "MM",
@@ -114,7 +152,25 @@ test("batch policies keep excess tasks at the load balancer when queues reach L"
     tasks,
   }).advanceTo(1);
 
-  assert.equal(snapshot.machines[0].queue.length, 2);
+  assert.equal(snapshot.machines[0].queue.length, 3);
+  assert.equal(snapshot.unassigned.length, 0);
+});
+
+test("a load balancer can set a different queue limit for each connected machine", () => {
+  const tasks = [1, 2, 3, 4].map((id) => task(id, 7, "A", 100));
+  const snapshot = batchEngine({
+    policyAlias: "MM",
+    machines: [
+      machine(1, "M1", { A: 1 }),
+      machine(2, "M2", { A: 10 }),
+    ],
+    iot: [source(7, "A")],
+    tasks,
+    machineQueueLimits: { 1: 1, 2: 2 },
+  }).advanceTo(1);
+
+  assert.equal(snapshot.machines[0].queue.length, 1);
+  assert.equal(snapshot.machines[1].queue.length, 2);
   assert.equal(snapshot.unassigned.length, 1);
   assert.equal(snapshot.unassigned[0].status, "WAITING_FOR_BATCH");
 });

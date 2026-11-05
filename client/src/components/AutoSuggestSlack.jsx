@@ -4,6 +4,7 @@ import {
   calculateSuggestedSlack,
   shouldApplySlackSuggestion,
 } from "../utils/slackSuggestion";
+import { getSourceLoadBalancerId } from "../utils/loadBalancers";
 
 const AutoSuggestSlack = ({ source, onSuggest, locked = false }) => {
   const {
@@ -18,6 +19,23 @@ const AutoSuggestSlack = ({ source, onSuggest, locked = false }) => {
   } = useGlobalState();
   const lastAppliedSuggestion = useRef(null);
   const previouslyLocked = useRef(locked);
+  const routedLoadBalancer = useMemo(() => {
+    const loadBalancerId = getSourceLoadBalancerId(
+      `nd_${source?.id}`,
+      edges,
+      nodes,
+    );
+    return nodes.find(
+      (node) =>
+        node.type === "LBNode" && String(node.id) === String(loadBalancerId),
+    );
+  }, [edges, nodes, source?.id]);
+  const effectivePolicyAlias =
+    routedLoadBalancer?.data?.policyAlias ?? policyAlias;
+  const effectiveSchedulingMode =
+    routedLoadBalancer?.data?.schedulingMode ?? schedulingMode;
+  const effectiveBatchIntervalSeconds =
+    routedLoadBalancer?.data?.batchIntervalSeconds ?? batchIntervalSeconds;
   const suggestion = useMemo(
     () =>
       calculateSuggestedSlack({
@@ -26,10 +44,10 @@ const AutoSuggestSlack = ({ source, onSuggest, locked = false }) => {
         machines,
         edges,
         nodes,
-        policyAlias,
+        policyAlias: effectivePolicyAlias,
         simulationSeed,
-        schedulingMode,
-        batchIntervalSeconds,
+        schedulingMode: effectiveSchedulingMode,
+        batchIntervalSeconds: effectiveBatchIntervalSeconds,
       }),
     [
       source,
@@ -37,10 +55,10 @@ const AutoSuggestSlack = ({ source, onSuggest, locked = false }) => {
       machines,
       edges,
       nodes,
-      policyAlias,
+      effectivePolicyAlias,
       simulationSeed,
-      schedulingMode,
-      batchIntervalSeconds,
+      effectiveSchedulingMode,
+      effectiveBatchIntervalSeconds,
     ],
   );
 
